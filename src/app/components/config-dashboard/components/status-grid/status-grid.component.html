@@ -1,0 +1,29 @@
+<div class="status-grid">
+  <div class="status-grid__header">
+    <div class="status-grid__info"></div>
+    <div class="status-grid__cells" [style.gridTemplateColumns]="cellColumnsTemplate">
+      <div class="status-grid__header-cell" *ngFor="let ci of headerColumns; trackBy: trackByIndex">
+        {{ ci + 1 }}
+      </div>
+    </div>
+  </div>
+
+  <div class="status-grid__row" *ngFor="let row of gridRows; trackBy: trackByField">
+    <div class="status-grid__info">
+      <span class="status-grid__label">{{ row.label }}</span>
+      <span class="status-grid__value">{{ row.confirmedValue }}</span>
+    </div>
+    <div class="status-grid__cells" [style.gridTemplateColumns]="cellColumnsTemplate">
+      <div
+        class="status-grid__cell"
+        *ngFor="let cell of row.cells; trackBy: trackByCellColumnId"
+        [style.backgroundColor]="cell.backgroundColor">
+        <span
+          *ngIf="cell.showText"
+          class="status-grid__text-indicator"
+          >{{ cell.textLabel }}</span
+        >
+      </div>
+    </div>
+  </div>
+</div>

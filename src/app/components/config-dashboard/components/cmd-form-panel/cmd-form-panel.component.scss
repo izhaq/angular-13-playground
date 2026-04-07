@@ -1,0 +1,25 @@
+@import 'variables';
+
+:host {
+  display: block;
+}
+
+.cmd-form-panel {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  width: 100%;
+
+  &__label {
+    flex-shrink: 0;
+    font-family: $font-family-body;
+    font-size: 0.8125rem;
+    color: $secondary-text;
+    white-space: nowrap;
+  }
+
+  app-dropdown {
+    flex: 1;
+    min-width: 0;
+  }
+}

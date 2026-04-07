@@ -1,0 +1,18 @@
+# Infrastructure & Tooling
+- Use Angular 13 with Angular Material 13 as the core framework.
+- Use Angular CLI v13.x for project generation and serving.
+- Use npm as the package manager.
+
+## CLI
+- Prefer Angular CLI (`ng`) commands for generation, serving, building, and testing.
+- Run all commands in non-interactive mode where possible.
+
+## Package Management
+- Use `npm` as the package manager; never install global packages.
+- Use only `~` for package versions in `package.json` (e.g., `"@angular/core": "~13.0.0"`). Never use `^` or `*`.
+- All dependencies must be installed in the repository root.
+
+## Project Structure
+- This is a single Angular application (not a monorepo).
+- The project root is `/Users/yizhaq.baroz/IdeaProjects/angular-13-playground`.
+- Specs and docs live under `specs/` in the project root.

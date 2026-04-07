@@ -1,0 +1,28 @@
+@import 'variables';
+
+:host {
+  display: block;
+}
+
+.operations {
+  &__heading {
+    display: block;
+    font-family: $font-family-headline;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: $secondary-text;
+    margin: 0 0 $spacing-md;
+  }
+
+  &__rows {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+  }
+
+  &__row {
+    width: 100%;
+  }
+}

@@ -1,0 +1,29 @@
+<div class="dashboard" *ngIf="vm$ | async as vm">
+  <header class="dashboard__topbar">
+    <app-top-bar
+      [selectedAction]="vm.selectedAction"
+      [actionOptions]="actionOptions"
+      (actionChanged)="onActionChanged($event, vm.formState)"
+      (resetClicked)="onReset()">
+    </app-top-bar>
+  </header>
+
+  <div class="dashboard__content">
+    <section class="dashboard__left">
+      <app-left-panel
+        [formValue]="vm.formState"
+        (formChanged)="onFormChanged($event, vm.selectedAction)"
+        (saved)="onSaved($event, vm.selectedAction)"
+        (cancelled)="onCancelled()">
+      </app-left-panel>
+    </section>
+
+    <main class="dashboard__right">
+      <app-status-grid
+        [cellColumnsTemplate]="cellColumnsTemplate"
+        [columnCount]="columnCount"
+        [gridRows]="(gridRows$ | async) ?? []">
+      </app-status-grid>
+    </main>
+  </div>
+</div>

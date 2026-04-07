@@ -1,0 +1,32 @@
+// Stitch "Obsidian Monolith" Design Tokens
+
+// Background & Surface hierarchy
+$background: #0e0e0e;
+$surface-container-low: #131313;
+$surface-container: #191a1a;
+$surface-container-high: #1f2020;
+$surface-container-highest: #252626;
+
+// Text
+$primary-text: #e7e5e4;
+$secondary-text: #acabaa;
+$inverse-text: #333333;
+
+// Brand / Accent
+$primary: #c6c6c7;
+$error: #ee7d77;
+$tertiary: #eff8ff;
+
+// Typography
+$font-family-headline: 'Manrope', sans-serif;
+$font-family-body: 'Inter', sans-serif;
+
+// Spacing
+$spacing-xs: 4px;
+$spacing-sm: 8px;
+$spacing-md: 16px;
+$spacing-lg: 24px;
+$spacing-xl: 32px;
+
+// Border radius
+$border-radius: 4px;

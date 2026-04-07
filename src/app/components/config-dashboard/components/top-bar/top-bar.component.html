@@ -1,0 +1,10 @@
+<div class="top-bar">
+  <app-dropdown
+    label="Action"
+    [options]="actionOptions"
+    [value]="selectedAction"
+    (changed)="actionChanged.emit($event)">
+  </app-dropdown>
+  <span class="top-bar__spacer" aria-hidden="true"></span>
+  <button mat-button type="button" (click)="resetClicked.emit()">Reset</button>
+</div>

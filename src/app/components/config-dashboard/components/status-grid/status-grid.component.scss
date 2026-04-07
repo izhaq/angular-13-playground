@@ -1,0 +1,103 @@
+@import 'variables';
+
+$cell-border: #424242;
+
+.status-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+
+  &__header {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: $spacing-md;
+    min-width: 0;
+  }
+
+  &__header-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.25em;
+    padding: $spacing-xs;
+    box-sizing: border-box;
+    background-color: #ffffff;
+    border: 2px solid $cell-border;
+    margin-left: -2px;
+    margin-top: -2px;
+    font-family: $font-family-body;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: $inverse-text;
+  }
+
+  &__row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: $spacing-md;
+    min-width: 0;
+
+    & + & {
+      margin-top: -2px;
+    }
+  }
+
+  &__info {
+    flex-shrink: 0;
+    min-width: 10rem;
+    max-width: 40%;
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0 $spacing-sm;
+  }
+
+  &__label {
+    color: $secondary-text;
+    font-family: $font-family-body;
+    font-size: 0.875rem;
+  }
+
+  &__value {
+    color: $primary-text;
+    font-family: $font-family-body;
+    font-size: 0.875rem;
+    margin-left: $spacing-sm;
+  }
+
+  &__cells {
+    flex: 1;
+    min-width: 0;
+    display: grid;
+    gap: 0;
+    margin-left: 2px;
+    margin-top: 2px;
+  }
+
+  &__cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.25em;
+    padding: $spacing-xs;
+    box-sizing: border-box;
+    background-color: #ffffff;
+    border: 2px solid $cell-border;
+    margin-left: -2px;
+    margin-top: -2px;
+  }
+
+  &__text-indicator {
+    color: $inverse-text;
+    font-family: $font-family-body;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.2;
+    text-align: center;
+    word-break: break-word;
+  }
+}

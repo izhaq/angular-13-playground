@@ -1,0 +1,27 @@
+@import 'variables';
+
+:host {
+  display: block;
+}
+
+.top-bar {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+  padding: $spacing-xs $spacing-md;
+  background-color: $surface-container-high;
+  color: $primary-text;
+  font-family: $font-family-body;
+  gap: $spacing-md;
+
+  app-dropdown {
+    flex-shrink: 0;
+    max-width: 15rem;
+  }
+
+  &__spacer {
+    flex: 1;
+    min-width: 0;
+  }
+}

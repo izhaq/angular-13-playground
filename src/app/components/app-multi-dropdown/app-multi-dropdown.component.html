@@ -1,0 +1,15 @@
+<div class="app-dropdown-wrapper">
+  <label *ngIf="label" class="app-dropdown-label">{{ label }}</label>
+  <mat-form-field appearance="fill" class="app-dropdown-field">
+    <mat-select
+      [multiple]="true"
+      [value]="value"
+      [placeholder]="placeholder"
+      [disabled]="disabled"
+      (selectionChange)="onSelectionChange($event)">
+      <mat-option *ngFor="let option of options" [value]="option.value">
+        {{ option.label }}
+      </mat-option>
+    </mat-select>
+  </mat-form-field>
+</div>

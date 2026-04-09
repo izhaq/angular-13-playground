@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { take } from 'rxjs/operators';
 import { DEFAULT_STATE } from '../models/dashboard-defaults';
 import { DashboardState, VehicleControls } from '../models/dashboard.models';
@@ -21,10 +22,18 @@ function makeTestVehicleControls(): VehicleControls {
 
 describe('DashboardStateService', () => {
   let service: DashboardStateService;
+  let httpMock: HttpTestingController;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({});
+    TestBed.configureTestingModule({
+      imports: [HttpClientTestingModule],
+    });
     service = TestBed.inject(DashboardStateService);
+    httpMock = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => {
+    httpMock.verify();
   });
 
   it('should be created', () => {
@@ -57,7 +66,7 @@ describe('DashboardStateService', () => {
     service.updateState(next);
   });
 
-  it('saveConfig updates the saved baseline', () => {
+  it('saveConfig updates the saved baseline and posts to API', () => {
     const modified: DashboardState = {
       scenario: 'off-road-trail',
       driveCommand: { transmission: 'sport', driveMode: 'awd' },
@@ -66,6 +75,11 @@ describe('DashboardStateService', () => {
 
     service.saveConfig(modified);
     expect(service.getSavedBaseline()).toEqual(modified);
+
+    const req = httpMock.expectOne('/api/config');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(modified);
+    req.flush({ status: 'accepted' });
   });
 
   it('cancelChanges restores the saved baseline', (done) => {
@@ -76,6 +90,8 @@ describe('DashboardStateService', () => {
     };
 
     service.saveConfig(modified);
+    httpMock.expectOne('/api/config').flush({ status: 'accepted' });
+
     service.updateState({
       ...modified,
       scenario: 'off-road-trail',
@@ -96,6 +112,7 @@ describe('DashboardStateService', () => {
       driveCommand: { transmission: 'manual', driveMode: '4wd' },
       vehicleControls: makeTestVehicleControls(),
     });
+    httpMock.expectOne('/api/config').flush({ status: 'accepted' });
 
     const restored = service.resetToDefaults();
     expect(restored).toEqual(DEFAULT_STATE);

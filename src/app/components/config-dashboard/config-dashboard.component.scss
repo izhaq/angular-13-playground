@@ -25,21 +25,26 @@ $separator-color: rgba($primary-text, 0.12);
     display: flex;
     flex: 1;
     min-height: 0;
+    overflow: hidden;
   }
 
   &__left {
     flex: 2;
+    min-width: 14rem;
     display: flex;
     flex-direction: column;
     padding-right: $spacing-lg;
     border-right: 1px solid $separator-color;
+    overflow-y: auto;
   }
 
   &__right {
     flex: 3;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     padding-left: $spacing-lg;
+    overflow: hidden;
   }
 }
 
@@ -47,4 +52,6 @@ app-status-grid {
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
 }

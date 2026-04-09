@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 
 import { AppComponent } from './app.component';
@@ -7,7 +8,7 @@ import { ConfigDashboardModule } from './components/config-dashboard/config-dash
 describe('AppComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [NoopAnimationsModule, ConfigDashboardModule],
+      imports: [NoopAnimationsModule, HttpClientTestingModule, ConfigDashboardModule],
       declarations: [AppComponent],
     }).compileComponents();
   });

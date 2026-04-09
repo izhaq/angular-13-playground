@@ -17,11 +17,11 @@ describe('TopBarComponent', () => {
 
     fixture = TestBed.createComponent(TopBarComponent);
     component = fixture.componentInstance;
-    component.actionOptions = [
+    component.scenarioOptions = [
       { value: 'a', label: 'Alpha' },
       { value: 'b', label: 'Beta' },
     ];
-    component.selectedAction = 'a';
+    component.selectedScenario = 'a';
     fixture.detectChanges();
   });
 
@@ -29,16 +29,16 @@ describe('TopBarComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should render the Action dropdown', () => {
+  it('should render the Scenario dropdown', () => {
     const dropdown = fixture.debugElement.query(By.css('app-dropdown'));
     expect(dropdown).toBeTruthy();
     const label = fixture.nativeElement.querySelector('.app-dropdown-label');
-    expect(label?.textContent?.trim()).toBe('Action');
+    expect(label?.textContent?.trim()).toBe('Scenario');
   });
 
-  it('should emit actionChanged when dropdown value changes', () => {
-    const spy = jasmine.createSpy('actionChanged');
-    component.actionChanged.subscribe(spy);
+  it('should emit scenarioChanged when dropdown value changes', () => {
+    const spy = jasmine.createSpy('scenarioChanged');
+    component.scenarioChanged.subscribe(spy);
     const dropdown = fixture.debugElement.query(By.directive(AppDropdownComponent))
       .componentInstance as AppDropdownComponent;
     dropdown.changed.emit('b');

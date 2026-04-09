@@ -1,6 +1,8 @@
-import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { Observable } from 'rxjs';
 
 import { CellViewModel, RowViewModel } from '../../models/grid.models';
+import { StatusGridService } from '../../services/status-grid.service';
 
 @Component({
   selector: 'app-status-grid',
@@ -9,12 +11,12 @@ import { CellViewModel, RowViewModel } from '../../models/grid.models';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class StatusGridComponent {
-  @Input() cellColumnsTemplate = '';
-  @Input() columnCount = 0;
-  @Input() gridRows: RowViewModel[] = [];
+  readonly headerColumns: number[];
+  readonly gridRows$: Observable<RowViewModel[]>;
 
-  get headerColumns(): number[] {
-    return Array.from({ length: this.columnCount }, (_, i) => i);
+  constructor(private readonly gridService: StatusGridService) {
+    this.headerColumns = Array.from({ length: this.gridService.columnCount }, (_, i) => i);
+    this.gridRows$ = this.gridService.gridRows$;
   }
 
   trackByField(_index: number, row: RowViewModel): string {

@@ -12,7 +12,6 @@ import { ConfigDashboardModule } from './components/config-dashboard/config-dash
     BrowserAnimationsModule,
     ConfigDashboardModule,
   ],
-  providers: [],
   bootstrap: [AppComponent],
 })
 export class AppModule {}

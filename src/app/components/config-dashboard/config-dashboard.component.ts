@@ -3,15 +3,14 @@ import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
 import { DropdownOption } from '../app-dropdown/app-dropdown.models';
-import { DashboardFormValue, LeftPanelFormPayload } from './models/dashboard-form.models';
-import { RowViewModel } from './models/grid.models';
-import { DashboardFormService } from './services/dashboard-form.service';
+import { DashboardState, LeftPanelPayload } from './models/dashboard.models';
+import { DashboardStateService } from './services/dashboard-state.service';
 import { StatusGridService } from './services/status-grid.service';
-import { ACTIONS } from '../../mocks/mock-data';
+import { SCENARIOS } from '../../mocks/mock-data';
 
 interface DashboardViewModel {
-  formState: DashboardFormValue;
-  selectedAction: string;
+  state: DashboardState;
+  isRealtime: boolean;
 }
 
 @Component({
@@ -21,28 +20,22 @@ interface DashboardViewModel {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ConfigDashboardComponent implements OnInit, OnDestroy {
-  readonly actionOptions: DropdownOption[] = ACTIONS;
-  readonly cellColumnsTemplate: string;
-  readonly columnCount: number;
-
-  vm$!: Observable<DashboardViewModel>;
-  gridRows$!: Observable<RowViewModel[]>;
+  readonly scenarioOptions: DropdownOption[] = SCENARIOS;
+  readonly vm$: Observable<DashboardViewModel>;
 
   constructor(
-    private readonly formService: DashboardFormService,
+    private readonly stateService: DashboardStateService,
     private readonly gridService: StatusGridService,
   ) {
-    this.cellColumnsTemplate = this.gridService.cellColumnsTemplate;
-    this.columnCount = this.gridService.columnCount;
+    this.vm$ = this.stateService.state$.pipe(
+      map((state) => ({
+        state,
+        isRealtime: state.scenario === 'realtime',
+      })),
+    );
   }
 
   ngOnInit(): void {
-    this.vm$ = this.formService.formState$.pipe(
-      map((state) => ({ formState: state, selectedAction: state.action })),
-    );
-
-    this.gridRows$ = this.gridService.gridRows$;
-
     this.gridService.connect();
   }
 
@@ -50,32 +43,32 @@ export class ConfigDashboardComponent implements OnInit, OnDestroy {
     this.gridService.disconnect();
   }
 
-  onActionChanged(value: string, currentState: DashboardFormValue): void {
-    this.formService.updateFormState({ ...currentState, action: value });
+  onScenarioChanged(value: string, currentState: DashboardState): void {
+    this.stateService.updateState({ ...currentState, scenario: value });
   }
 
   onReset(): void {
-    this.formService.resetToDefaults();
+    this.stateService.resetToDefaults();
     this.gridService.resetToDefaults();
   }
 
-  onFormChanged(partial: LeftPanelFormPayload, selectedAction: string): void {
-    this.formService.updateFormState({
-      action: selectedAction,
-      commands: partial.commands,
-      operations: partial.operations,
-    });
+  onStateChanged(partial: LeftPanelPayload, scenario: string): void {
+    this.stateService.updateState(this.buildState(partial, scenario));
   }
 
-  onSaved(partial: LeftPanelFormPayload, selectedAction: string): void {
-    this.formService.saveConfig({
-      action: selectedAction,
-      commands: partial.commands,
-      operations: partial.operations,
-    });
+  onSaved(partial: LeftPanelPayload, scenario: string): void {
+    this.stateService.saveConfig(this.buildState(partial, scenario));
   }
 
   onCancelled(): void {
-    this.formService.cancelChanges();
+    this.stateService.cancelChanges();
+  }
+
+  private buildState(partial: LeftPanelPayload, scenario: string): DashboardState {
+    return {
+      scenario,
+      driveCommand: partial.driveCommand,
+      vehicleControls: partial.vehicleControls,
+    };
   }
 }

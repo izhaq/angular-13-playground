@@ -5,7 +5,6 @@ $cell-border: #424242;
 .status-grid {
   display: flex;
   flex-direction: column;
-  gap: 0;
   width: 100%;
 
   &__header {
@@ -17,6 +16,8 @@ $cell-border: #424242;
   }
 
   &__header-cell {
+    flex: 1;
+    min-width: 2.5em;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -46,17 +47,19 @@ $cell-border: #424242;
   }
 
   &__info {
-    flex-shrink: 0;
-    min-width: 10rem;
-    max-width: 40%;
+    flex: 0 0 14rem;
+    width: 14rem;
     display: flex;
     flex-direction: row;
     align-items: baseline;
-    flex-wrap: wrap;
-    gap: 0 $spacing-sm;
+    gap: $spacing-sm;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   &__label {
+    flex-shrink: 0;
+    min-width: 7.5em;
     color: $secondary-text;
     font-family: $font-family-body;
     font-size: 0.875rem;
@@ -66,19 +69,22 @@ $cell-border: #424242;
     color: $primary-text;
     font-family: $font-family-body;
     font-size: 0.875rem;
-    margin-left: $spacing-sm;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   &__cells {
     flex: 1;
     min-width: 0;
-    display: grid;
-    gap: 0;
+    display: flex;
     margin-left: 2px;
     margin-top: 2px;
   }
 
   &__cell {
+    flex: 1;
+    min-width: 2.5em;
     display: flex;
     align-items: center;
     justify-content: center;

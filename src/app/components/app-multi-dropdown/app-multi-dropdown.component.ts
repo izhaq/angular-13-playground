@@ -27,12 +27,14 @@ export class AppMultiDropdownComponent implements DropdownHost<string[]> {
     return this._value;
   }
   set value(val: string[]) {
-    this._value = val;
-    this.cdr.markForCheck();
+    if (this._value !== val) {
+      this._value = val;
+      this.cdr.markForCheck();
+    }
   }
 
   onSelectionChange(event: MatSelectChange): void {
-    this.value = event.value as string[];
+    this.value = event.value;
     this.changed.emit(this.value);
   }
 }

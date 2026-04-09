@@ -1,0 +1,15 @@
+<div class="cmd-panel">
+  <span class="cmd-panel__label">DRIVE CMD</span>
+  <app-dropdown
+    [value]="value.transmission"
+    [options]="transmissionOptions"
+    [disabled]="disabled"
+    (changed)="onFieldChanged('transmission', $event)">
+  </app-dropdown>
+  <app-dropdown
+    [value]="value.driveMode"
+    [options]="driveModeOptions"
+    [disabled]="disabled"
+    (changed)="onFieldChanged('driveMode', $event)">
+  </app-dropdown>
+</div>

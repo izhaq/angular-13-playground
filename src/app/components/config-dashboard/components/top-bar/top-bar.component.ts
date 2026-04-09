@@ -15,8 +15,8 @@ import { DropdownOption } from '../../../app-dropdown/app-dropdown.models';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TopBarComponent {
-  @Input() selectedAction = '';
-  @Input() actionOptions: DropdownOption[] = [];
-  @Output() actionChanged = new EventEmitter<string>();
+  @Input() selectedScenario = '';
+  @Input() scenarioOptions: DropdownOption[] = [];
+  @Output() scenarioChanged = new EventEmitter<string>();
   @Output() resetClicked = new EventEmitter<void>();
 }

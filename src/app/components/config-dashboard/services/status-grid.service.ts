@@ -1,5 +1,5 @@
-import { Injectable } from '@angular/core';
-import { BehaviorSubject, Subscription } from 'rxjs';
+import { Injectable, NgZone } from '@angular/core';
+import { BehaviorSubject } from 'rxjs';
 import { buildInitialGridRows } from '../models/dashboard-defaults';
 import {
   CellViewModel,
@@ -11,6 +11,7 @@ import {
 import { GRID_COLUMNS } from '../../../mocks/mock-data';
 
 const DEFAULT_BG = '#ffffff';
+const RECONNECT_DELAY_MS = 3000;
 
 @Injectable({
   providedIn: 'root',
@@ -22,9 +23,14 @@ export class StatusGridService {
   private readonly viewModelSubject = new BehaviorSubject<RowViewModel[]>(
     this.buildViewModels(this.rawRows)
   );
-  private connectionSub: Subscription | null = null;
+
+  private socket: WebSocket | null = null;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private shouldReconnect = false;
 
   readonly gridRows$ = this.viewModelSubject.asObservable();
+
+  constructor(private readonly zone: NgZone) {}
 
   get columnCount(): number {
     return this.columns.length;
@@ -58,30 +64,72 @@ export class StatusGridService {
   }
 
   connect(): void {
-    const mockUpdates: FieldUpdate[] = [
-      { field: 'vehicleControls.terrain', value: 'Gravel, Sand', statuses: { red: true, green: false, yellow: false, n: true, p: false, l: false } },
-      { field: 'vehicleControls.weather', value: 'Rain, Fog', statuses: { red: false, green: true, yellow: false, n: false, p: true, l: false } },
-      { field: 'vehicleControls.speedLimit', value: '120 km/h', statuses: { red: false, green: true, yellow: true, n: false, p: false, l: true } },
-      { field: 'vehicleControls.gear', value: 'D', statuses: { red: true, green: false, yellow: true, n: true, p: true, l: false } },
-      { field: 'vehicleControls.headlights', value: 'Auto', statuses: { red: false, green: false, yellow: false, n: false, p: false, l: true } },
-      { field: 'vehicleControls.wipers', value: 'Interval', statuses: { red: false, green: true, yellow: false, n: true, p: false, l: false } },
-      { field: 'vehicleControls.tractionCtrl', value: 'Sport', statuses: { red: true, green: false, yellow: true, n: false, p: true, l: true } },
-      { field: 'vehicleControls.stability', value: 'ESC Off', statuses: { red: false, green: true, yellow: false, n: false, p: false, l: false } },
-      { field: 'vehicleControls.cruiseCtrl', value: 'Adaptive', statuses: { red: true, green: true, yellow: false, n: true, p: true, l: true } },
-      { field: 'vehicleControls.brakeAssist', value: 'Full Assist', statuses: { red: false, green: false, yellow: true, n: false, p: true, l: false } },
-    ];
-
-    mockUpdates.forEach((update) => this.applyUpdate(update));
+    this.shouldReconnect = true;
+    this.openSocket();
   }
 
   disconnect(): void {
-    this.connectionSub?.unsubscribe();
-    this.connectionSub = null;
+    this.shouldReconnect = false;
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    if (this.socket) {
+      this.socket.close();
+      this.socket = null;
+    }
   }
 
   resetToDefaults(): void {
     this.rawRows = buildInitialGridRows(this.columns);
     this.viewModelSubject.next(this.buildViewModels(this.rawRows));
+  }
+
+  private openSocket(): void {
+    if (this.socket) {
+      this.socket.close();
+    }
+
+    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const host = window.location.host;
+    const url = `${protocol}://${host}/api/ws`;
+
+    this.zone.runOutsideAngular(() => {
+      this.socket = new WebSocket(url);
+
+      this.socket.onopen = () => {
+        console.log('[StatusGridService] WebSocket connected');
+      };
+
+      this.socket.onmessage = (event) => {
+        try {
+          const update: FieldUpdate = JSON.parse(event.data);
+          this.zone.run(() => this.applyUpdate(update));
+        } catch (err) {
+          console.error('[StatusGridService] Invalid message:', event.data);
+        }
+      };
+
+      this.socket.onclose = () => {
+        console.log('[StatusGridService] WebSocket closed');
+        this.scheduleReconnect();
+      };
+
+      this.socket.onerror = (err) => {
+        console.error('[StatusGridService] WebSocket error');
+        this.socket?.close();
+      };
+    });
+  }
+
+  private scheduleReconnect(): void {
+    if (!this.shouldReconnect) {
+      return;
+    }
+    this.reconnectTimer = setTimeout(() => {
+      console.log('[StatusGridService] Reconnecting...');
+      this.openSocket();
+    }, RECONNECT_DELAY_MS);
   }
 
   private buildViewModels(rows: GridRow[]): RowViewModel[] {

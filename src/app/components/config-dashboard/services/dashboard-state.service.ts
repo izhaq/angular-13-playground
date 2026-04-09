@@ -1,3 +1,4 @@
+import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { DEFAULT_STATE } from '../models/dashboard-defaults';
@@ -15,6 +16,8 @@ export class DashboardStateService {
 
   readonly state$ = this.stateSubject.asObservable();
 
+  constructor(private readonly http: HttpClient) {}
+
   updateState(value: DashboardState): void {
     this.stateSubject.next(value);
   }
@@ -22,8 +25,11 @@ export class DashboardStateService {
   saveConfig(value: DashboardState): void {
     this.savedBaseline = { ...value };
     this.stateSubject.next(value);
-    // TODO: POST to mock API — will trigger server-side processing
-    // that pushes WebSocket FieldUpdate messages to StatusGridService
+
+    this.http.post<{ status: string }>('/api/config', value).subscribe({
+      next: (res) => console.log('[DashboardStateService] Config saved:', res.status),
+      error: (err) => console.error('[DashboardStateService] Save failed:', err.message),
+    });
   }
 
   cancelChanges(): DashboardState {

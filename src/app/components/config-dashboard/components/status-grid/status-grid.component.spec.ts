@@ -1,7 +1,9 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
+import { BehaviorSubject } from 'rxjs';
 
 import { CellViewModel, RowViewModel } from '../../models/grid.models';
+import { StatusGridService } from '../../services/status-grid.service';
 import { StatusGridComponent } from './status-grid.component';
 import { StatusGridModule } from './status-grid.module';
 
@@ -15,9 +17,11 @@ function buildCellViewModel(
   return { columnId, active, backgroundColor, textLabel, showText };
 }
 
+const COL_COUNT = 6;
+
 function buildTestRows(): RowViewModel[] {
   return Array.from({ length: 10 }, (_, rowIndex) => {
-    const activeIndex = rowIndex % 6;
+    const activeIndex = rowIndex % COL_COUNT;
     const cells: CellViewModel[] = [
       buildCellViewModel('col-0', activeIndex === 0, activeIndex === 0 ? '#ff0000' : '#ffffff', '', false),
       buildCellViewModel('col-1', activeIndex === 1, activeIndex === 1 ? '#00ff00' : '#ffffff', '', false),
@@ -39,20 +43,24 @@ describe('StatusGridComponent', () => {
   let fixture: ComponentFixture<StatusGridComponent>;
   let component: StatusGridComponent;
 
-  const colCount = 6;
-  const cellColumnsTemplate = `repeat(${colCount}, minmax(2.5em, 1fr))`;
   const gridRows: RowViewModel[] = buildTestRows();
+  const gridRowsSubject = new BehaviorSubject<RowViewModel[]>(gridRows);
+
+  const mockGridService: Partial<StatusGridService> = {
+    columnCount: COL_COUNT,
+    gridRows$: gridRowsSubject.asObservable(),
+  };
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [StatusGridModule],
+      providers: [
+        { provide: StatusGridService, useValue: mockGridService },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(StatusGridComponent);
     component = fixture.componentInstance;
-    component.columnCount = colCount;
-    component.cellColumnsTemplate = cellColumnsTemplate;
-    component.gridRows = gridRows;
     fixture.detectChanges();
   });
 
@@ -67,7 +75,7 @@ describe('StatusGridComponent', () => {
 
   it('should render header cells matching columnCount', () => {
     const headerCells = fixture.debugElement.queryAll(By.css('.status-grid__header-cell'));
-    expect(headerCells.length).toBe(colCount);
+    expect(headerCells.length).toBe(COL_COUNT);
   });
 
   it('should show label and confirmedValue for each row', () => {
@@ -83,7 +91,7 @@ describe('StatusGridComponent', () => {
   it('should render the correct number of cells per row', () => {
     fixture.debugElement.queryAll(By.css('.status-grid__row')).forEach((rowEl) => {
       const cells = rowEl.queryAll(By.css('.status-grid__cell'));
-      expect(cells.length).toBe(colCount);
+      expect(cells.length).toBe(COL_COUNT);
     });
   });
 

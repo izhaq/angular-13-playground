@@ -3,21 +3,17 @@ import {
   Component,
   EventEmitter,
   Input,
-  OnDestroy,
-  OnInit,
   Output,
 } from '@angular/core';
-import { FormControl, FormGroup } from '@angular/forms';
-import { Subject } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
 
 import {
-  CommandPair,
-  DashboardFormValue,
-  LeftPanelFormPayload,
-  OperationsValue,
-} from '../../models/dashboard-form.models';
-import { DEFAULT_OPERATIONS_VALUE } from '../operations-form-list/operations-form-list.models';
+  DashboardState,
+  DriveCommand,
+  LeftPanelPayload,
+  VehicleControls,
+} from '../../models/dashboard.models';
+import { DEFAULT_DRIVE_COMMAND } from '../cmd-panel/cmd-panel.models';
+import { DEFAULT_VEHICLE_CONTROLS } from '../operations-list/operations-list.models';
 
 @Component({
   selector: 'app-left-panel',
@@ -25,62 +21,46 @@ import { DEFAULT_OPERATIONS_VALUE } from '../operations-form-list/operations-for
   styleUrls: ['./left-panel.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class LeftPanelComponent implements OnInit, OnDestroy {
-  @Input() set formValue(value: DashboardFormValue | null) {
+export class LeftPanelComponent {
+  @Input() set dashboardState(value: DashboardState | null) {
     if (!value) {
       return;
     }
-    const current = this.form.value;
-    if (
-      current.commands !== value.commands ||
-      current.operations !== value.operations
-    ) {
-      this.form.patchValue(
-        { commands: value.commands, operations: value.operations },
-        { emitEvent: false },
-      );
-    }
+    this.driveCommand = value.driveCommand;
+    this.vehicleControls = value.vehicleControls;
   }
 
-  @Output() formChanged = new EventEmitter<LeftPanelFormPayload>();
-  @Output() saved = new EventEmitter<LeftPanelFormPayload>();
+  @Input() disabled = false;
+
+  @Output() stateChanged = new EventEmitter<LeftPanelPayload>();
+  @Output() saved = new EventEmitter<LeftPanelPayload>();
   @Output() cancelled = new EventEmitter<void>();
 
-  form = new FormGroup({
-    commands: new FormControl(null),
-    operations: new FormControl(null),
-  });
+  driveCommand: DriveCommand = { ...DEFAULT_DRIVE_COMMAND };
+  vehicleControls: VehicleControls = { ...DEFAULT_VEHICLE_CONTROLS };
 
-  private readonly destroy$ = new Subject<void>();
-
-  ngOnInit(): void {
-    this.form.valueChanges
-      .pipe(takeUntil(this.destroy$))
-      .subscribe((val) => {
-        this.formChanged.emit(this.buildPayload(val));
-      });
+  onDriveCommandChanged(value: DriveCommand): void {
+    this.driveCommand = value;
+    this.stateChanged.emit(this.buildPayload());
   }
 
-  ngOnDestroy(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
+  onVehicleControlsChanged(value: VehicleControls): void {
+    this.vehicleControls = value;
+    this.stateChanged.emit(this.buildPayload());
   }
 
   onSave(): void {
-    this.saved.emit(this.buildPayload(this.form.value));
+    this.saved.emit(this.buildPayload());
   }
 
   onCancel(): void {
     this.cancelled.emit();
   }
 
-  private buildPayload(val: {
-    commands?: CommandPair | null;
-    operations?: OperationsValue | null;
-  }): LeftPanelFormPayload {
+  private buildPayload(): LeftPanelPayload {
     return {
-      commands: val.commands ?? { cmd1: '', cmd2: '' },
-      operations: val.operations ?? { ...DEFAULT_OPERATIONS_VALUE },
+      driveCommand: this.driveCommand,
+      vehicleControls: this.vehicleControls,
     };
   }
 }

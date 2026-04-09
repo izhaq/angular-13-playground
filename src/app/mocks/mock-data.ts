@@ -4,10 +4,11 @@ import {
 } from '../components/config-dashboard/models/grid.models';
 import { DropdownOption } from '../components/app-dropdown/app-dropdown.models';
 
-export const ACTIONS: DropdownOption[] = [
-  { value: 'action-1', label: 'Action 1' },
-  { value: 'action-2', label: 'Action 2' },
-  { value: 'action-3', label: 'Action 3' },
+export const SCENARIOS: DropdownOption[] = [
+  { value: 'highway-cruise', label: 'Highway Cruise' },
+  { value: 'city-traffic', label: 'City Traffic' },
+  { value: 'off-road-trail', label: 'Off-Road Trail' },
+  { value: 'realtime', label: 'Realtime' },
 ];
 
 export const GRID_COLUMNS: GridColumn[] = [

@@ -1,9 +1,9 @@
 <div class="dashboard" *ngIf="vm$ | async as vm">
   <header class="dashboard__topbar">
     <app-top-bar
-      [selectedAction]="vm.selectedAction"
-      [actionOptions]="actionOptions"
-      (actionChanged)="onActionChanged($event, vm.formState)"
+      [selectedScenario]="vm.state.scenario"
+      [scenarioOptions]="scenarioOptions"
+      (scenarioChanged)="onScenarioChanged($event, vm.state)"
       (resetClicked)="onReset()">
     </app-top-bar>
   </header>
@@ -11,19 +11,16 @@
   <div class="dashboard__content">
     <section class="dashboard__left">
       <app-left-panel
-        [formValue]="vm.formState"
-        (formChanged)="onFormChanged($event, vm.selectedAction)"
-        (saved)="onSaved($event, vm.selectedAction)"
+        [dashboardState]="vm.state"
+        [disabled]="vm.isRealtime"
+        (stateChanged)="onStateChanged($event, vm.state.scenario)"
+        (saved)="onSaved($event, vm.state.scenario)"
         (cancelled)="onCancelled()">
       </app-left-panel>
     </section>
 
     <main class="dashboard__right">
-      <app-status-grid
-        [cellColumnsTemplate]="cellColumnsTemplate"
-        [columnCount]="columnCount"
-        [gridRows]="(gridRows$ | async) ?? []">
-      </app-status-grid>
+      <app-status-grid></app-status-grid>
     </main>
   </div>
 </div>

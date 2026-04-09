@@ -10,6 +10,18 @@ $panel-bg: $surface-container-low;
   min-height: 0;
 }
 
+.panel-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+
+  &--disabled {
+    opacity: 0.4;
+    pointer-events: none;
+  }
+}
+
 .panel {
   background-color: $panel-bg;
   border-radius: $border-radius;
@@ -24,35 +36,9 @@ $panel-bg: $surface-container-low;
     gap: $spacing-md;
   }
 
-  &__label {
-    flex-shrink: 0;
-    font-family: $font-family-headline;
-    font-weight: 600;
-    font-size: 0.75rem;
-    color: $secondary-text;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    padding-top: $spacing-xs;
-  }
-
-  &__heading {
-    font-family: $font-family-headline;
-    font-weight: 600;
-    font-size: 0.75rem;
-    color: $secondary-text;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: $spacing-sm;
-  }
-
   &__section {
     display: flex;
     flex-direction: column;
-  }
-
-  &__body {
-    flex: 1;
-    min-width: 0;
   }
 
   &__separator {

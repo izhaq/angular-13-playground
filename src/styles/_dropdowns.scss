@@ -14,6 +14,7 @@ $dropdown-h-padding: 0.625em;
 
 .app-dropdown-label {
   flex-shrink: 0;
+  min-width: 7.5em;
   font-family: $font-family-body;
   font-size: $dropdown-font-size;
   line-height: $dropdown-line-height;
@@ -70,6 +71,9 @@ $dropdown-h-padding: 0.625em;
     font-size: $dropdown-font-size;
     line-height: $dropdown-line-height;
     vertical-align: middle;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .mat-select-arrow-wrapper {
@@ -89,11 +93,5 @@ $dropdown-h-padding: 0.625em;
 
   &.mat-form-field-appearance-fill .mat-form-field-underline {
     display: none;
-  }
-
-  .mat-select-value-text {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 }

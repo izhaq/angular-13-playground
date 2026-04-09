@@ -34,7 +34,7 @@ export class AppDropdownComponent implements DropdownHost<string> {
   }
 
   onSelectionChange(event: MatSelectChange): void {
-    this.value = event.value as string;
+    this.value = event.value;
     this.changed.emit(this.value);
   }
 }

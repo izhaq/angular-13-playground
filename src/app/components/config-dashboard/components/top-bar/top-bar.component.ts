@@ -18,5 +18,4 @@ export class TopBarComponent {
   @Input() selectedScenario = '';
   @Input() scenarioOptions: DropdownOption[] = [];
   @Output() scenarioChanged = new EventEmitter<string>();
-  @Output() resetClicked = new EventEmitter<void>();
 }

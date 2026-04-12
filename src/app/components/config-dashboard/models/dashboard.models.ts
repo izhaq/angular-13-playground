@@ -1,15 +1,15 @@
-import { DriveCommand } from '../components/cmd-panel/cmd-panel.models';
-import { VehicleControls } from '../components/operations-list/operations-list.models';
+import { CmdSelection } from '../components/cmd-panel/cmd-panel.models';
+import { OperationsValue } from '../components/operations-list/operations-list.models';
 
-export { DriveCommand, VehicleControls };
+export { CmdSelection, OperationsValue };
 
 export interface DashboardState {
   scenario: string;
-  driveCommand: DriveCommand;
-  vehicleControls: VehicleControls;
+  cmd: CmdSelection;
+  operations: OperationsValue;
 }
 
 export interface LeftPanelPayload {
-  driveCommand: DriveCommand;
-  vehicleControls: VehicleControls;
+  cmd: CmdSelection;
+  operations: OperationsValue;
 }

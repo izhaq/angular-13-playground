@@ -2,33 +2,46 @@ import { Injectable, NgZone } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { buildInitialGridRows } from '../models/dashboard-defaults';
 import {
-  CellViewModel,
   FieldUpdate,
-  GridColumn,
-  GridRow,
+  GridColumnDef,
   RowViewModel,
 } from '../models/grid.models';
 import { GRID_COLUMNS } from '../../../mocks/mock-data';
+import { OPERATIONS_FIELDS } from '../components/operations-list/operations-list.models';
 
-const DEFAULT_BG = '#ffffff';
 const RECONNECT_DELAY_MS = 3000;
+
+type AbbrLookup = Record<string, Record<string, string>>;
+
+function buildAbbrLookup(): AbbrLookup {
+  const lookup: AbbrLookup = {};
+  for (const field of OPERATIONS_FIELDS) {
+    const map: Record<string, string> = {};
+    for (const opt of field.options) {
+      if (opt.abbr) {
+        map[opt.value] = opt.abbr;
+      }
+    }
+    lookup[field.key] = map;
+  }
+  return lookup;
+}
 
 @Injectable({
   providedIn: 'root',
 })
 export class StatusGridService {
-  private readonly columns: GridColumn[] = GRID_COLUMNS;
-  private rawRows: GridRow[] = buildInitialGridRows(this.columns);
+  private readonly columns: GridColumnDef[] = GRID_COLUMNS;
+  private readonly abbrLookup: AbbrLookup = buildAbbrLookup();
+  private rows: RowViewModel[] = buildInitialGridRows(this.columns);
 
-  private readonly viewModelSubject = new BehaviorSubject<RowViewModel[]>(
-    this.buildViewModels(this.rawRows)
-  );
+  private readonly rowsSubject = new BehaviorSubject<RowViewModel[]>(this.rows);
 
   private socket: WebSocket | null = null;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private shouldReconnect = false;
 
-  readonly gridRows$ = this.viewModelSubject.asObservable();
+  readonly gridRows$ = this.rowsSubject.asObservable();
 
   constructor(private readonly zone: NgZone) {}
 
@@ -37,30 +50,29 @@ export class StatusGridService {
   }
 
   applyUpdate(update: FieldUpdate): void {
-    const index = this.rawRows.findIndex(r => r.field === update.field);
+    const index = this.rows.findIndex(r => r.field === update.field);
     if (index === -1) {
       return;
     }
 
-    const row = this.rawRows[index];
-    const updatedRow: GridRow = {
-      ...row,
-      confirmedValue: update.value ?? row.confirmedValue,
-      cells: update.statuses
-        ? row.cells.map(cell => ({
-            ...cell,
-            active: update.statuses![cell.columnId] ?? cell.active,
-          }))
-        : row.cells,
-    };
+    const resolvedCells: Record<string, string> = {};
+    const fieldMap = this.abbrLookup[update.field];
 
-    this.rawRows = [
-      ...this.rawRows.slice(0, index),
-      updatedRow,
-      ...this.rawRows.slice(index + 1),
+    for (const [colId, rawValue] of Object.entries(update.cells)) {
+      resolvedCells[colId] = this.resolveAbbr(rawValue, fieldMap);
+    }
+
+    const row = this.rows[index];
+    this.rows = [
+      ...this.rows.slice(0, index),
+      {
+        ...row,
+        cells: { ...row.cells, ...resolvedCells },
+      },
+      ...this.rows.slice(index + 1),
     ];
 
-    this.viewModelSubject.next(this.buildViewModels(this.rawRows));
+    this.rowsSubject.next(this.rows);
   }
 
   connect(): void {
@@ -81,8 +93,23 @@ export class StatusGridService {
   }
 
   resetToDefaults(): void {
-    this.rawRows = buildInitialGridRows(this.columns);
-    this.viewModelSubject.next(this.buildViewModels(this.rawRows));
+    this.rows = buildInitialGridRows(this.columns);
+    this.rowsSubject.next(this.rows);
+  }
+
+  private resolveAbbr(rawValue: string, fieldMap?: Record<string, string>): string {
+    if (!fieldMap) {
+      return rawValue;
+    }
+
+    if (rawValue.includes(',')) {
+      return rawValue
+        .split(',')
+        .map(part => fieldMap[part] ?? part)
+        .join(',');
+    }
+
+    return fieldMap[rawValue] ?? rawValue;
   }
 
   private openSocket(): void {
@@ -115,7 +142,7 @@ export class StatusGridService {
         this.scheduleReconnect();
       };
 
-      this.socket.onerror = (err) => {
+      this.socket.onerror = () => {
         console.error('[StatusGridService] WebSocket error');
         this.socket?.close();
       };
@@ -130,28 +157,5 @@ export class StatusGridService {
       console.log('[StatusGridService] Reconnecting...');
       this.openSocket();
     }, RECONNECT_DELAY_MS);
-  }
-
-  private buildViewModels(rows: GridRow[]): RowViewModel[] {
-    return rows.map((row) => ({
-      field: row.field,
-      label: row.label,
-      confirmedValue: row.confirmedValue,
-      cells: row.cells.map((cell, i) => this.buildCellViewModel(cell, i)),
-    }));
-  }
-
-  private buildCellViewModel(cell: { columnId: string; active: boolean }, index: number): CellViewModel {
-    const col = this.columns[index];
-    const isActiveColor = cell.active && col?.type === 'color';
-    const isActiveText = cell.active && col?.type === 'text';
-
-    return {
-      columnId: cell.columnId,
-      active: cell.active,
-      backgroundColor: isActiveColor ? (col.color ?? DEFAULT_BG) : DEFAULT_BG,
-      textLabel: isActiveText ? col.label : '',
-      showText: isActiveText,
-    };
   }
 }

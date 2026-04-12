@@ -49,9 +49,13 @@ $panel-bg: $surface-container-low;
 
   &__actions {
     display: flex;
-    justify-content: flex-end;
+    align-items: center;
     gap: $spacing-sm;
     margin-top: auto;
     padding-top: $spacing-lg;
+  }
+
+  &__actions-spacer {
+    flex: 1;
   }
 }

@@ -1,43 +1,25 @@
-export interface GridCell {
-  columnId: string;
-  active: boolean;
-}
-
-export interface GridRow {
+export interface GridRowDef {
   field: string;
   label: string;
-  confirmedValue: string;
-  cells: GridCell[];
 }
 
-export interface GridColumn {
+export interface GridColumnDef {
   id: string;
-  label: string;
-  type: 'color' | 'text';
-  color?: string;
+  header: string;
 }
 
 export interface GridConfig {
-  columns: GridColumn[];
-}
-
-export interface FieldUpdate {
-  field: string;
-  value?: string;
-  statuses?: Record<string, boolean>;
-}
-
-export interface CellViewModel {
-  columnId: string;
-  active: boolean;
-  backgroundColor: string;
-  textLabel: string;
-  showText: boolean;
+  rows: GridRowDef[];
+  columns: GridColumnDef[];
 }
 
 export interface RowViewModel {
   field: string;
   label: string;
-  confirmedValue: string;
-  cells: CellViewModel[];
+  cells: Record<string, string>;
+}
+
+export interface FieldUpdate {
+  field: string;
+  cells: Record<string, string>;
 }

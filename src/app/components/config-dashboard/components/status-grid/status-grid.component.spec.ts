@@ -1,66 +1,43 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
-import { BehaviorSubject } from 'rxjs';
 
-import { CellViewModel, RowViewModel } from '../../models/grid.models';
-import { StatusGridService } from '../../services/status-grid.service';
+import { GridConfig, RowViewModel } from '../../models/grid.models';
 import { StatusGridComponent } from './status-grid.component';
 import { StatusGridModule } from './status-grid.module';
 
-function buildCellViewModel(
-  columnId: string,
-  active: boolean,
-  backgroundColor: string,
-  textLabel: string,
-  showText: boolean,
-): CellViewModel {
-  return { columnId, active, backgroundColor, textLabel, showText };
-}
+const TEST_CONFIG: GridConfig = {
+  rows: [
+    { field: 'ttm', label: 'TTM' },
+    { field: 'weather', label: 'Weather' },
+    { field: 'videoRec', label: 'Video rec' },
+  ],
+  columns: [
+    { id: 'L1', header: 'L1' },
+    { id: 'L2', header: 'L2' },
+    { id: 'R1', header: 'R1' },
+    { id: 'R2', header: 'R2' },
+  ],
+};
 
-const COL_COUNT = 6;
-
-function buildTestRows(): RowViewModel[] {
-  return Array.from({ length: 10 }, (_, rowIndex) => {
-    const activeIndex = rowIndex % COL_COUNT;
-    const cells: CellViewModel[] = [
-      buildCellViewModel('col-0', activeIndex === 0, activeIndex === 0 ? '#ff0000' : '#ffffff', '', false),
-      buildCellViewModel('col-1', activeIndex === 1, activeIndex === 1 ? '#00ff00' : '#ffffff', '', false),
-      buildCellViewModel('col-2', activeIndex === 2, '#ffffff', activeIndex === 2 ? 'OK' : '', activeIndex === 2),
-      buildCellViewModel('col-3', activeIndex === 3, '#ffffff', activeIndex === 3 ? 'N/A' : '', activeIndex === 3),
-      buildCellViewModel('col-4', activeIndex === 4, activeIndex === 4 ? '#0000ff' : '#ffffff', '', false),
-      buildCellViewModel('col-5', activeIndex === 5, '#ffffff', activeIndex === 5 ? 'Done' : '', activeIndex === 5),
-    ];
-    return {
-      field: `field-${rowIndex}`,
-      label: `Label ${rowIndex + 1}`,
-      confirmedValue: `Value ${rowIndex + 1}`,
-      cells,
-    };
-  });
-}
+const TEST_ROWS: RowViewModel[] = [
+  { field: 'ttm', label: 'TTM', cells: { L1: 'CAP', L2: 'CAP', R1: '', R2: '' } },
+  { field: 'weather', label: 'Weather', cells: { L1: 'NO', L2: 'NO', R1: 'YES', R2: '' } },
+  { field: 'videoRec', label: 'Video rec', cells: { L1: '', L2: '', R1: '', R2: '' } },
+];
 
 describe('StatusGridComponent', () => {
   let fixture: ComponentFixture<StatusGridComponent>;
   let component: StatusGridComponent;
 
-  const gridRows: RowViewModel[] = buildTestRows();
-  const gridRowsSubject = new BehaviorSubject<RowViewModel[]>(gridRows);
-
-  const mockGridService: Partial<StatusGridService> = {
-    columnCount: COL_COUNT,
-    gridRows$: gridRowsSubject.asObservable(),
-  };
-
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [StatusGridModule],
-      providers: [
-        { provide: StatusGridService, useValue: mockGridService },
-      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(StatusGridComponent);
     component = fixture.componentInstance;
+    component.config = TEST_CONFIG;
+    component.rows = TEST_ROWS;
     fixture.detectChanges();
   });
 
@@ -68,75 +45,84 @@ describe('StatusGridComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should render the correct number of rows', () => {
-    const rows = fixture.debugElement.queryAll(By.css('.status-grid__row'));
-    expect(rows.length).toBe(10);
+  it('should render a table element', () => {
+    const table = fixture.debugElement.query(By.css('table'));
+    expect(table).toBeTruthy();
   });
 
-  it('should render header cells matching columnCount', () => {
-    const headerCells = fixture.debugElement.queryAll(By.css('.status-grid__header-cell'));
-    expect(headerCells.length).toBe(COL_COUNT);
-  });
-
-  it('should show label and confirmedValue for each row', () => {
-    gridRows.forEach((row, index) => {
-      const rowEl = fixture.debugElement.queryAll(By.css('.status-grid__row'))[index];
-      const label = rowEl.query(By.css('.status-grid__label'));
-      const value = rowEl.query(By.css('.status-grid__value'));
-      expect(label.nativeElement.textContent.trim()).toBe(row.label);
-      expect(value.nativeElement.textContent.trim()).toBe(row.confirmedValue);
+  it('should render column headers from config', () => {
+    const headers = fixture.debugElement.queryAll(By.css('.status-grid__col-header'));
+    expect(headers.length).toBe(TEST_CONFIG.columns.length);
+    headers.forEach((header, i) => {
+      expect(header.nativeElement.textContent.trim()).toBe(TEST_CONFIG.columns[i].header);
     });
   });
 
-  it('should render the correct number of cells per row', () => {
-    fixture.debugElement.queryAll(By.css('.status-grid__row')).forEach((rowEl) => {
-      const cells = rowEl.queryAll(By.css('.status-grid__cell'));
-      expect(cells.length).toBe(COL_COUNT);
+  it('should render the correct number of body rows', () => {
+    const rows = fixture.debugElement.queryAll(By.css('tbody tr'));
+    expect(rows.length).toBe(TEST_ROWS.length);
+  });
+
+  it('should render labels in the first column of each row', () => {
+    const labels = fixture.debugElement.queryAll(By.css('.status-grid__label'));
+    expect(labels.length).toBe(TEST_ROWS.length);
+    labels.forEach((label, i) => {
+      expect(label.nativeElement.textContent.trim()).toBe(TEST_ROWS[i].label);
     });
   });
 
-  it('should fill the cell background for an active color cell', () => {
-    const firstRow = fixture.debugElement.queryAll(By.css('.status-grid__row'))[0];
+  it('should render abbreviation text in cells', () => {
+    const firstRow = fixture.debugElement.queryAll(By.css('tbody tr'))[0];
     const cells = firstRow.queryAll(By.css('.status-grid__cell'));
-    const activeIndex = gridRows[0].cells.findIndex((c) => c.active);
-    const cellEl = cells[activeIndex].nativeElement as HTMLElement;
-    expect(cellEl.style.backgroundColor).toBe('rgb(255, 0, 0)');
+    expect(cells.length).toBe(TEST_CONFIG.columns.length);
+    expect(cells[0].nativeElement.textContent.trim()).toBe('CAP');
+    expect(cells[1].nativeElement.textContent.trim()).toBe('CAP');
+    expect(cells[2].nativeElement.textContent.trim()).toBe('');
+    expect(cells[3].nativeElement.textContent.trim()).toBe('');
   });
 
-  it('should show text label for an active text cell', () => {
-    const rowIndex = 2;
-    const row = fixture.debugElement.queryAll(By.css('.status-grid__row'))[rowIndex];
-    const cells = row.queryAll(By.css('.status-grid__cell'));
-    const activeIndex = gridRows[rowIndex].cells.findIndex((c) => c.active);
-    const indicator = cells[activeIndex].query(By.css('.status-grid__text-indicator'));
-    expect(indicator).toBeTruthy();
-    expect(indicator.nativeElement.textContent.trim()).toBe(gridRows[rowIndex].cells[activeIndex].textLabel);
+  it('should not render confirmed values (labels only)', () => {
+    const values = fixture.debugElement.queryAll(By.css('.status-grid__value'));
+    expect(values.length).toBe(0);
   });
 
-  it('should leave inactive cells with white background and no text indicator', () => {
-    const firstRow = fixture.debugElement.queryAll(By.css('.status-grid__row'))[0];
-    const cells = firstRow.queryAll(By.css('.status-grid__cell'));
-    gridRows[0].cells.forEach((cell, i) => {
-      if (cell.active) {
-        return;
-      }
-      const cellEl = cells[i].nativeElement as HTMLElement;
-      expect(cellEl.style.backgroundColor).toBe('rgb(255, 255, 255)');
-      expect(cells[i].query(By.css('.status-grid__text-indicator'))).toBeNull();
-    });
+  it('should add hovered class on column hover', () => {
+    const firstHeaderCell = fixture.debugElement.queryAll(By.css('.status-grid__col-header'))[0];
+    firstHeaderCell.triggerEventHandler('mouseenter', {});
+    fixture.detectChanges();
+
+    expect(component.hoveredColumnId).toBe('L1');
+
+    const hoveredCells = fixture.debugElement.queryAll(By.css('.status-grid__cell--hovered'));
+    expect(hoveredCells.length).toBe(TEST_ROWS.length);
+
+    firstHeaderCell.triggerEventHandler('mouseleave', {});
+    fixture.detectChanges();
+    expect(component.hoveredColumnId).toBeNull();
   });
 
-  it('should keep label and value outside the cell grid structure', () => {
-    fixture.debugElement.queryAll(By.css('.status-grid__row')).forEach((rowEl) => {
-      const info = rowEl.query(By.css('.status-grid__info'));
-      const cellsHost = rowEl.query(By.css('.status-grid__cells'));
-      expect(info).toBeTruthy();
-      expect(cellsHost).toBeTruthy();
-      expect(info.query(By.css('.status-grid__cell'))).toBeNull();
-      const labelsInCells = cellsHost.queryAll(By.css('.status-grid__label'));
-      const valuesInCells = cellsHost.queryAll(By.css('.status-grid__value'));
-      expect(labelsInCells.length).toBe(0);
-      expect(valuesInCells.length).toBe(0);
-    });
+  it('should add focused class on cell click', () => {
+    const firstRow = fixture.debugElement.queryAll(By.css('tbody tr'))[0];
+    const firstCell = firstRow.queryAll(By.css('.status-grid__cell'))[0];
+    firstCell.triggerEventHandler('click', {});
+    fixture.detectChanges();
+
+    expect(component.focusedCell).toEqual({ field: 'ttm', columnId: 'L1' });
+    expect(firstCell.nativeElement.classList).toContain('status-grid__cell--focused');
+  });
+
+  it('should toggle focused cell on second click', () => {
+    component.onCellClick('ttm', 'L1');
+    expect(component.focusedCell).toEqual({ field: 'ttm', columnId: 'L1' });
+
+    component.onCellClick('ttm', 'L1');
+    expect(component.focusedCell).toBeNull();
+  });
+
+  it('should move focus to a different cell on click', () => {
+    component.onCellClick('ttm', 'L1');
+    component.onCellClick('weather', 'R1');
+    expect(component.focusedCell).toEqual({ field: 'weather', columnId: 'R1' });
   });
 });
+

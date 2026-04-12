@@ -3,6 +3,7 @@ import { EventEmitter, InjectionToken } from '@angular/core';
 export interface DropdownOption {
   value: string;
   label: string;
+  abbr?: string;
 }
 
 export interface DropdownHost<T = unknown> {

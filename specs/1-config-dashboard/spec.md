@@ -11,37 +11,81 @@
 
 ### Summary
 
-A configuration dashboard that allows users to manage system operations through a two-panel interface. The left panel provides command selection and operation configuration via dropdowns, while the right panel displays a status matrix/grid showing the state of each operation across multiple categories. Users can configure up to 10 actions, assign options to each, and view their status in a color-coded grid.
+A configuration dashboard for a driving simulation system that allows users to control vehicle parameters through a two-panel interface. The left panel provides wheel selection (CMD panel) and vehicle control configuration (11 dropdowns) via dropdowns. The right panel displays a status grid where each column represents a specific wheel (derived from CMD panel selections: Left/Right × Wheels 1–4 = 8 columns), and each cell shows a 3-letter abbreviation of the selected value for that wheel+control combination. The grid supports additional custom columns for reuse across different dashboard screens.
 
 ### Problem Statement
 
-Users need a centralized interface to configure system operations (actions) and immediately see their status across multiple dimensions (categories represented by colored indicators and labeled columns). Currently, there is no visual tool to manage these configurations in one place.
+Users need a centralized interface to configure vehicle simulation parameters per wheel and immediately see the applied configuration across all wheels in a status grid. Currently, there is no visual tool to manage these configurations in one place.
 
 ### Target Users
 
-- System administrators who configure and monitor operational actions
-- Power users who need to quickly adjust operation parameters and verify status
+- Simulation engineers who configure and monitor vehicle parameters per wheel
+- Test operators who need to quickly adjust simulation parameters and verify their application across wheels
 
 ### Business Value
 
-- Reduces configuration time by consolidating command selection, operation assignment, and status visibility into a single screen
-- Provides immediate visual feedback on operation states through a color-coded matrix
+- Reduces configuration time by consolidating wheel selection, vehicle control assignment, and per-wheel status visibility into a single screen
+- Provides immediate visual feedback on per-wheel configuration through a text-based status grid
 - Minimizes errors by offering constrained dropdown selections rather than free-form input
 
 ---
 
 ## Clarifications
 
-### Session 2026-04-02
+### Session 2026-04-09 (Revision 2 — Major Requirements Update)
 
-- Q: How should the UI be decomposed into Angular components? → A: Parent layout container + 3 direct children (`TopBarComponent`, `LeftPanelComponent`, `StatusGridComponent`). `LeftPanelComponent` composes `CmdFormPanelComponent` and `OperationsFormListComponent` (CMD + OPERATIONS card, footer Save/Cancel) + a generic reusable `AppDropdownComponent` wrapping Angular Material's `mat-select`.
+**CMD Panel:**
+- Q: What are the CMD dropdowns? → A: Both are **multi-select**. First dropdown: car side (Left, Right). Second dropdown: wheel number (1, 2, 3, 4). Both default to first item selected.
+- Q: What do CMD selections represent? → A: The user selects which wheels to apply configuration changes to. Each combination of side × wheel = one column in the grid.
+
+**Operations List:**
+- Q: How many dropdown rows should OperationsListComponent contain? → A: 11 dropdowns (expanded from 10)
+- Q: What are the specific options per dropdown? → A:
+  - Dropdown 1: 3 options — Not Active, Real, Captive
+  - Dropdown 2: 2 options — No, Yes
+  - Dropdown 3: label "Video rec", options — Internal, External
+  - Dropdown 4: **multi-select**, label "Video Type", options — No, HD, 4K, 8K
+  - Dropdown 5: 2 options — No, Yes
+  - Dropdown 6: label "PWR On/Off", options — On, Off
+  - Dropdown 7: label "Force", options — Normal, Force F, Force No
+  - Dropdown 8: 2 options — No, Yes
+  - Dropdown 9: 2 options — No, Yes
+  - Dropdown 10: 2 options — No, Yes
+  - Dropdown 11: 2 options — No, Yes
+- Q: For multi-select dropdowns (Video Type), how should grid cells display multiple selections? → A: Comma-separated abbreviations (e.g., "HD,4K")
+
+**Grid:**
+- Q: How should grid cell abbreviations be defined? → A: Each dropdown option defines its own abbreviation in the config (e.g., `{ value: 'captive', label: 'Captive', abbr: 'CAP' }`)
+- Q: What visual treatment for grid column hover and cell focus? → A: Hover: light background tint on entire column. Click: border + stronger background on the focused cell
+- Q: How many status columns should the grid have? → A: Computed dynamically from CMD panel dropdown combinations (side × wheel = 8 base columns). Grid also supports additional custom columns injected by the consumer for reuse across dashboard screens.
+- Q: How should the grid receive its configuration and data? → A: Two `@Input()`s on the grid component: `config` (GridConfig with row defs + column defs, renders the empty shell) and `rows` (RowViewModel[], starts empty, updated by WS via service). The parent dashboard owns both. Grid stays a pure presentational component.
+- Q: How should grid column headers be labeled? → A: L1, L2, L3, L4, R1, R2, R3, R4 — representing Left wheels 1–4 and Right wheels 1–4.
+- Q: What do grid cells display? → A: **No coloring.** Each cell shows a 3-letter abbreviation of the selected dropdown value for that wheel+row combination. Empty cells remain blank.
+- Q: Should grid use `<table>` element? → A: Yes, a native `<table>` element for semantic correctness and simpler column hover behavior.
+
+**Right Panel:**
+- Q: Should the right panel show confirmed values next to labels? → A: **No** — show only labels (no values). The grid cells themselves convey the information via abbreviations.
+- Q: Should the label list be extracted to a dedicated component? → A: Consider extracting to ensure alignment with grid rows remains clean.
+
+**Top Bar:**
+- Q: Where should the Default button be? → A: Move from top bar to **footer**, next to Cancel/Save buttons.
+- Q: Does Default affect the right panel? → A: **No** — Default only resets the left panel to defaults. Right panel is unchanged.
+
+**General:**
+- Q: Should we add `data-testid` attributes? → A: Yes, for each dropdown and dropdown option — needed for Playwright tests in a later phase.
+- Q: How should the POST payload represent CMD multi-select? → A: Payload includes `cmd: { sides: string[], wheels: string[] }` plus `operations: OperationsValue`. Server uses `sides × wheels` to determine affected grid columns.
+- Q: How to handle confidential naming? → A: Feature uses temporary naming conventions. Code should support easy swap — consider a translation-like key-value dictionary for labels/text, switchable by config. For code identifiers (functions, variables, classes), document as a future consideration.
+
+### Session 2026-04-02 (Original — partially superseded by Session 2026-04-09 Revision 2)
+
+- Q: How should the UI be decomposed into Angular components? → A: Parent layout container + 3 direct children (`TopBarComponent`, `LeftPanelComponent`, `StatusGridComponent`). `LeftPanelComponent` composes `CmdPanelComponent` and `OperationsListComponent` (CMD + OPERATIONS card, footer Save/Cancel/Default) + generic reusable `AppDropdownComponent` and `AppMultiDropdownComponent`.
 - Q: How should child components communicate? → A: `@Input`/`@Output` for direct parent-child communication (favor dumb/presentational components). Shared state service (BehaviorSubjects) for sibling-to-sibling communication.
-- Q: Which components implement ControlValueAccessor? → A: `AppDropdownComponent` (single value), `OperationsFormListComponent` (emits array of 10 selections), and `CmdFormPanelComponent` (emits command pair). All three are CVA-enabled form controls.
-- Q: Which Angular forms approach? → A: Reactive Forms. `LeftPanelComponent` owns the `FormGroup` for `commands` (CmdFormPanel CVA) and `operations` (OperationsFormList CVA). `ConfigDashboardComponent` does not declare a `FormGroup` or import `ReactiveFormsModule`; it passes option lists and `formValue` into the left panel and reacts to `formChanged`, `saved`, and `cancelled`. Top-bar action selection remains presentational (`@Input` / `@Output`) at the dashboard level. Save snapshots flow through outputs + `DashboardFormService`; Cancel restores baseline; Reset (top bar) resets defaults via orchestration.
-- Q: How does the status grid get its data? → A: Derived mock data for now (computed from current form state). Architecture must support future Node.js backend with: (1) REST endpoint for form submission, (2) WebSocket connection for live grid updates. Service layer should abstract the data source for easy swap.
-- Addendum: Each component must live in its own NgModule (module-per-component pattern) to make the future migration to Angular 14+ standalone components as simple as possible.
-- Addendum: Models and services are co-located with their corresponding components. Shared ones live at the closest common parent. Project-level `mocks/` holds mock data/APIs, while dashboard-specific code is self-contained under `config-dashboard/` for easy portability to other projects.
-- Addendum: Every component must have a dedicated external template (`.html`) and external stylesheet (`.scss`). No inline templates or inline styles — always use `templateUrl` and `styleUrls` in the `@Component` decorator.
+- Q: ~~Which components implement ControlValueAccessor?~~ → **SUPERSEDED**: Dashboard components no longer use CVA. They use simple `@Input() value` / `@Output() changed` pattern. CVA remains on `AppDropdownComponent` via `AppDropdownCvaDirective` for optional form mode use.
+- Q: ~~Which Angular forms approach?~~ → **SUPERSEDED**: No Reactive Forms on dashboard components. Simple `@Input`/`@Output` pattern throughout.
+- Q: How does the status grid get its data? → A: Node.js backend with REST `POST /api/config` for save and WebSocket `/api/ws` for live grid updates.
+- Addendum: Each component must live in its own NgModule (module-per-component pattern).
+- Addendum: Models and services are co-located with their corresponding components. Shared ones live at the closest common parent.
+- Addendum: Every component must have a dedicated external template (`.html`) and external stylesheet (`.scss`).
 
 ---
 
@@ -69,56 +113,75 @@ Before building the dashboard component, the project must be initialized as an A
 
 ### FR-1: Top Navigation Bar
 
-- **FR-1.1**: The "Action" label and its dropdown are displayed on the **left** side of the top bar
-- **FR-1.2**: A "Reset" button is displayed on the **right** side of the top bar
-- **FR-1.3**: Clicking "Reset" restores all dropdowns to their default/initial values and clears any grid state changes
+- **FR-1.1**: The "Scenario" label and its dropdown are displayed on the **left** side of the top bar
+- **FR-1.2**: The top bar contains the Scenario dropdown only; the Default button has been moved to the footer (see FR-5)
+- **FR-1.3**: When the "Realtime" scenario is selected, the entire left panel becomes disabled (visually dimmed)
 
 ### FR-2: Command Selection Panel (Left Panel - CMD Section)
 
 - **FR-2.1**: A "CMD" label is displayed to the **left** of the command dropdowns (inline, not above)
-- **FR-2.2**: Two command dropdowns ("cmd 1" and "cmd 2") are displayed to the right of the CMD label
-- **FR-2.3**: Each command dropdown contains a list of selectable command options
-- **FR-2.4**: Selecting a command may influence the available options in the Operations section below
+- **FR-2.2**: Two **multi-select** command dropdowns are displayed to the right of the CMD label:
+  - First dropdown ("Side"): options — Left, Right. Default: first item selected
+  - Second dropdown ("Wheel"): options — 1, 2, 3, 4. Default: first item selected
+- **FR-2.3**: The CMD selections define which wheels the user is configuring. Each combination of Side × Wheel corresponds to one column in the status grid (e.g., Left+1 = L1, Right+4 = R4)
+- **FR-2.4**: The number of grid columns is dynamically computed from the CMD dropdown options (2 sides × 4 wheels = 8 base columns)
 
 ### FR-3: Operations List (Left Panel - OPERATIONS Section)
 
 - **FR-3.1**: An "OPERATIONS" (or "OPR") label is displayed **above** the operations rows as a section heading
-- **FR-3.2**: The section contains exactly 10 rows, labeled "act 1" through "act 10"
+- **FR-3.2**: The section contains exactly **11 rows** with the following specific configurations:
+
+| # | Label | Type | Options (abbr) | Default |
+|---|-------|------|----------------|---------|
+| 1 | TTM | Single | Not Active (N/A), Real (REA), Captive (CAP) | Not Active |
+| 2 | Weather | Single | No (NO), Yes (YES) | No |
+| 3 | Video rec | Single | Internal (INT), External (EXT) | Internal |
+| 4 | Video Type | **Multi-select** | No (NO), HD (HD), 4K (4K), 8K (8K) | No |
+| 5 | Headlights | Single | No (NO), Yes (YES) | No |
+| 6 | PWR On/Off | Single | On (ON), Off (OFF) | On |
+| 7 | Force | Single | Normal (NRM), Force F (FRC), Force No (FNO) | Normal |
+| 8 | Stability | Single | No (NO), Yes (YES) | No |
+| 9 | Cruise Ctrl | Single | No (NO), Yes (YES) | No |
+| 10 | PLR | Single | No (NO), Yes (YES) | No |
+| 11 | AUX | Single | No (NO), Yes (YES) | No |
+
 - **FR-3.3**: Each action row has a label on the left and a dropdown on the right
-- **FR-3.4**: Each dropdown allows the user to select from a list of operation options (e.g., "Option 1", "Option 2", etc.)
-- **FR-3.5**: All dropdowns default to "Option 1" on initial load
+- **FR-3.4**: Each dropdown option carries a `value`, `label`, and `abbr` (3-letter abbreviation displayed in grid cells)
+- **FR-3.5**: All dropdowns default to their first option on initial load
 - **FR-3.6**: CMD and OPERATIONS share a single visual card, separated by a horizontal line
 
-### FR-4: Right Panel — Confirmed State + Status Grid
+### FR-4: Right Panel — Labels + Status Grid
 
 The right panel shows the **confirmed server state**, not the live form state from the left panel. It updates only via WebSocket messages (after a successful save).
 
 #### Layout
 
-- **FR-4.1**: The right panel has two visual regions per row: a **label + confirmed value** text area on the left, and a **status grid** on the right. The label+value text is **not part of the grid** — it is plain text sitting outside the grid structure
-- **FR-4.2**: Each label+value pair is **horizontally aligned** with its corresponding grid row, so they read as one logical line
-- **FR-4.3**: The status grid is a **full grid** (visible cell borders, aligned columns across all rows) with **no column headers** and **no row labels** inside it — only status indicator cells
-- **FR-4.4**: The grid columns (currently: red, yellow, green, N, P, L) are configuration-driven and implied by their visual indicators
-- **FR-4.5**: Each status cell is either active (showing its indicator — colored dot or text label) or inactive (empty)
+- **FR-4.1**: The right panel has two visual regions per row: a **label only** (no confirmed value) on the left, and the **status grid** on the right. The label is **not part of the grid** — it is plain text sitting outside the grid structure. Consider extracting the label list into a dedicated component for alignment purposes.
+- **FR-4.2**: Each label is **horizontally aligned** with its corresponding grid row, so they read as one logical line
+- **FR-4.3**: The status grid is a native **`<table>`** element (visible cell borders, aligned columns across all rows) with column headers (L1, L2, L3, L4, R1, R2, R3, R4) derived from CMD panel combinations
+- **FR-4.4**: Grid columns are computed from CMD panel dropdown combinations (Side × Wheel). The grid also supports additional custom columns injected by the consumer, for reuse across different dashboard screens
+- **FR-4.5**: Each status cell displays a **3-letter abbreviation** of the selected dropdown value for that wheel+row combination. Empty/unset cells remain blank — **no coloring**
+- **FR-4.6**: Column hover highlights the entire column with a light background tint. Cell click applies a distinct border + stronger background on the focused cell
 
 #### Data Flow
 
-- **FR-4.6**: On initial load, the right panel mirrors the default form values from the left panel (all fields show their default selections with empty statuses)
-- **FR-4.7**: When the user changes a value on the left panel, the right panel does **not** update immediately
-- **FR-4.8**: When the user clicks "Save", a POST API call is made (currently mocked). The right panel still does not update from the save response
-- **FR-4.9**: A WebSocket connection runs in parallel. When the server confirms a change, it sends a message that updates the right panel — setting the confirmed value and/or status indicators for the affected row(s)
-- **FR-4.10**: WebSocket messages support three update shapes flexibly:
-  - **Full row update**: field + new value + all statuses replaced
-  - **Value-only update**: field + new value (statuses unchanged)
-  - **Single cell update**: field + specific status column toggled on/off
+- **FR-4.7**: On initial load, the right panel shows the labels with an empty grid (all cells blank)
+- **FR-4.8**: When the user changes a value on the left panel, the right panel does **not** update immediately
+- **FR-4.9**: When the user clicks "Save", a POST API call is made. The right panel still does not update from the save response
+- **FR-4.10**: A WebSocket connection runs in parallel. When the server confirms a change, it sends a message that updates the right panel — setting the cell abbreviations for the affected row(s) and column(s)
+- **FR-4.11**: WebSocket messages support flexible update shapes:
+  - **Full row update**: field + abbreviation values for all columns
+  - **Partial update**: field + abbreviation values for specific columns only
 
-### FR-5: Save and Cancel Actions
+### FR-5: Footer Actions (Save, Cancel, Default)
 
-- **FR-5.1**: A "Cancel" button is displayed at the bottom-right of the **left panel**
-- **FR-5.2**: A "Save" button is displayed next to the Cancel button in the left panel
-- **FR-5.3**: Clicking "Save" persists the current configuration (selected commands and operation options)
-- **FR-5.4**: Clicking "Cancel" discards unsaved changes and reverts to the last saved state
-- **FR-5.5**: The "Save" button is visually prominent (filled/primary style) compared to the "Cancel" button (outlined/secondary style)
+- **FR-5.1**: A "Cancel" button is displayed at the bottom-right of the **left panel** footer
+- **FR-5.2**: A "Save" button is displayed next to the Cancel button
+- **FR-5.3**: A "Default" button is displayed next to Cancel/Save in the footer
+- **FR-5.4**: Clicking "Save" persists the current configuration (selected wheels and operation values) via POST API
+- **FR-5.5**: Clicking "Cancel" discards unsaved changes and reverts to the last saved state
+- **FR-5.6**: Clicking "Default" resets the **left panel only** to default values. The right panel (grid) is **not** affected
+- **FR-5.7**: The "Save" button is visually prominent (filled/primary style). "Cancel" and "Default" are secondary style (outlined)
 
 ### FR-6: Layout and Responsiveness
 
@@ -131,6 +194,12 @@ The right panel shows the **confirmed server state**, not the live form state fr
 - **FR-6.7**: All elements (panels, text, inputs, buttons) scale fluidly — no fixed widths, heights, or font sizes that would prevent resizing
 - **FR-6.8**: No layout shift at any reasonable desktop viewport size
 
+### FR-7: Testing & Naming Infrastructure
+
+- **FR-7.1**: Every dropdown and dropdown option element must have a `data-testid` attribute for Playwright e2e testing (to be implemented in a later phase)
+- **FR-7.2**: All user-facing text (labels, dropdown option labels, section headings) should be sourced from a centralized key-value dictionary (translation-like approach), making it easy to swap naming conventions between environments (e.g., open demo vs. confidential deployment)
+- **FR-7.3**: For code identifiers (function names, variable names, class names), use clear, domain-appropriate names that are easy to find-and-replace when adapting for a different naming convention. Document this as a future consideration.
+
 ---
 
 ## 4. User Scenarios & Acceptance Criteria
@@ -140,32 +209,32 @@ The right panel shows the **confirmed server state**, not the live form state fr
 **Given** a user opens the Configuration Dashboard
 **When** the page finishes loading
 **Then**:
-- The top bar shows the Action dropdown (left) and Reset button (right)
-- The CMD section shows two command dropdowns to the right of the "CMD" label
-- The OPERATIONS section shows 10 rows (act 1 – act 10), all set to "Option 1"
-- The right panel mirrors the defaults: each row shows the label, the default value, and empty status indicators
-- The Cancel and Save buttons are visible at the bottom-right of the left panel
+- The top bar shows the Scenario dropdown (left) only
+- The CMD section shows two multi-select dropdowns (Side and Wheel) to the right of the "CMD" label, each defaulting to their first option
+- The OPERATIONS section shows 11 rows with their specific dropdowns, all set to first option
+- The right panel shows labels only (no values) with an empty grid (all cells blank)
+- The grid has 8 column headers: L1, L2, L3, L4, R1, R2, R3, R4
+- The footer shows Cancel, Save, and Default buttons
 
 ### Scenario 2: Configuring Operations (Left Panel Only)
 
 **Given** the dashboard is loaded with default values
-**When** the user changes "act 3" dropdown from "Option 1" to "Option 2"
+**When** the user changes dropdown 1 from "Not Active" to "Captive"
 **Then**:
-- The dropdown for "act 3" on the **left** panel now displays "Option 2"
-- The right panel does **not** change — it still shows the last confirmed state
+- The dropdown for row 1 on the **left** panel now displays "Captive"
+- The right panel does **not** change — it still shows the last confirmed state (empty grid)
 - The form is now dirty; the Save button remains available
 
 ### Scenario 3: Saving Configuration → WebSocket Update
 
-**Given** the user has modified one or more operation dropdowns
+**Given** the user has selected Left+Right sides, Wheels 1+2, and changed dropdown 1 to "Captive"
 **When** the user clicks the "Save" button
 **Then**:
-- A mock POST API call sends the form state to the server
+- A POST API call sends the configuration to the server, including which wheels are affected and the current dropdown values
 - The left panel form marks itself as pristine; the saved baseline updates
 - The right panel does **not** update from the POST response
-- Shortly after, the server pushes one or more WebSocket messages
-- Each WebSocket message updates its target row on the right panel: setting the new confirmed value and/or toggling status indicators
-- Example: a message `{ field: "operations.2", value: "Option 2", statuses: { red: true, green: false } }` updates act 3's confirmed value to "Option 2" and toggles the red and green cells
+- Shortly after, the server pushes WebSocket messages
+- Each message updates grid cells for the affected wheels: columns L1, L2, R1, R2 in row 1 now show "CAP" (abbreviation for Captive)
 
 ### Scenario 4: Canceling Changes
 
@@ -175,22 +244,40 @@ The right panel shows the **confirmed server state**, not the live form state fr
 - All left panel dropdowns revert to their last saved values
 - The right panel remains unchanged (it already reflects the last confirmed state)
 
-### Scenario 5: Resetting to Defaults
+### Scenario 5: Resetting to Defaults (Default Button)
 
 **Given** the user has made and possibly saved changes
-**When** the user clicks "Reset" in the top bar
+**When** the user clicks "Default" in the footer
 **Then**:
-- All command dropdowns return to default values
-- All operation dropdowns return to "Option 1"
-- The right panel resets to show defaults with empty statuses
+- All CMD dropdowns return to default values (first item)
+- All operation dropdowns return to their default values (first option)
+- The right panel (grid) is **NOT** affected — it retains its current confirmed state
 
-### Scenario 6: Partial WebSocket Update (Single Cell)
+### Scenario 6: Realtime Scenario Selection
 
-**Given** the right panel is showing confirmed state
-**When** the server sends a WebSocket message updating only a single status column for a field (e.g. `{ field: "operations.4", statuses: { p: true } }`)
+**Given** the dashboard is in normal mode
+**When** the user selects "Realtime" from the Scenario dropdown
 **Then**:
-- Only the "P" cell on the "act 5" row toggles to active
-- The confirmed value and all other status cells on that row remain unchanged
+- The entire left panel becomes disabled (visually dimmed with opacity)
+- All dropdowns in CMD and Operations sections are non-interactive
+- The Save, Cancel, and Default buttons are disabled
+- The right panel continues to receive and display WebSocket updates
+
+### Scenario 7: Grid Column Hover and Cell Focus
+
+**Given** the right panel grid has data
+**When** the user hovers over a grid column
+**Then**: The entire column is highlighted with a light background tint
+**When** the user clicks a cell
+**Then**: The cell receives a distinct border + stronger background indicating focus
+
+### Scenario 8: Multi-Select Dropdown (Video Type)
+
+**Given** the dashboard is loaded
+**When** the user opens dropdown 4 (Video Type) and selects multiple options
+**Then**: The dropdown displays the selected options (multi-select behavior)
+**When** the user saves and the server responds via WebSocket
+**Then**: The affected grid cells show the appropriate abbreviation(s)
 
 ---
 
@@ -203,114 +290,124 @@ AppModule
 │
 └── AppComponent (root)
     │
-    └── ConfigDashboardComponent (layout orchestrator — no FormGroup, no ReactiveFormsModule)
+    └── ConfigDashboardComponent (layout orchestrator)
         │
         ├── TopBarComponent (dumb)
-        │   │  @Input:  selectedAction
-        │   │  @Output: actionChanged, resetClicked
+        │   │  @Input:  selectedScenario, scenarioOptions
+        │   │  @Output: scenarioChanged
         │   │
-        │   └── AppDropdownComponent (CVA) ← action selector
+        │   └── AppDropdownComponent ← scenario selector
         │
-        ├── LeftPanelComponent (smart — owns FormGroup for commands + operations)
-        │   │  @Input:  cmdOptions, operationOptions, formValue
-        │   │  @Output: formChanged, saved, cancelled
+        ├── LeftPanelComponent (container — passes values down, emits changes up)
+        │   │  @Input:  disabled (from Realtime scenario)
+        │   │  @Output: changed, saved, cancelled, defaultClicked
         │   │
-        │   ├── FormGroup { commands, operations }
+        │   ├── CmdPanelComponent (dumb — emits side/wheel selections)
+        │   │   │  @Input:  value, disabled
+        │   │   │  @Output: changed
+        │   │   │
+        │   │   ├── AppMultiDropdownComponent ← Side (Left, Right)
+        │   │   └── AppMultiDropdownComponent ← Wheel (1, 2, 3, 4)
         │   │
-        │   ├── CmdFormPanelComponent (CVA — emits {cmd1, cmd2})
-        │   │   formControlName="commands"
-        │   │   ├── AppDropdownComponent (CVA) ← cmd 1
-        │   │   └── AppDropdownComponent (CVA) ← cmd 2
-        │   │
-        │   ├── OperationsFormListComponent (CVA — emits string[10])
-        │   │   formControlName="operations"
-        │   │   ├── AppDropdownComponent (CVA) ← act 1
-        │   │   ├── AppDropdownComponent (CVA) ← act 2
-        │   │   ├── AppDropdownComponent (CVA) ← act 3
-        │   │   ├── AppDropdownComponent (CVA) ← act 4
-        │   │   ├── AppDropdownComponent (CVA) ← act 5
-        │   │   ├── AppDropdownComponent (CVA) ← act 6
-        │   │   ├── AppDropdownComponent (CVA) ← act 7
-        │   │   ├── AppDropdownComponent (CVA) ← act 8
-        │   │   ├── AppDropdownComponent (CVA) ← act 9
-        │   │   └── AppDropdownComponent (CVA) ← act 10
+        │   ├── OperationsListComponent (dumb — emits dropdown changes)
+        │   │   │  @Input:  value, disabled
+        │   │   │  @Output: changed
+        │   │   │
+        │   │   ├── AppDropdownComponent ← row 1 (Not Active/Real/Captive)
+        │   │   ├── AppDropdownComponent ← row 2 (No/Yes)
+        │   │   ├── AppDropdownComponent ← row 3 "Video rec" (Internal/External)
+        │   │   ├── AppMultiDropdownComponent ← row 4 "Video Type" (No/...)
+        │   │   ├── AppDropdownComponent ← row 5 (No/Yes)
+        │   │   ├── AppDropdownComponent ← row 6 "PWR On/Off" (On/Off)
+        │   │   ├── AppDropdownComponent ← row 7 "Force" (Normal/Force F/Force No)
+        │   │   ├── AppDropdownComponent ← row 8 (No/Yes)
+        │   │   ├── AppDropdownComponent ← row 9 (No/Yes)
+        │   │   ├── AppDropdownComponent ← row 10 (No/Yes)
+        │   │   └── AppDropdownComponent ← row 11 (No/Yes)
         │   │
         │   └── [Footer buttons]
-        │       ├── Cancel → emits cancelled (dashboard restores baseline / syncs service)
-        │       └── Save   → emits saved (dashboard POST → WebSocket updates right panel)
+        │       ├── Default → emits defaultClicked (resets left panel only)
+        │       ├── Cancel  → emits cancelled (reverts to saved baseline)
+        │       └── Save    → emits saved (dashboard POST → WS updates grid)
         │
         └── StatusGridComponent (dumb — display only, right panel)
-            │  @Input: gridConfig (GridConfig — column definitions)
-            │  @Input: gridRows  (GridRow[] — confirmed values + statuses)
+            │  @Input: config  (GridConfig — row defs + column defs)
+            │  @Input: rows    (RowViewModel[] — data, starts empty, updated by WS)
             │
-            └── Per row: label+value as plain text (outside grid),
-                status cells in a bordered grid (no headers, no row labels)
+            ├── Labels column: field labels only (no values), aligned per row
+            └── <table> grid: 8 columns (L1–L4, R1–R4) + optional custom columns
+                Each cell: 3-letter abbreviation or blank
+                Column hover: light background tint
+                Cell click: border + stronger background focus
 ```
 
 ### Data Flow
 
-The left and right panels are **independently driven**. The left panel is form-state-driven; the right panel is WebSocket-driven.
+The left and right panels are **independently driven**. The left panel is user-input-driven; the right panel is WebSocket-driven.
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
 │              ConfigDashboardComponent                            │
 │                                                                  │
-│  LEFT PANEL (live form state)          RIGHT PANEL (confirmed)   │
+│  LEFT PANEL (live user input)          RIGHT PANEL (confirmed)   │
 │  ┌────────────────────────┐            ┌──────────────────────┐  │
 │  │ LeftPanelComponent     │            │ StatusGridComponent   │  │
-│  │ FormGroup {            │            │   @Input: gridConfig  │  │
-│  │   commands:   {c1,c2}  │            │   @Input: gridRows    │  │
-│  │   operations: str[10]  │            │                       │  │
-│  │ }                      │            │ Each row shows:       │  │
-│  └────────┬───────────────┘            │  label | value | ··· │  │
+│  │  CmdPanel:             │            │   @Input: config      │  │
+│  │    side: string[]      │            │   @Input: rows        │  │
+│  │    wheel: string[]     │            │                       │  │
+│  │  Operations:           │            │ Each row shows:       │  │
+│  │    11 dropdown values  │            │  label | L1 L2..R4   │  │
+│  └────────┬───────────────┘            │  (3-letter abbrs)    │  │
 │           │ saved output               └──────────▲───────────┘  │
 │           ▼                                       │              │
-│  ┌────────────────────┐                           │              │
-│  │ POST /api/config   │    server processes       │              │
-│  │ (mock API service) │ ─────────────────────►    │              │
-│  └────────────────────┘    WebSocket push         │              │
-│                            ┌──────────────────┐   │              │
-│                            │ FieldUpdate msg  │───┘              │
-│                            │ { field, value?, │                  │
-│                            │   statuses? }    │                  │
+│  ┌─────────────────────┐                          │              │
+│  │ POST /api/config    │   server processes       │              │
+│  │ payload: {          │ ─────────────────────►   │              │
+│  │   wheels: [...],    │   WebSocket push         │              │
+│  │   controls: {...}   │   ┌──────────────────┐   │              │
+│  │ }                   │   │ FieldUpdate msg  │───┘              │
+│  └─────────────────────┘   │ { field, cells } │                  │
 │                            └──────────────────┘                  │
 │                                                                  │
-│  DashboardFormService (left panel)                                │
+│  DashboardStateService (left panel)                              │
 │  ┌──────────────────────────────────────────────┐                │
-│  │ formState$          ◄── BehaviorSubject       │                │
-│  │ availableOptions$   ◄── derived from commands │                │
-│  │ savedBaseline       ◄── last saved snapshot   │                │
+│  │ state$             ◄── BehaviorSubject        │                │
+│  │ savedBaseline      ◄── last saved snapshot    │                │
 │  │                                               │                │
-│  │ saveConfig(form) ──► POST mock API            │                │
-│  │ cancelChanges()  ──► restore savedBaseline    │                │
-│  │ resetToDefaults() ─► reset to defaults        │                │
+│  │ saveConfig(state) ──► POST /api/config         │                │
+│  │ cancelChanges()   ──► restore savedBaseline    │                │
+│  │ resetToDefaults() ──► reset left panel only    │                │
 │  └──────────────────────────────────────────────┘                │
 │                                                                  │
 │  StatusGridService (right panel)                                 │
 │  ┌──────────────────────────────────────────────┐                │
-│  │ gridRows$           ◄── BehaviorSubject       │                │
+│  │ rows$              ◄── BehaviorSubject        │                │
 │  │                                               │                │
-│  │ applyUpdate(msg) ──► merge into gridRows$     │                │
-│  │ connect() ─────────► WebSocket subscribe      │                │
-│  │ resetToDefaults() ─► re-seed from defaults    │                │
+│  │ applyUpdate(msg) ──► merge into rows$          │                │
+│  │ connect() ─────────► WebSocket subscribe       │                │
+│  │ disconnect() ──────► cleanup                   │                │
 │  └──────────────────────────────────────────────┘                │
 │                                                                  │
-│  On initial load: gridRows$ seeded from DEFAULT_FORM_VALUE       │
-│  (each row gets the default confirmedValue, empty statuses)      │
+│  On initial load: rows$ seeded with empty grid                   │
+│  (each row has labels, all cells blank)                          │
+│                                                                  │
+│  Grid config (column defs) computed by dashboard from            │
+│  CMD panel options (Side × Wheel) + any custom columns           │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
 ### Component Responsibilities
 
-| Component | Type | CVA | Module | Description |
-|-----------|------|-----|--------|-------------|
-| `ConfigDashboardComponent` | Layout orchestrator | No | `ConfigDashboardModule` | Two-panel shell + top bar wiring. No `FormGroup`; no `ReactiveFormsModule`. Binds `TopBarComponent`, `LeftPanelComponent`, `StatusGridComponent`. Injects `DashboardFormService` and `StatusGridService`; handles `saved` / `cancelled` / `formChanged` from the left panel |
-| `LeftPanelComponent` | Smart/Container | No | `LeftPanelModule` | Owns the `FormGroup` for `commands` and `operations`. `@Input`: `cmdOptions`, `operationOptions`, `formValue`. `@Output`: `formChanged`, `saved`, `cancelled`. Template composes `CmdFormPanelComponent`, `OperationsFormListComponent`, and Save/Cancel footer |
-| `TopBarComponent` | Dumb/Presentational | No | `TopBarModule` | Action dropdown (left) + Reset button (right). Emits events upward |
-| `CmdFormPanelComponent` | Dumb + CVA | Yes | `CmdFormPanelModule` | Wraps two `AppDropdownComponent`s, exposes `{cmd1, cmd2}` as a single form control |
-| `OperationsFormListComponent` | Dumb + CVA | Yes | `OperationsFormListModule` | Renders 10 operation rows, exposes `string[]` of 10 values as a single form control |
-| `StatusGridComponent` | Dumb/Presentational | No | `StatusGridModule` | Receives `gridConfig` and `gridRows` via `@Input`. Per row: label+value as plain text outside the grid, status cells in a bordered grid (no headers). Read-only |
-| `AppDropdownComponent` | Dumb/Presentational | No | `AppDropdownModule` | Generic wrapper around Angular Material `mat-select`. CVA provided by `AppDropdownCvaDirective` |
+| Component | Type | Module | Description |
+|-----------|------|--------|-------------|
+| `ConfigDashboardComponent` | Layout orchestrator | `ConfigDashboardModule` | Two-panel shell + top bar wiring. Binds `TopBarComponent`, `LeftPanelComponent`, `StatusGridComponent`. Injects `DashboardStateService` and `StatusGridService`; handles `saved` / `cancelled` / `changed` / `defaultClicked` from the left panel. Computes grid config from CMD selections. |
+| `LeftPanelComponent` | Container | `LeftPanelModule` | Container for CMD + Operations panels. `@Input`: `disabled`. `@Output`: `changed`, `saved`, `cancelled`, `defaultClicked`. Composes `CmdPanelComponent`, `OperationsListComponent`, and footer buttons (Save/Cancel/Default). |
+| `TopBarComponent` | Dumb/Presentational | `TopBarModule` | Scenario dropdown only. Emits `scenarioChanged` upward. |
+| `CmdPanelComponent` | Dumb/Presentational | `CmdPanelModule` | Two multi-select dropdowns (Side, Wheel). `@Input`: `value`, `disabled`. `@Output`: `changed`. |
+| `OperationsListComponent` | Dumb/Presentational | `OperationsListModule` | 11 explicit dropdown rows (10 single + 1 multi). `@Input`: `value`, `disabled`. `@Output`: `changed`. Each dropdown has its own options defined in config. |
+| `StatusGridComponent` | Dumb/Presentational | `StatusGridModule` | Receives `config` (GridConfig) and `rows` (RowViewModel[]) via `@Input`. Renders a `<table>` with column headers (L1–R4), labels column, and 3-letter abbreviation cells. Supports column hover and cell focus. Read-only. |
+| `AppDropdownComponent` | Dumb/Presentational | `AppDropdownModule` | Generic single-select wrapper around `mat-select`. CVA provided by `AppDropdownCvaDirective`. |
+| `AppMultiDropdownComponent` | Dumb/Presentational | `AppMultiDropdownModule` | Generic multi-select wrapper around `mat-select[multiple]`. CVA provided by `AppDropdownCvaDirective`. |
 
 ### Module-Per-Component Strategy
 
@@ -336,11 +433,11 @@ This keeps each file focused, improves readability, and aligns with the module-p
 Labels follow two distinct patterns depending on context:
 
 - **Inline (left-side) labels**: The label sits to the **left** of its corresponding input, in a horizontal flex row (`.app-dropdown-wrapper`). Applies to:
-  - TopBar: "Action" label inline with its dropdown
-  - CmdFormPanel: "CMD" label inline with the two cmd dropdowns
-  - OperationsFormList rows: "act 1"–"act 10" labels inline with their dropdowns
+  - TopBar: "Scenario" label inline with its dropdown
+  - CmdPanel: "CMD" label inline with the two multi-select dropdowns
+  - OperationsListComponent rows: labels inline with their dropdowns
   - Global styles in `src/styles/_dropdowns.scss`
-- **Section heading label**: The "OPR" / "OPERATIONS" label is displayed **above** the 10 operations rows as a section heading, not inline. It acts as a title for the form section below it.
+- **Section heading label**: The "OPR" / "OPERATIONS" label is displayed **above** the 11 operations rows as a section heading, not inline. It acts as a title for the section below it.
 
 ### Styling Rules
 
@@ -411,32 +508,27 @@ The dashboard is designed to be self-contained and relocatable. For the full 8-s
 
 ### Inter-Component Communication
 
-- **Parent → Child**: `@Input` bindings for data (options, grid config, grid rows, selected values)
-- **Child → Parent**: `@Output` EventEmitter for user actions (reset clicked, action changed, left panel `formChanged` / `saved` / `cancelled`)
-- **CVA Components**: `CmdFormPanelComponent` and `OperationsFormListComponent` integrate with `LeftPanelComponent`'s `FormGroup` via `formControlName` / `formControl` directives
+- **Parent → Child**: `@Input` bindings for data (value objects, disabled state, grid config, grid rows)
+- **Child → Parent**: `@Output` EventEmitter for user actions (scenario changed, left panel `changed` / `saved` / `cancelled` / `defaultClicked`)
+- **No CVA on dashboard components**: `CmdPanelComponent` and `OperationsListComponent` use simple `@Input() value` / `@Output() changed` pattern (no FormGroup, no ControlValueAccessor). CVA remains available on `AppDropdownComponent` and `AppMultiDropdownComponent` via `AppDropdownCvaDirective` for future form use.
 - **Sibling Communication**: Two dedicated services, each managing one panel:
-  - `DashboardFormService`: form state, saved baseline, available options, save/cancel/reset logic
-  - `StatusGridService`: confirmed grid rows, WebSocket subscription, `applyUpdate()` merge logic
-- **Grid Data Flow**: `StatusGridService.gridRows$` is a `BehaviorSubject<GridRow[]>` seeded from defaults on initial load. Updates come exclusively from WebSocket `FieldUpdate` messages (after a save triggers the server). The left panel form state and right panel confirmed state are **independent** — they do not derive from each other after initial seed
+  - `DashboardStateService`: left panel state, saved baseline, save/cancel/default logic, POST API
+  - `StatusGridService`: right panel grid rows, WebSocket subscription, `applyUpdate()` merge logic
+- **Grid Data Flow**: `StatusGridService.rows$` is a `BehaviorSubject<RowViewModel[]>` seeded with empty grid on initial load. Updates come exclusively from WebSocket `FieldUpdate` messages (after a save triggers the server). The left panel state and right panel confirmed state are **independent**
 
 ### Form Architecture
 
-- **Strategy**: Reactive Forms (`ReactiveFormsModule`) on `LeftPanelModule` only; `ConfigDashboardModule` does not import `ReactiveFormsModule`
-- **Left panel `FormGroup` structure** (owned by `LeftPanelComponent`):
-  - `commands`: FormControl (object `{cmd1, cmd2}` — via CmdFormPanel CVA)
-  - `operations`: FormControl (string[] of 10 values — via OperationsFormList CVA)
-- **Top bar action**: Not part of the left-panel `FormGroup`; bound with `@Input` / `@Output` on `TopBarComponent` from `ConfigDashboardComponent` (and synced with `DashboardFormService` as needed)
-- **Save / Cancel**: `LeftPanelComponent` emits `saved` / `cancelled`; `ConfigDashboardComponent` coordinates `DashboardFormService` (baseline snapshot, `patchValue` / restore, POST)
-- **Reset**: Top-bar reset orchestrated at dashboard level (defaults + service + optional `formValue` push into `LeftPanelComponent` to realign the nested form)
+- **Strategy**: Simple `@Input() value` / `@Output() changed` pattern on all dashboard child components (no Reactive Forms, no FormGroup, no CVA on dashboard components)
+- **Top bar scenario**: Bound with `@Input` / `@Output` on `TopBarComponent` from `ConfigDashboardComponent`. "Realtime" selection disables the entire left panel.
+- **Save / Cancel / Default**: `LeftPanelComponent` emits `saved` / `cancelled` / `defaultClicked`; `ConfigDashboardComponent` coordinates `DashboardStateService`
+- **Default**: Resets left panel to defaults only. Right panel (grid) is NOT affected.
 
-### Backend Integration (Mock → Real)
+### Backend Integration
 
-The service layer uses mocks now but is designed for a future Node.js backend:
-
-- **REST endpoint**: `POST /api/config` — currently mocked in a service. Sends `DashboardFormValue` on save
-- **WebSocket**: `ws://…/grid-updates` — currently mocked with simulated `FieldUpdate` messages. Drives all right-panel updates
-- `DashboardFormService` abstracts the save API; `StatusGridService` abstracts the WebSocket connection. Swapping mocks for real backends requires changing only service internals, not components
-- The `FieldUpdate` message format is designed to be server-friendly: the server can send value-only, status-only, or combined updates as needed
+- **REST endpoint**: `POST /api/config` — sends the current dashboard state (selected wheels + operation values) on save
+- **WebSocket**: `ws://…/api/ws` — receives `FieldUpdate` messages that update grid cells with 3-letter abbreviations
+- `DashboardStateService` handles the POST; `StatusGridService` handles the WebSocket connection with auto-reconnect
+- The `FieldUpdate` message format supports full-row and partial-column updates
 
 ---
 
@@ -444,27 +536,31 @@ The service layer uses mocks now but is designed for a future Node.js backend:
 
 | Entity | Description |
 |--------|-------------|
-| System Action | A selectable action from the top bar dropdown |
-| Command (CMD) | A command selection that may influence available operations |
-| Operation (Act) | One of 10 configurable actions, each assigned an option via dropdown |
-| Option | A selectable value for an operation (e.g., Option 1, Option 2) |
-| Status Cell | An individual cell in the grid matrix representing a state for an action/category pair |
-| Status Category | A column in the grid, identified by color (red/yellow/green) or label (N/P/L) |
-| DashboardState | The combined form state: selected action, commands, and operations array |
-| GridData | The derived 10×6 matrix of status values, computed from DashboardState |
+| Scenario | A selectable scenario from the top bar dropdown (e.g., normal mode, "Realtime" disables left panel) |
+| CMD Selection | Multi-select wheel targeting: Side (Left/Right) × Wheel (1/2/3/4). Determines which grid columns are affected on save. |
+| Operation | One of 11 configurable vehicle controls, each assigned a value via dropdown |
+| Option | A selectable value for an operation. Each option carries a `value`, `label`, and `abbr` (3-letter abbreviation displayed in grid cells) |
+| Grid Cell | An individual cell in the grid table showing a 3-letter abbreviation for a specific wheel+operation combination |
+| Grid Column | A column in the grid, representing one wheel (L1, L2, L3, L4, R1, R2, R3, R4) or a custom column |
+| DashboardState | The combined state: selected scenario, CMD selections (sides + wheels), and 11 operation values |
+| RowViewModel | A single grid row: field key, label, and cell abbreviations per column |
+| GridConfig | Configuration object with row definitions and column definitions, passed as `@Input` to StatusGridComponent |
 
 ---
 
-## 6. Success Criteria
+## 6b. Success Criteria
 
 | # | Criterion | Measurement |
 |---|-----------|-------------|
-| SC-1 | Users can configure all 10 operations within 60 seconds | Task completion time |
+| SC-1 | Users can configure all 11 operations and save within 60 seconds | Task completion time |
 | SC-2 | The dashboard loads and displays all elements within 3 seconds | Page load time |
-| SC-3 | Users can save and retrieve configurations without data loss | Save/load verification |
-| SC-4 | The status grid correctly reflects the current configuration state | Visual accuracy check |
+| SC-3 | Users can save configurations and see grid updates via WebSocket | Save → WS → grid update verification |
+| SC-4 | The status grid correctly shows 3-letter abbreviations for configured wheels | Visual accuracy check |
 | SC-5 | All dropdown selections persist correctly after save | Persistence verification |
-| SC-6 | Reset returns all fields to default state with zero remaining custom values | Reset completeness |
+| SC-6 | Default returns left panel to defaults without affecting right panel | Default behavior verification |
+| SC-7 | "Realtime" scenario disables the entire left panel | Disabled state verification |
+| SC-8 | Column hover and cell focus work correctly | Interaction verification |
+| SC-9 | All dropdowns and options have `data-testid` attributes | DOM inspection |
 
 ---
 
@@ -475,26 +571,29 @@ The service layer uses mocks now but is designed for a future Node.js backend:
 - Angular 13 project setup with Angular Material 13
 - Dark-themed configuration dashboard component
 - Two-panel layout (configuration controls + status grid)
-- Dropdown-based command and operation selection via reusable `AppDropdownComponent` (CVA)
-- `CmdFormPanelComponent` and `OperationsFormListComponent` as CVA-enabled composite form controls (hosted under `LeftPanelComponent`)
-- Reactive Forms architecture with `FormGroup` owned by `LeftPanelComponent`; `ConfigDashboardComponent` as layout orchestrator only
-- `LeftPanelModule` composing CMD + OPERATIONS modules; `ConfigDashboardModule` imports `LeftPanelModule`
-- Dumb/presentational child components with `@Input`/`@Output` where appropriate
-- Module-per-component pattern (each component in its own NgModule for easy Angular 14+ standalone migration)
-- Two dedicated services: `DashboardFormService` (left panel form state) and `StatusGridService` (right panel confirmed state via WebSocket)
-- Status grid with configuration-driven columns and 10 rows (updated via WebSocket)
-- Save, Cancel, and Reset functionality
+- Dropdown-based command and operation selection via reusable `AppDropdownComponent` and `AppMultiDropdownComponent`
+- CMD panel with two multi-select dropdowns (Side: Left/Right, Wheel: 1/2/3/4)
+- Operations list with 11 explicit dropdowns, each with specific options and labels
+- Simple `@Input`/`@Output` architecture (no Reactive Forms on dashboard components)
+- Module-per-component pattern (each component in its own NgModule)
+- Two dedicated services: `DashboardStateService` (left panel state + POST API) and `StatusGridService` (right panel grid state via WebSocket)
+- Status grid as a native `<table>` with dynamic columns (L1–R4) computed from CMD selections, plus custom column support
+- Grid cells showing 3-letter abbreviations (no coloring)
+- Column hover highlight and cell focus behavior
+- Save, Cancel, and Default functionality (Default only affects left panel)
+- Scenario dropdown with "Realtime" option that disables the left panel
+- `data-testid` attributes on dropdowns and options for Playwright
+- Naming abstraction via key-value dictionary for label/text swappability
+- Node.js backend (Express + WebSocket) for REST save and real-time grid updates
 - Desktop viewport layout
-- Service layer abstraction to support future backend swap
 
 ### Out of Scope (Current Phase)
 
-- Node.js backend server (planned for a future phase: REST endpoint for form submission + WebSocket for live grid updates)
 - User authentication and authorization
 - Mobile or tablet responsive layouts
 - Multi-user collaboration or concurrent editing
-- Internationalization (i18n)
-- Automated testing setup (unit/e2e) beyond what Angular CLI generates by default
+- Full internationalization (i18n) — only a simple key-value dictionary for naming swap
+- Playwright e2e test implementation (testid infrastructure only)
 
 ---
 
@@ -508,14 +607,15 @@ The service layer uses mocks now but is designed for a future Node.js backend:
 
 ### Assumptions
 
-- The dashboard operates with derived mock data in this phase; a Node.js backend (REST + WebSocket) is planned for a future phase
-- The 10 operations are fixed in count (always "act 1" through "act 10")
-- Dropdown options are static and predefined
-- The status grid is read-only for the user (derived from configuration state, not manually edited)
+- The Node.js backend (Express + WebSocket) is implemented and serves REST API + WebSocket for grid updates
+- The 11 operations are fixed in count with specific options per dropdown
+- Dropdown options are static and predefined, with each option carrying a 3-letter abbreviation
+- The status grid is read-only for the user (populated via WebSocket, not manually edited)
 - The dark theme follows the design from the Stitch project (obsidian/charcoal palette)
-- The colored indicators (red, yellow, green) and labels (N, P, L) represent fixed, predefined categories
-- Angular 13 does not support standalone components; the project will use NgModule-based architecture with one module per component to ease future Angular 14+ standalone migration
-- The `AppDropdownComponent` wraps Angular Material's `mat-select` and implements `ControlValueAccessor`
+- Grid cells display 3-letter text abbreviations — no color-coded indicators
+- Angular 13 does not support standalone components; the project uses NgModule-based architecture
+- The `AppDropdownComponent` and `AppMultiDropdownComponent` wrap Angular Material's `mat-select`. CVA is available via directive but dashboard components use simple `@Input`/`@Output`
+- Feature naming is temporary (driving simulation theme) and should be swappable via a centralized label dictionary
 
 ---
 
@@ -533,18 +633,20 @@ The service layer uses mocks now but is designed for a future Node.js backend:
 
 The screen is a **dark-themed desktop dashboard** with a full-width top bar and two content panels below:
 
-- **Top bar** spans the full width. On the left: an "Action" label and dropdown. On the right: a "Reset" text button. A horizontal separator line sits below the top bar.
+- **Top bar** spans the full width. On the left: a "Scenario" label and dropdown. A horizontal separator line sits below the top bar.
 - **Left panel** contains the configuration controls in a single visual card:
-  - "CMD" label on the left (inline), two dropdowns ("cmd 1", "cmd 2") to the right of the label
+  - "CMD" label on the left (inline), two multi-select dropdowns (Side, Wheel) to the right
   - A horizontal separator line between CMD and OPERATIONS
   - "OPR" label above the operations rows as a section heading
-  - 10 rows of labeled dropdowns ("act 1" through "act 10")
-  - Cancel + Save buttons at the bottom-right of the left panel
+  - 11 rows of labeled dropdowns with specific options per row
+  - Default + Cancel + Save buttons at the bottom-right of the left panel
 - **Right panel** shows the **confirmed server state**:
-  - Each row has **label + confirmed value** as plain text on the left, horizontally aligned with a **status grid** on the right
-  - The label+value text is **outside** the grid — not a grid column
-  - The grid itself is a full bordered table (no headers, no row labels) containing only status indicator cells
-  - On initial load, rows mirror the left panel defaults with empty statuses
+  - Each row has a **label only** (no confirmed value) as plain text on the left, horizontally aligned with the **status grid** on the right
+  - The label text is **outside** the grid — not a table column
+  - The grid is a native `<table>` with column headers (L1, L2, L3, L4, R1, R2, R3, R4)
+  - Each cell shows a **3-letter abbreviation** of the applied value, or is blank
+  - Column hover highlights the entire column; cell click shows focus
+  - On initial load, all cells are blank
   - Updates arrive only via WebSocket after a save operation
 - A **vertical separator line** divides the left and right panels
 - All elements are **fully responsive** — no fixed widths, heights, or font sizes. Everything scales with the viewport.
@@ -552,34 +654,34 @@ The screen is a **dark-themed desktop dashboard** with a full-width top bar and 
 ### Wireframe
 
 ```
-┌──────────────────────────────────────────────────────────────────────────────────────┐
-│  Action  [Action ▾]                                                          Reset   │
-├──────────────────────────────────────────────────────────────────────────────────────┤
-│                            │                                                         │
-│  CMD  [cmd 1 ▾] [cmd 2 ▾]  │                                                         │
-│  ────────────────────────  │  act 1   Option 2     ┌────┬────┬────┬────┬────┬────┐   │
-│                            │                       │ ●  │ ○  │ ○  │ ○  │ ●  │ ○  │   │
-│  OPR                       │  act 2   Option 1     ├────┼────┼────┼────┼────┼────┤   │
-│   act 1   [Option 1 ▾]     │                       │ ○  │ ○  │ ○  │ ○  │ ○  │ ○  │   │
-│   act 2   [Option 1 ▾]     │  act 3   (empty)      ├────┼────┼────┼────┼────┼────┤   │
-│   act 3   [Option 1 ▾]     │                       │ ○  │ ○  │ ○  │ ○  │ ○  │ ○  │   │
-│   act 4   [Option 1 ▾]     │  act 4   Option 3     ├────┼────┼────┼────┼────┼────┤   │
-│   act 5   [Option 1 ▾]     │                       │ ○  │ ●  │ ○  │ ○  │ ○  │ ●  │   │
-│   act 6   [Option 1 ▾]     │  act 5   Option 1     ├────┼────┼────┼────┼────┼────┤   │
-│   act 7   [Option 1 ▾]     │                       │ ○  │ ○  │ ○  │ ○  │ ○  │ ○  │   │
-│   act 8   [Option 1 ▾]     │  act 6   Option 1     ├────┼────┼────┼────┼────┼────┤   │
-│   act 9   [Option 1 ▾]     │                       │ ○  │ ○  │ ○  │ ○  │ ○  │ ○  │   │
-│   act 10  [Option 1 ▾]     │  ...                  ├────┼────┼────┼────┼────┼────┤   │
-│                            │                       │    │    │    │    │    │    │   │
-│                            │  act 10  Option 1     ├────┼────┼────┼────┼────┼────┤   │
-│                            │                       │ ○  │ ○  │ ○  │ ○  │ ○  │ ○  │   │
-│                            │                       └────┴────┴────┴────┴────┴────┘   │
-│       [Cancel]  [ Save ]   │                                                         │
-│                            │  ● = active (colored dot / text label)                  │
-│                            │  ○ = inactive (empty cell)                              │
-│                            │  Grid columns defined by GridConfig (no headers)        │
-│                            │  Label+value are outside grid, aligned per row          │
-└────────────────────────────┴─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│  Scenario  [Normal ▾]                                                                   │
+├─────────────────────────────────────────────────────────────────────────────────────────┤
+│                               │                                                         │
+│  CMD  [L,R ▾▾] [1,2,3,4 ▾▾]  │                    L1   L2   L3   L4   R1   R2   R3   R4│
+│  ─────────────────────────── │                   ┌────┬────┬────┬────┬────┬────┬────┬────┐
+│                               │  TTM             │CAP │CAP │    │    │CAP │CAP │    │    │
+│  OPR                          │                  ├────┼────┼────┼────┼────┼────┼────┼────┤
+│   TTM        [Captive ▾]      │  Weather         │ NO │ NO │    │    │ NO │ NO │    │    │
+│   Weather    [No ▾]           │                  ├────┼────┼────┼────┼────┼────┼────┼────┤
+│   Video rec  [Internal ▾]     │  Video rec       │INT │INT │    │    │INT │INT │    │    │
+│   Video Type [No ▾▾]          │                  ├────┼────┼────┼────┼────┼────┼────┼────┤
+│   Headlights [No ▾]           │  Video Type      │ NO │ NO │    │    │ NO │ NO │    │    │
+│   PWR On/Off [On ▾]           │                  ├────┼────┼────┼────┼────┼────┼────┼────┤
+│   Force      [Normal ▾]       │  Headlights      │ NO │ NO │    │    │ NO │ NO │    │    │
+│   Stability  [No ▾]           │                  ├────┼────┼────┼────┼────┼────┼────┼────┤
+│   Cruise Ctrl[No ▾]           │  PWR On/Off      │ ON │ ON │    │    │ ON │ ON │    │    │
+│   PLR        [No ▾]           │                  ├────┼────┼────┼────┼────┼────┼────┼────┤
+│   AUX        [No ▾]           │  Force           │NRM │NRM │    │    │NRM │NRM │    │    │
+│                               │                  ├────┼────┼────┼────┼────┼────┼────┼────┤
+│                               │  ...             │    │    │    │    │    │    │    │    │
+│                               │                  └────┴────┴────┴────┴────┴────┴────┴────┘
+│ [Default] [Cancel] [ Save ]   │                                                         │
+│                               │  ▾▾ = multi-select dropdown                             │
+│                               │  ▾  = single-select dropdown                            │
+│                               │  Blank cells = not yet confirmed via WS                 │
+│                               │  3-letter abbreviations = confirmed values               │
+└───────────────────────────────┴─────────────────────────────────────────────────────────┘
 ```
 
 ### Design Theme Details

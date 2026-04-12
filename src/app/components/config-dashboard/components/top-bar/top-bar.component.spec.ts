@@ -45,16 +45,8 @@ describe('TopBarComponent', () => {
     expect(spy).toHaveBeenCalledWith('b');
   });
 
-  it('should emit resetClicked when Reset is clicked', () => {
-    const spy = jasmine.createSpy('resetClicked');
-    component.resetClicked.subscribe(spy);
-    const btn = fixture.debugElement.query(By.css('button[mat-button]'));
-    btn.triggerEventHandler('click', null);
-    expect(spy).toHaveBeenCalled();
-  });
-
-  it('should display Reset button text', () => {
-    const btn: HTMLButtonElement = fixture.nativeElement.querySelector('button[mat-button]');
-    expect(btn?.textContent?.trim()).toBe('Reset');
+  it('should not render a Reset button', () => {
+    const btn = fixture.nativeElement.querySelector('button');
+    expect(btn).toBeNull();
   });
 });

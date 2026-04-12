@@ -1,113 +1,75 @@
 @import 'variables';
 
-$cell-border: #424242;
+$cell-border: #d0d0d0;
+$header-bg: #f5f5f5;
+$cell-bg: #ffffff;
+$hover-bg: #e8e8e8;
+$focus-bg: #d6d6d6;
+$focus-border-color: $secondary-text;
 
 .status-grid {
-  display: flex;
-  flex-direction: column;
   width: 100%;
   min-width: 0;
-  overflow: hidden;
+  overflow: auto;
 
-  &__header {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: $spacing-md;
-    min-width: 0;
-  }
-
-  &__header-cell {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 2.25em;
-    padding: $spacing-xs;
-    box-sizing: border-box;
-    background-color: #ffffff;
-    border: 2px solid $cell-border;
-    margin-left: -2px;
-    margin-top: -2px;
+  &__table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
     font-family: $font-family-body;
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: $inverse-text;
+    font-size: 0.8125rem;
   }
 
-  &__row {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: $spacing-md;
-    min-width: 0;
+  &__label-header {
+    width: 8rem;
+    min-width: 6rem;
+    padding: $spacing-xs $spacing-sm;
+  }
 
-    & + & {
-      margin-top: -2px;
+  &__col-header {
+    padding: $spacing-xs;
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.75rem;
+    color: $inverse-text;
+    background-color: $header-bg;
+    border: 1px solid $cell-border;
+    transition: background-color 0.15s ease;
+
+    &--hovered {
+      background-color: $hover-bg;
     }
   }
 
-  &__info {
-    flex: 0 0 auto;
-    width: 14rem;
-    min-width: 8rem;
-    display: flex;
-    flex-direction: row;
-    align-items: baseline;
-    gap: $spacing-sm;
-    overflow: hidden;
-  }
-
   &__label {
-    flex-shrink: 0;
-    min-width: 7em;
+    padding: $spacing-xs $spacing-sm;
     color: $secondary-text;
-    font-family: $font-family-body;
-    font-size: 0.875rem;
-  }
-
-  &__value {
-    flex: 1;
-    min-width: 0;
-    color: $primary-text;
-    font-family: $font-family-body;
     font-size: 0.875rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-  }
-
-  &__cells {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    margin-left: 2px;
-    margin-top: 2px;
+    border: none;
   }
 
   &__cell {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 2.25em;
     padding: $spacing-xs;
-    box-sizing: border-box;
-    background-color: #ffffff;
-    border: 2px solid $cell-border;
-    margin-left: -2px;
-    margin-top: -2px;
-  }
-
-  &__text-indicator {
-    color: $inverse-text;
-    font-family: $font-family-body;
-    font-size: 0.75rem;
-    font-weight: 600;
-    line-height: 1.2;
     text-align: center;
-    word-break: break-word;
+    font-weight: 600;
+    font-size: 0.75rem;
+    color: $inverse-text;
+    background-color: $cell-bg;
+    border: 1px solid $cell-border;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+
+    &--hovered {
+      background-color: $hover-bg;
+    }
+
+    &--focused {
+      background-color: $focus-bg;
+      border: 2px solid $focus-border-color;
+      padding: calc(#{$spacing-xs} - 1px);
+    }
   }
 }

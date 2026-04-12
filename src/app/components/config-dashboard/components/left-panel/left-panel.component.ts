@@ -7,13 +7,13 @@ import {
 } from '@angular/core';
 
 import {
+  CmdSelection,
   DashboardState,
-  DriveCommand,
   LeftPanelPayload,
-  VehicleControls,
+  OperationsValue,
 } from '../../models/dashboard.models';
-import { DEFAULT_DRIVE_COMMAND } from '../cmd-panel/cmd-panel.models';
-import { DEFAULT_VEHICLE_CONTROLS } from '../operations-list/operations-list.models';
+import { DEFAULT_CMD_SELECTION } from '../cmd-panel/cmd-panel.models';
+import { DEFAULT_OPERATIONS } from '../operations-list/operations-list.models';
 
 @Component({
   selector: 'app-left-panel',
@@ -26,8 +26,8 @@ export class LeftPanelComponent {
     if (!value) {
       return;
     }
-    this.driveCommand = value.driveCommand;
-    this.vehicleControls = value.vehicleControls;
+    this.cmd = value.cmd;
+    this.operations = value.operations;
   }
 
   @Input() disabled = false;
@@ -35,17 +35,18 @@ export class LeftPanelComponent {
   @Output() stateChanged = new EventEmitter<LeftPanelPayload>();
   @Output() saved = new EventEmitter<LeftPanelPayload>();
   @Output() cancelled = new EventEmitter<void>();
+  @Output() defaultClicked = new EventEmitter<void>();
 
-  driveCommand: DriveCommand = { ...DEFAULT_DRIVE_COMMAND };
-  vehicleControls: VehicleControls = { ...DEFAULT_VEHICLE_CONTROLS };
+  cmd: CmdSelection = { ...DEFAULT_CMD_SELECTION };
+  operations: OperationsValue = { ...DEFAULT_OPERATIONS };
 
-  onDriveCommandChanged(value: DriveCommand): void {
-    this.driveCommand = value;
+  onCmdChanged(value: CmdSelection): void {
+    this.cmd = value;
     this.stateChanged.emit(this.buildPayload());
   }
 
-  onVehicleControlsChanged(value: VehicleControls): void {
-    this.vehicleControls = value;
+  onOperationsChanged(value: OperationsValue): void {
+    this.operations = value;
     this.stateChanged.emit(this.buildPayload());
   }
 
@@ -57,10 +58,14 @@ export class LeftPanelComponent {
     this.cancelled.emit();
   }
 
+  onDefault(): void {
+    this.defaultClicked.emit();
+  }
+
   private buildPayload(): LeftPanelPayload {
     return {
-      driveCommand: this.driveCommand,
-      vehicleControls: this.vehicleControls,
+      cmd: this.cmd,
+      operations: this.operations,
     };
   }
 }

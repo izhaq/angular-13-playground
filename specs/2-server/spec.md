@@ -1,13 +1,13 @@
-# Server Spec: Driving Simulation Backend
+# Server Spec: Configuration Dashboard Backend (Revised)
 
 **Feature**: 2-server
-**Date**: 2026-04-09
+**Date**: 2026-04-09 (original) | 2026-04-09 (revised for new requirements)
 
 ---
 
 ## Overview
 
-A lightweight Node.js/Express server that acts as the backend for the Driving Simulation Configuration Dashboard. It provides:
+A lightweight Node.js/Express server that acts as the backend for the Configuration Dashboard. It provides:
 
 1. A **REST API** to receive and persist configuration changes from the Angular client.
 2. A **WebSocket server** to push real-time `FieldUpdate` messages back to the client's status grid after configuration is saved.
@@ -41,7 +41,7 @@ A lightweight Node.js/Express server that acts as the backend for the Driving Si
             │                 │                      │
             │  ┌──────────────▼─────────────────┐    │
             │  │  WebSocket Server (ws)          │    │
-            │  │  Path: /ws                      │    │
+            │  │  Path: /api/ws                  │    │
             │  │  Broadcasts FieldUpdate[]       │    │
             │  └────────────────────────────────┘    │
             └────────────────────────────────────────┘
@@ -52,15 +52,15 @@ A lightweight Node.js/Express server that acts as the backend for the Driving Si
 ### Save Configuration
 
 1. User clicks **Save** in the Angular dashboard.
-2. `DashboardStateService.saveConfig()` sends `POST /api/config` with the full `DashboardState` body.
+2. `DashboardStateService.saveConfig()` sends `POST /api/config` with the `DashboardState` body (scenario, cmd selections, operations values).
 3. Server receives the payload, passes it to `processConfig()`.
-4. `processConfig()` generates a `FieldUpdate[]` — one update per vehicle control field — with deterministic statuses derived from the field key + value hash.
-5. Server broadcasts each `FieldUpdate` over WebSocket to all connected clients, staggered by `WS_UPDATE_DELAY_MS` (default 300ms) to simulate progressive processing.
-6. Client's `StatusGridService` receives each message via its WebSocket `onmessage` handler and calls `applyUpdate()` to update the status grid in real time.
+4. `processConfig()` uses `cmd.sides × cmd.wheels` to determine which grid columns are affected, then generates a `FieldUpdate[]` — one per operation — with abbreviation strings for the affected columns.
+5. Server broadcasts each `FieldUpdate` over WebSocket to all connected clients, staggered by `WS_UPDATE_DELAY_MS` (default 300ms).
+6. Client's `StatusGridService` receives each message and calls `applyUpdate()` to merge abbreviations into the grid.
 
 ### WebSocket Reconnection
 
-`StatusGridService` implements auto-reconnect with a 3-second delay. When the WebSocket connection is closed (server restart, network drop), it schedules a reconnect. The `disconnect()` method (called in `ngOnDestroy`) stops reconnection.
+`StatusGridService` implements auto-reconnect with a 3-second delay. `disconnect()` (called in `ngOnDestroy`) stops reconnection.
 
 ## REST API
 
@@ -72,22 +72,23 @@ Save a new dashboard configuration and trigger WebSocket updates.
 
 ```json
 {
-  "scenario": "highway-cruise",
-  "driveCommand": {
-    "transmission": "automatic",
-    "driveMode": "2wd"
+  "scenario": "normal",
+  "cmd": {
+    "sides": ["left", "right"],
+    "wheels": ["1", "2"]
   },
-  "vehicleControls": {
-    "terrain": ["asphalt"],
-    "weather": ["clear"],
-    "speedLimit": "90",
-    "gear": "p",
-    "headlights": "off",
-    "wipers": "off",
-    "tractionCtrl": "on",
-    "stability": "esc-on",
-    "cruiseCtrl": "off",
-    "brakeAssist": "abs-ebd"
+  "operations": {
+    "ttm": "captive",
+    "weather": "no",
+    "videoRec": "internal",
+    "videoType": ["no"],
+    "headlights": "no",
+    "pwrOnOff": "on",
+    "force": "normal",
+    "stability": "no",
+    "cruiseCtrl": "no",
+    "plr": "no",
+    "aux": "no"
   }
 }
 ```
@@ -97,8 +98,8 @@ Save a new dashboard configuration and trigger WebSocket updates.
 ```json
 {
   "status": "accepted",
-  "updatesScheduled": 10,
-  "scenario": "highway-cruise"
+  "updatesScheduled": 11,
+  "affectedColumns": ["L1", "L2", "R1", "R2"]
 }
 ```
 
@@ -106,7 +107,7 @@ Save a new dashboard configuration and trigger WebSocket updates.
 
 ```json
 {
-  "error": "Invalid payload: vehicleControls required"
+  "error": "Invalid payload: operations required"
 }
 ```
 
@@ -136,7 +137,7 @@ Health check endpoint.
 
 ### Endpoint
 
-`ws://localhost:3000/ws` (or `wss://` over TLS).
+`ws://localhost:3000/api/ws` (or `wss://` over TLS).
 
 ### Messages (Server → Client)
 
@@ -144,40 +145,44 @@ Each message is a JSON-serialized `FieldUpdate`:
 
 ```json
 {
-  "field": "vehicleControls.terrain",
-  "value": "Gravel, Sand",
-  "statuses": {
-    "red": true,
-    "yellow": false,
-    "green": true,
-    "n": false,
-    "p": true,
-    "l": false
+  "field": "row1",
+  "cells": {
+    "L1": "CAP",
+    "L2": "CAP",
+    "R1": "CAP",
+    "R2": "CAP"
   }
 }
 ```
 
 **Fields**:
 
-| Field      | Type                       | Description                                         |
-| ---------- | -------------------------- | --------------------------------------------------- |
-| `field`    | `string`                   | Dot-path identifying the vehicle control field       |
-| `value`    | `string` (optional)        | Human-readable confirmed value for the info column   |
-| `statuses` | `Record<string, boolean>` (optional) | Column activation states keyed by column ID |
+| Field    | Type                      | Description                                                 |
+| -------- | ------------------------- | ----------------------------------------------------------- |
+| `field`  | `string`                  | Operation key matching `OperationsValue` property           |
+| `cells`  | `Record<string, string>`  | Column ID → 3-letter abbreviation for affected columns only |
 
 ### Message Timing
 
-Updates are sent with a staggered delay (`WS_UPDATE_DELAY_MS * index`), creating a progressive fill effect in the grid. Default delay is 300ms per update, so 10 updates complete in ~3 seconds.
+Updates are sent with a staggered delay (`WS_UPDATE_DELAY_MS * index`), creating a progressive fill effect in the grid. Default delay is 300ms per update, so 11 updates complete in ~3.3 seconds.
+
+### Column Determination
+
+The server uses the `cmd.sides × cmd.wheels` from the POST payload to determine which columns to include in each `FieldUpdate.cells`. For example:
+
+- `sides: ['left'], wheels: ['1', '2']` → cells include `L1` and `L2` only
+- `sides: ['left', 'right'], wheels: ['1', '2', '3', '4']` → cells include `L1, L2, L3, L4, R1, R2, R3, R4` (all 8)
 
 ## Simulation Engine
 
 `processConfig(state: DashboardState) → FieldUpdate[]`
 
-For each vehicle control key, the engine:
+For each operation key in `state.operations`, the engine:
 
-1. Reads the raw value from `state.vehicleControls[key]`.
-2. Formats multi-select arrays as comma-separated strings (e.g., `["gravel", "sand"]` → `"gravel, sand"`).
-3. Generates deterministic boolean statuses using a hash of `key + JSON.stringify(value)`, ensuring the same input always produces the same grid pattern.
+1. Reads the raw value.
+2. Looks up the abbreviation from the option config (e.g., `'captive'` → `'CAP'`).
+3. For multi-select values (arrays), concatenates abbreviations (e.g., `['no']` → `'NO'`).
+4. Builds a `cells` record with the abbreviation for each affected column (determined by `cmd.sides × cmd.wheels`).
 
 ## File Structure
 
@@ -186,8 +191,8 @@ server/
 ├── tsconfig.json             # TypeScript config (target: es2017, module: commonjs)
 └── src/
     ├── index.ts              # Express app + WebSocket server + static serving
-    ├── models.ts             # Shared types (DashboardState, FieldUpdate, etc.)
-    └── simulation-engine.ts  # processConfig() — deterministic update generation
+    ├── models.ts             # Shared types (DashboardState, FieldUpdate, CmdSelection, OperationsValue)
+    └── simulation-engine.ts  # processConfig() — abbreviation-based update generation
 ```
 
 ## Configuration
@@ -207,11 +212,11 @@ Two terminals:
 # Terminal 1 — Server
 npm run server:start
 
-# Terminal 2 — Angular dev server (proxies /api and /ws to :3000)
+# Terminal 2 — Angular dev server (proxies /api to :3000)
 npm start
 ```
 
-The Angular dev server (`ng serve` on port 4200) proxies `/api/*` and `/ws` to the Node server on port 3000 via `proxy.conf.json`.
+The Angular dev server (`ng serve` on port 4200) proxies `/api/*` (including WebSocket at `/api/ws`) to the Node server on port 3000 via `proxy.conf.json`.
 
 ### Production Mode
 

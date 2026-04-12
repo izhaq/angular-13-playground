@@ -1,62 +1,24 @@
 <div class="operations__rows">
-  <div class="operations__row">
-    <app-multi-dropdown
-      [value]="value.terrain" [options]="terrainField.options" [label]="terrainField.label"
-      [disabled]="disabled" (changed)="onControlChanged('terrain', $event)">
-    </app-multi-dropdown>
-  </div>
-  <div class="operations__row">
-    <app-multi-dropdown
-      [value]="value.weather" [options]="weatherField.options" [label]="weatherField.label"
-      [disabled]="disabled" (changed)="onControlChanged('weather', $event)">
-    </app-multi-dropdown>
-  </div>
-  <div class="operations__row">
-    <app-dropdown
-      [value]="value.speedLimit" [options]="speedLimitField.options" [label]="speedLimitField.label"
-      [disabled]="disabled" (changed)="onControlChanged('speedLimit', $event)">
-    </app-dropdown>
-  </div>
-  <div class="operations__row">
-    <app-dropdown
-      [value]="value.gear" [options]="gearField.options" [label]="gearField.label"
-      [disabled]="disabled" (changed)="onControlChanged('gear', $event)">
-    </app-dropdown>
-  </div>
-  <div class="operations__row">
-    <app-dropdown
-      [value]="value.headlights" [options]="headlightsField.options" [label]="headlightsField.label"
-      [disabled]="disabled" (changed)="onControlChanged('headlights', $event)">
-    </app-dropdown>
-  </div>
-  <div class="operations__row">
-    <app-dropdown
-      [value]="value.wipers" [options]="wipersField.options" [label]="wipersField.label"
-      [disabled]="disabled" (changed)="onControlChanged('wipers', $event)">
-    </app-dropdown>
-  </div>
-  <div class="operations__row">
-    <app-dropdown
-      [value]="value.tractionCtrl" [options]="tractionCtrlField.options" [label]="tractionCtrlField.label"
-      [disabled]="disabled" (changed)="onControlChanged('tractionCtrl', $event)">
-    </app-dropdown>
-  </div>
-  <div class="operations__row">
-    <app-dropdown
-      [value]="value.stability" [options]="stabilityField.options" [label]="stabilityField.label"
-      [disabled]="disabled" (changed)="onControlChanged('stability', $event)">
-    </app-dropdown>
-  </div>
-  <div class="operations__row">
-    <app-dropdown
-      [value]="value.cruiseCtrl" [options]="cruiseCtrlField.options" [label]="cruiseCtrlField.label"
-      [disabled]="disabled" (changed)="onControlChanged('cruiseCtrl', $event)">
-    </app-dropdown>
-  </div>
-  <div class="operations__row">
-    <app-dropdown
-      [value]="value.brakeAssist" [options]="brakeAssistField.options" [label]="brakeAssistField.label"
-      [disabled]="disabled" (changed)="onControlChanged('brakeAssist', $event)">
-    </app-dropdown>
-  </div>
+  <ng-container *ngFor="let field of fields; trackBy: trackByKey">
+    <div class="operations__row" *ngIf="field.multi; else singleTpl">
+      <app-multi-dropdown
+        [value]="$any(value[field.key])"
+        [options]="field.options"
+        [label]="field.label"
+        [disabled]="disabled"
+        (changed)="onControlChanged(field.key, $event)">
+      </app-multi-dropdown>
+    </div>
+    <ng-template #singleTpl>
+      <div class="operations__row">
+        <app-dropdown
+          [value]="$any(value[field.key])"
+          [options]="field.options"
+          [label]="field.label"
+          [disabled]="disabled"
+          (changed)="onControlChanged(field.key, $event)">
+        </app-dropdown>
+      </div>
+    </ng-template>
+  </ng-container>
 </div>

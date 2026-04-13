@@ -8,14 +8,22 @@
       </app-cmd-panel>
     </div>
 
-    <hr class="panel__separator">
-
     <div class="panel__section">
       <app-frequent-operations-list
         [value]="operations"
         [disabled]="disabled"
         (changed)="onOperationsChanged($event)">
       </app-frequent-operations-list>
+    </div>
+
+    <hr class="panel__separator">
+
+    <div class="panel__section">
+      <app-cmd-test-panel
+        [value]="cmdTest"
+        [disabled]="disabled"
+        (changed)="onCmdTestChanged($event)">
+      </app-cmd-test-panel>
     </div>
   </div>
 

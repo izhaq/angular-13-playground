@@ -4,9 +4,10 @@ import { MatButtonModule } from '@angular/material/button';
 import { By } from '@angular/platform-browser';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 
-import { CmdSelection, DashboardState, LeftPanelPayload, FrequentOperationsModel } from '../../models/dashboard.models';
+import { CmdSelection, CmdTestModel, DashboardState, LeftPanelPayload, FrequentOperationsModel } from '../../models/dashboard.models';
 import { DEFAULT_CMD_SELECTION } from '../cmd-panel/cmd-panel.models';
 import { DEFAULT_OPERATIONS } from '../operations-list/operations-list.models';
+import { DEFAULT_CMD_TEST } from '../cmd-test-panel/cmd-test-panel.models';
 import { LeftPanelComponent } from './left-panel.component';
 
 @Component({ selector: 'app-cmd-panel', template: '' })
@@ -23,6 +24,13 @@ class MockFrequentOperationsListComponent {
   @Output() changed = new EventEmitter<FrequentOperationsModel>();
 }
 
+@Component({ selector: 'app-cmd-test-panel', template: '' })
+class MockCmdTestPanelComponent {
+  @Input() value!: CmdTestModel;
+  @Input() disabled = false;
+  @Output() changed = new EventEmitter<CmdTestModel>();
+}
+
 function buildTestState(): DashboardState {
   return {
     scenario: 'city-traffic',
@@ -32,6 +40,7 @@ function buildTestState(): DashboardState {
       ttm: 'captive',
       force: 'force-f',
     },
+    cmdTest: { ...DEFAULT_CMD_TEST, nta: 'yes' },
   };
 }
 
@@ -42,7 +51,7 @@ describe('LeftPanelComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      declarations: [LeftPanelComponent, MockCmdPanelComponent, MockFrequentOperationsListComponent],
+      declarations: [LeftPanelComponent, MockCmdPanelComponent, MockFrequentOperationsListComponent, MockCmdTestPanelComponent],
       imports: [MatButtonModule, NoopAnimationsModule],
     }).compileComponents();
 
@@ -67,24 +76,27 @@ describe('LeftPanelComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should initialize with default cmd and operations', () => {
+  it('should initialize with default cmd, operations, and cmdTest', () => {
     expect(component.cmd).toEqual(DEFAULT_CMD_SELECTION);
     expect(component.operations).toEqual(DEFAULT_OPERATIONS);
+    expect(component.cmdTest).toEqual(DEFAULT_CMD_TEST);
   });
 
-  it('dashboardState setter should update cmd and operations', () => {
+  it('dashboardState setter should update cmd, operations, and cmdTest', () => {
     const state = buildTestState();
     component.dashboardState = state;
 
     expect(component.cmd).toEqual(state.cmd);
     expect(component.operations).toEqual(state.operations);
+    expect(component.cmdTest).toEqual(state.cmdTest);
   });
 
-  it('dashboardState setter should ignore null', () => {
+  it('dashboardState setter should reset to defaults on null', () => {
     component.dashboardState = null;
 
     expect(component.cmd).toEqual(DEFAULT_CMD_SELECTION);
     expect(component.operations).toEqual(DEFAULT_OPERATIONS);
+    expect(component.cmdTest).toEqual(DEFAULT_CMD_TEST);
   });
 
   it('should pass cmd to app-cmd-panel', () => {
@@ -103,13 +115,15 @@ describe('LeftPanelComponent', () => {
     expect(opsList.componentInstance.value).toEqual(state.operations);
   });
 
-  it('should pass disabled to both child components', () => {
+  it('should pass disabled to all child components', () => {
     setInputAndDetect('disabled', true);
 
     const cmdPanel = fixture.debugElement.query(By.directive(MockCmdPanelComponent));
     const opsList = fixture.debugElement.query(By.directive(MockFrequentOperationsListComponent));
+    const cmdTestPanel = fixture.debugElement.query(By.directive(MockCmdTestPanelComponent));
     expect(cmdPanel.componentInstance.disabled).toBe(true);
     expect(opsList.componentInstance.disabled).toBe(true);
+    expect(cmdTestPanel.componentInstance.disabled).toBe(true);
   });
 
   it('onCmdChanged should update cmd and emit stateChanged', () => {

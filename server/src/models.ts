@@ -17,10 +17,17 @@ export interface OperationsValue {
   aux: string;
 }
 
+export interface CmdTestValue {
+  nta: string;
+  tisMtrRec: string;
+  rideMtrRec: string;
+}
+
 export interface DashboardState {
   scenario: string;
   cmd: CmdSelection;
   operations: OperationsValue;
+  cmdTest: CmdTestValue;
 }
 
 export interface FieldUpdate {

@@ -4,6 +4,7 @@ import { take } from 'rxjs/operators';
 import { DEFAULT_STATE } from '../models/dashboard-defaults';
 import { DashboardState, FrequentOperationsModel } from '../models/dashboard.models';
 import { DashboardStateService } from './dashboard-state.service';
+import { DEFAULT_CMD_TEST } from '../components/cmd-test-panel/cmd-test-panel.models';
 
 function makeTestOperations(): FrequentOperationsModel {
   return {
@@ -53,6 +54,7 @@ describe('DashboardStateService', () => {
       scenario: 'city-traffic',
       cmd: { sides: ['left', 'right'], wheels: ['1', '2'] },
       operations: makeTestOperations(),
+      cmdTest: { ...DEFAULT_CMD_TEST, nta: 'yes' },
     };
 
     service.state$.pipe(take(2)).subscribe({
@@ -72,6 +74,7 @@ describe('DashboardStateService', () => {
       scenario: 'off-road-trail',
       cmd: { sides: ['right'], wheels: ['3', '4'] },
       operations: makeTestOperations(),
+      cmdTest: { ...DEFAULT_CMD_TEST },
     };
 
     service.saveConfig(modified);
@@ -90,6 +93,7 @@ describe('DashboardStateService', () => {
       scenario: 'off-road-trail',
       cmd: { sides: ['right'], wheels: ['3', '4'] },
       operations: makeTestOperations(),
+      cmdTest: { ...DEFAULT_CMD_TEST },
     };
 
     service.saveConfig(modified);
@@ -110,6 +114,7 @@ describe('DashboardStateService', () => {
       scenario: 'city-traffic',
       cmd: { sides: ['left'], wheels: ['1'] },
       operations: makeTestOperations(),
+      cmdTest: { ...DEFAULT_CMD_TEST },
     };
 
     service.saveConfig(modified);
@@ -134,6 +139,7 @@ describe('DashboardStateService', () => {
       scenario: 'city-traffic',
       cmd: { sides: ['left', 'right'], wheels: ['1', '2', '3', '4'] },
       operations: makeTestOperations(),
+      cmdTest: { ...DEFAULT_CMD_TEST, tisMtrRec: 'yes' },
     });
     httpMock.expectOne('/api/config').flush({ status: 'accepted' });
 

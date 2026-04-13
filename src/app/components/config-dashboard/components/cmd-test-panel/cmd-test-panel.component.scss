@@ -1,0 +1,26 @@
+@import 'variables';
+
+:host {
+  display: block;
+}
+
+.cmd-test {
+  &__heading {
+    display: block;
+    font-family: $font-family-body;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: $primary-text;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__rows {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+  }
+
+  &__row {
+    width: 100%;
+  }
+}

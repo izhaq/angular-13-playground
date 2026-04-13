@@ -1,21 +1,23 @@
 import { DropdownOption } from '../../../app-dropdown/app-dropdown.models';
 
-export interface DriveCommand {
-  transmission: string;
-  driveMode: string;
+export interface CmdSelection {
+  sides: string[];
+  wheels: string[];
 }
 
-export const TRANSMISSION_OPTIONS: DropdownOption[] = [
-  { value: 'automatic', label: 'Automatic' },
-  { value: 'manual', label: 'Manual' },
-  { value: 'sport', label: 'Sport' },
-  { value: 'eco', label: 'Eco' },
+export const SIDE_OPTIONS: DropdownOption[] = [
+  { value: 'left', label: 'Left' },
+  { value: 'right', label: 'Right' },
 ];
 
-export const DRIVE_MODE_OPTIONS: DropdownOption[] = [
-  { value: '2wd', label: '2WD' },
-  { value: '4wd', label: '4WD' },
-  { value: 'awd', label: 'AWD' },
+export const WHEEL_OPTIONS: DropdownOption[] = [
+  { value: '1', label: '1' },
+  { value: '2', label: '2' },
+  { value: '3', label: '3' },
+  { value: '4', label: '4' },
 ];
 
-export const DEFAULT_DRIVE_COMMAND: DriveCommand = { transmission: 'automatic', driveMode: '2wd' };
+export const DEFAULT_CMD_SELECTION: CmdSelection = {
+  sides: ['left'],
+  wheels: ['1'],
+};

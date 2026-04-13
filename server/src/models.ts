@@ -1,29 +1,29 @@
-export interface DriveCommand {
-  transmission: string;
-  driveMode: string;
+export interface CmdSelection {
+  sides: string[];
+  wheels: string[];
 }
 
-export interface VehicleControls {
-  terrain: string[];
-  weather: string[];
-  speedLimit: string;
-  gear: string;
+export interface OperationsValue {
+  ttm: string;
+  weather: string;
+  videoRec: string;
+  videoType: string[];
   headlights: string;
-  wipers: string;
-  tractionCtrl: string;
+  pwrOnOff: string;
+  force: string;
   stability: string;
   cruiseCtrl: string;
-  brakeAssist: string;
+  plr: string;
+  aux: string;
 }
 
 export interface DashboardState {
   scenario: string;
-  driveCommand: DriveCommand;
-  vehicleControls: VehicleControls;
+  cmd: CmdSelection;
+  operations: OperationsValue;
 }
 
 export interface FieldUpdate {
   field: string;
-  value?: string;
-  statuses?: Record<string, boolean>;
+  cells: Record<string, string>;
 }

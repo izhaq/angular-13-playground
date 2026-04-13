@@ -1,10 +1,10 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
 
 import {
-  DEFAULT_DRIVE_COMMAND,
-  DRIVE_MODE_OPTIONS,
-  DriveCommand,
-  TRANSMISSION_OPTIONS,
+  CmdSelection,
+  DEFAULT_CMD_SELECTION,
+  SIDE_OPTIONS,
+  WHEEL_OPTIONS,
 } from './cmd-panel.models';
 
 @Component({
@@ -14,16 +14,21 @@ import {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CmdPanelComponent {
-  readonly transmissionOptions = TRANSMISSION_OPTIONS;
-  readonly driveModeOptions = DRIVE_MODE_OPTIONS;
+  readonly sideOptions = SIDE_OPTIONS;
+  readonly wheelOptions = WHEEL_OPTIONS;
 
-  @Input() value: DriveCommand = { ...DEFAULT_DRIVE_COMMAND };
+  @Input() value: CmdSelection = { ...DEFAULT_CMD_SELECTION };
   @Input() disabled = false;
 
-  @Output() changed = new EventEmitter<DriveCommand>();
+  @Output() changed = new EventEmitter<CmdSelection>();
 
-  onFieldChanged(key: 'transmission' | 'driveMode', newValue: string): void {
-    this.value = { ...this.value, [key]: newValue };
+  onSidesChanged(sides: string[]): void {
+    this.value = { ...this.value, sides };
+    this.changed.emit(this.value);
+  }
+
+  onWheelsChanged(wheels: string[]): void {
+    this.value = { ...this.value, wheels };
     this.changed.emit(this.value);
   }
 }

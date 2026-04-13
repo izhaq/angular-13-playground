@@ -2,21 +2,22 @@ import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { take } from 'rxjs/operators';
 import { DEFAULT_STATE } from '../models/dashboard-defaults';
-import { DashboardState, VehicleControls } from '../models/dashboard.models';
+import { DashboardState, OperationsValue } from '../models/dashboard.models';
 import { DashboardStateService } from './dashboard-state.service';
 
-function makeTestVehicleControls(): VehicleControls {
+function makeTestOperations(): OperationsValue {
   return {
-    terrain: ['gravel', 'sand'],
-    weather: ['rain', 'fog'],
-    speedLimit: '120',
-    gear: 'd',
-    headlights: 'high-beam',
-    wipers: 'fast',
-    tractionCtrl: 'sport',
-    stability: 'esc-off',
-    cruiseCtrl: 'adaptive',
-    brakeAssist: 'full-assist',
+    ttm: 'captive',
+    weather: 'yes',
+    videoRec: 'external',
+    videoType: ['hd', '4k'],
+    headlights: 'yes',
+    pwrOnOff: 'off',
+    force: 'force-f',
+    stability: 'yes',
+    cruiseCtrl: 'yes',
+    plr: 'yes',
+    aux: 'yes',
   };
 }
 
@@ -50,8 +51,8 @@ describe('DashboardStateService', () => {
   it('updateState causes state$ to emit the new value', (done) => {
     const next: DashboardState = {
       scenario: 'city-traffic',
-      driveCommand: { transmission: 'manual', driveMode: '4wd' },
-      vehicleControls: makeTestVehicleControls(),
+      cmd: { sides: ['left', 'right'], wheels: ['1', '2'] },
+      operations: makeTestOperations(),
     };
 
     service.state$.pipe(take(2)).subscribe({
@@ -69,8 +70,8 @@ describe('DashboardStateService', () => {
   it('saveConfig updates the saved baseline and posts to API', () => {
     const modified: DashboardState = {
       scenario: 'off-road-trail',
-      driveCommand: { transmission: 'sport', driveMode: 'awd' },
-      vehicleControls: makeTestVehicleControls(),
+      cmd: { sides: ['right'], wheels: ['3', '4'] },
+      operations: makeTestOperations(),
     };
 
     service.saveConfig(modified);
@@ -82,11 +83,33 @@ describe('DashboardStateService', () => {
     req.flush({ status: 'accepted' });
   });
 
+  it('saveConfig rolls back baseline and state on HTTP error', (done) => {
+    const originalBaseline = service.getSavedBaseline();
+
+    const modified: DashboardState = {
+      scenario: 'off-road-trail',
+      cmd: { sides: ['right'], wheels: ['3', '4'] },
+      operations: makeTestOperations(),
+    };
+
+    service.saveConfig(modified);
+
+    const req = httpMock.expectOne('/api/config');
+    req.flush('Server Error', { status: 500, statusText: 'Internal Server Error' });
+
+    expect(service.getSavedBaseline()).toEqual(originalBaseline);
+
+    service.state$.pipe(take(1)).subscribe((value) => {
+      expect(value).toEqual(originalBaseline);
+      done();
+    });
+  });
+
   it('cancelChanges restores the saved baseline', (done) => {
     const modified: DashboardState = {
       scenario: 'city-traffic',
-      driveCommand: { transmission: 'manual', driveMode: '4wd' },
-      vehicleControls: makeTestVehicleControls(),
+      cmd: { sides: ['left'], wheels: ['1'] },
+      operations: makeTestOperations(),
     };
 
     service.saveConfig(modified);
@@ -109,8 +132,8 @@ describe('DashboardStateService', () => {
   it('resetToDefaults restores DEFAULT_STATE and resets baseline', (done) => {
     service.saveConfig({
       scenario: 'city-traffic',
-      driveCommand: { transmission: 'manual', driveMode: '4wd' },
-      vehicleControls: makeTestVehicleControls(),
+      cmd: { sides: ['left', 'right'], wheels: ['1', '2', '3', '4'] },
+      operations: makeTestOperations(),
     });
     httpMock.expectOne('/api/config').flush({ status: 'accepted' });
 

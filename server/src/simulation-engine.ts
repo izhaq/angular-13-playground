@@ -1,58 +1,43 @@
-import { DashboardState, FieldUpdate, VehicleControls } from './models';
+import { DashboardState, FieldUpdate, OperationsValue } from './models';
 
-const COLUMN_IDS = ['red', 'yellow', 'green', 'n', 'p', 'l'];
+type OperationsKey = keyof OperationsValue;
 
-type VehicleControlKey = keyof VehicleControls;
+const SIDE_PREFIX: Record<string, string> = { left: 'L', right: 'R' };
 
-const FIELD_LABELS: Record<VehicleControlKey, string> = {
-  terrain: 'Terrain',
-  weather: 'Weather',
-  speedLimit: 'Speed Limit',
-  gear: 'Gear',
-  headlights: 'Headlights',
-  wipers: 'Wipers',
-  tractionCtrl: 'Traction Ctrl',
-  stability: 'Stability',
-  cruiseCtrl: 'Cruise Ctrl',
-  brakeAssist: 'Brake Assist',
-};
+const OPERATIONS_KEYS: OperationsKey[] = [
+  'ttm', 'weather', 'videoRec', 'videoType',
+  'headlights', 'pwrOnOff', 'force', 'stability',
+  'cruiseCtrl', 'plr', 'aux',
+];
+
+function computeColumnIds(sides: string[], wheels: string[]): string[] {
+  const columns: string[] = [];
+  for (const side of sides) {
+    const prefix = SIDE_PREFIX[side] || side.charAt(0).toUpperCase();
+    for (const wheel of wheels) {
+      columns.push(`${prefix}${wheel}`);
+    }
+  }
+  return columns;
+}
 
 function formatValue(val: string | string[]): string {
-  return Array.isArray(val) ? val.join(', ') : val;
-}
-
-function generateStatuses(fieldKey: string, value: string | string[]): Record<string, boolean> {
-  const seed = hashCode(fieldKey + JSON.stringify(value));
-  const statuses: Record<string, boolean> = {};
-  COLUMN_IDS.forEach((col, i) => {
-    statuses[col] = ((seed >> i) & 1) === 1;
-  });
-  return statuses;
-}
-
-function hashCode(str: string): number {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash |= 0;
-  }
-  return Math.abs(hash);
+  return Array.isArray(val) ? val.join(',') : val;
 }
 
 export function processConfig(state: DashboardState): FieldUpdate[] {
-  const updates: FieldUpdate[] = [];
-  const controls = state.vehicleControls;
+  const columns = computeColumnIds(state.cmd.sides, state.cmd.wheels);
+  const ops = state.operations;
 
-  (Object.keys(FIELD_LABELS) as VehicleControlKey[]).forEach((key) => {
-    const rawValue = controls[key];
-    const value = formatValue(rawValue);
-    updates.push({
-      field: `vehicleControls.${key}`,
-      value,
-      statuses: generateStatuses(key, rawValue),
-    });
+  return OPERATIONS_KEYS.map((key) => {
+    const raw = ops[key];
+    const cellValue = formatValue(raw);
+
+    const cells: Record<string, string> = {};
+    for (const col of columns) {
+      cells[col] = cellValue;
+    }
+
+    return { field: key, cells };
   });
-
-  return updates;
 }

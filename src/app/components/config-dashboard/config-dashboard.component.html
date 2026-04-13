@@ -3,8 +3,7 @@
     <app-top-bar
       [selectedScenario]="vm.state.scenario"
       [scenarioOptions]="scenarioOptions"
-      (scenarioChanged)="onScenarioChanged($event, vm.state)"
-      (resetClicked)="onReset()">
+      (scenarioChanged)="onScenarioChanged($event, vm.state)">
     </app-top-bar>
   </header>
 
@@ -15,12 +14,16 @@
         [disabled]="vm.isRealtime"
         (stateChanged)="onStateChanged($event, vm.state.scenario)"
         (saved)="onSaved($event, vm.state.scenario)"
-        (cancelled)="onCancelled()">
+        (cancelled)="onCancelled()"
+        (defaultClicked)="onDefault()">
       </app-left-panel>
     </section>
 
     <main class="dashboard__right">
-      <app-status-grid></app-status-grid>
+      <app-status-grid
+        [config]="gridConfig"
+        [rows]="(gridRows$ | async) || []">
+      </app-status-grid>
     </main>
   </div>
 </div>

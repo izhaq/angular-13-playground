@@ -1,8 +1,6 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { Observable } from 'rxjs';
+import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 
-import { CellViewModel, RowViewModel } from '../../models/grid.models';
-import { StatusGridService } from '../../services/status-grid.service';
+import { GridConfig, RowViewModel } from '../../models/grid.models';
 
 @Component({
   selector: 'app-status-grid',
@@ -11,23 +9,37 @@ import { StatusGridService } from '../../services/status-grid.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class StatusGridComponent {
-  readonly headerColumns: number[];
-  readonly gridRows$: Observable<RowViewModel[]>;
+  @Input() config!: GridConfig;
+  @Input() rows: RowViewModel[] = [];
 
-  constructor(private readonly gridService: StatusGridService) {
-    this.headerColumns = Array.from({ length: this.gridService.columnCount }, (_, i) => i);
-    this.gridRows$ = this.gridService.gridRows$;
-  }
+  hoveredColumnId: string | null = null;
+  focusedCell: { field: string; columnId: string } | null = null;
 
   trackByField(_index: number, row: RowViewModel): string {
     return row.field;
   }
 
-  trackByIndex(index: number): number {
-    return index;
+  trackByColumnId(_index: number, col: { id: string }): string {
+    return col.id;
   }
 
-  trackByCellColumnId(_index: number, cell: CellViewModel): string {
-    return cell.columnId;
+  onColumnHover(columnId: string | null): void {
+    this.hoveredColumnId = columnId;
+  }
+
+  onCellClick(field: string, columnId: string): void {
+    if (this.focusedCell?.field === field && this.focusedCell?.columnId === columnId) {
+      this.focusedCell = null;
+    } else {
+      this.focusedCell = { field, columnId };
+    }
+  }
+
+  isColumnHovered(columnId: string): boolean {
+    return this.hoveredColumnId === columnId;
+  }
+
+  isCellFocused(field: string, columnId: string): boolean {
+    return this.focusedCell?.field === field && this.focusedCell?.columnId === columnId;
   }
 }

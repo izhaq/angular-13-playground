@@ -1,245 +1,170 @@
-# Tasks: Configuration Dashboard
+# Tasks: Configuration Dashboard (Revised)
 
 **Feature**: 1-config-dashboard
-**Branch**: `1-config-dashboard`
-**Generated**: 2026-04-02
+**Branch**: `main`
+**Generated**: 2026-04-02 (original) | 2026-04-09 (revised)
 **Spec**: [spec.md](./spec.md)
 **Plan**: [impl-plan.md](./impl-plan.md)
 **Data Model**: [data-model.md](./data-model.md)
 
 ---
 
-## Phase 1: Project Setup (Sequential — 1 agent)
+## Completed Phases (Original Plan)
 
-**Goal**: Scaffold the Angular 13 project with Angular Material 13 in the existing repo.
+All original phases (Phase 1–3, Phase 2.5, plus simplifications and server integration) are **complete**:
 
-**Completion gate**: `ng serve` compiles and shows the default Angular page with dark background.
-
-- [x] T001 Verify Node.js version is compatible with Angular 13 (^12.20.0 || ^14.15.0 || ^16.10.0) by running `node -v`
-- [x] T002 Scaffold Angular 13 project by running `npx @angular/cli@13 new angular-13-playground --directory=. --style=scss --routing=false --skip-git=true` in `/Users/yizhaq.baroz/IdeaProjects/angular-13-playground`
-- [x] T003 Install Angular Material 13 by running `npx ng add @angular/material@13 --defaults` in project root
-- [x] T004 Add Google Fonts link tags for Manrope and Inter to `src/index.html`
-- [x] T005 Create component directory structure: `src/app/components/{app-dropdown,top-bar,cmd-form-panel,operations-form-list,left-panel,status-grid,config-dashboard}/`
-- [x] T006 Create project-level mocks directory: `src/app/mocks/`
-- [x] T007 Create dashboard-shared directories: `src/app/components/config-dashboard/models/` and `src/app/components/config-dashboard/services/`
-- [x] T008 Verify `npx ng serve` compiles and runs without errors
-
----
-
-## Phase 2: Foundation Layer (Parallel — up to 3 agents)
-
-**Goal**: Build the reusable dropdown component, shared service + models, and dark theme. These three streams are fully independent of each other.
-
-**Completion gate**: AppDropdown renders with CVA in isolation, service compiles and tests pass, dark theme applies globally.
-
-### Stream A: AppDropdownModule (Agent A)
-
-**Files touched**: `src/app/components/app-dropdown/*` only
-
-- [x] T008b [P] Define `DropdownOption` interface (co-located with the component) in `src/app/components/app-dropdown/app-dropdown.models.ts`
-- [x] T009 [P] Create `AppDropdownModule` that declares and exports `AppDropdownComponent`, imports `MatSelectModule`, `MatFormFieldModule`, `CommonModule`, `ReactiveFormsModule` in `src/app/components/app-dropdown/app-dropdown.module.ts`
-- [x] T010 [P] Implement `AppDropdownComponent` with `ControlValueAccessor` (NG_VALUE_ACCESSOR, forwardRef) wrapping `mat-select`. Inputs: `options: DropdownOption[]`, `label: string`, `placeholder: string`. CVA value type: `string`. File: `src/app/components/app-dropdown/app-dropdown.component.ts`
-- [x] T011 [P] Create template with `mat-form-field` > `mat-label` + `mat-select` > `mat-option *ngFor` iterating options in `src/app/components/app-dropdown/app-dropdown.component.html`
-- [x] T012 [P] Style dropdown to match dark theme: override mat-select colors, use surface tokens, 4px border-radius in `src/app/components/app-dropdown/app-dropdown.component.scss`
-- [x] T013 [P] Write unit tests for CVA behavior: writeValue sets selection, registerOnChange fires on select, registerOnTouched fires on blur, setDisabledState toggles mat-select disabled in `src/app/components/app-dropdown/app-dropdown.component.spec.ts`
-
-### Stream B: Models + DashboardStateService (Agent B)
-
-**Files touched**: `src/app/components/config-dashboard/models/*`, `src/app/components/config-dashboard/services/*`, `src/app/mocks/*` only
-
-**Co-location rule**: Dashboard-specific models and services live under `config-dashboard/`. Project-wide mock data lives under `src/app/mocks/`. Component-specific models (e.g., `DropdownOption`) are created by the component's own agent.
-
-- [x] T014 [P] Define shared dashboard interfaces: `DashboardFormValue` in `src/app/components/config-dashboard/models/dashboard-form.models.ts`, and `GridCell`, `GridRow`, `GridData`, `GridColumn` in `src/app/components/config-dashboard/models/grid.models.ts`
-- [x] T015 [P] Define dashboard default values: `DEFAULT_FORM_VALUE` in `src/app/components/config-dashboard/models/dashboard-defaults.ts`
-- [x] T015b [P] Define project-wide mock data constants (`ACTIONS`, `CMD_OPTIONS`, `OPERATION_OPTIONS`, `GRID_COLUMNS`) in `src/app/mocks/mock-data.ts`
-- [x] T016 [P] Create `DashboardStateService` with BehaviorSubjects (`formState$`, `gridData$`, `availableOptions$`) and method `updateFormState(value: DashboardFormValue)` in `src/app/components/config-dashboard/services/dashboard-state.service.ts`
-- [x] T017 [P] Implement mock grid data derivation logic: `computeGridData(formValue: DashboardFormValue): GridData` that produces a 10×6 grid derived from form state in `src/app/components/config-dashboard/services/dashboard-state.service.ts`
-- [x] T018 [P] Write unit tests for DashboardStateService: initial state emits defaults, updateFormState triggers gridData$ recalculation, computeGridData returns correct dimensions in `src/app/components/config-dashboard/services/dashboard-state.service.spec.ts`
-
-### Stream C: Dark Theme + Typography (Agent C)
-
-**Files touched**: `src/styles.scss`, `src/styles/_variables.scss` only
-
-- [x] T019 [P] Create SCSS variables file with all Stitch surface tokens (`$background: #0e0e0e`, `$surface-container-low: #131313`, `$surface-container: #191a1a`, `$surface-container-high: #1f2020`, `$surface-container-highest: #252626`, `$primary-text: #e7e5e4`, `$secondary-text: #acabaa`, `$primary: #c6c6c7`, `$error: #ee7d77`, `$tertiary: #eff8ff`) in `src/styles/_variables.scss`
-- [x] T020 [P] Create custom Angular Material dark theme palette using `mat.define-dark-theme()` with Stitch colors, configure in `src/styles.scss`
-- [x] T021 [P] Configure custom typography config with Manrope for display/headline and Inter for body/caption in `src/styles.scss`
-- [x] T022 [P] Set global body styles: `background: $background`, `color: $primary-text`, `font-family: 'Inter', sans-serif`, `margin: 0` in `src/styles.scss`
-- [x] T023 [P] Verify dark theme renders correctly by running `npx ng serve` and confirming dark background with correct fonts
+- [x] Phase 1: Project Setup (Angular 13 + Material 13)
+- [x] Phase 2: Foundation Layer (AppDropdown, Models+Service, Dark Theme)
+- [x] Phase 2.5: Dashboard Skeleton
+- [x] Phase 3: Component Layer (TopBar, CmdPanel, OperationsList, StatusGrid, LeftPanel)
+- [x] Simplification: Remove Reactive Forms from dashboard components → `@Input`/`@Output` pattern
+- [x] Simplification: Remove "Form" naming convention from components
+- [x] Driving simulation theming and multi-select dropdowns (opr1, opr2)
+- [x] OnPush change detection on all components
+- [x] Realtime scenario → disable left panel
+- [x] Code simplification review and fixes
+- [x] Grid layout: flex → simpler flex (was considering CSS Grid)
+- [x] Server integration: Node.js Express + WebSocket
+- [x] Proxy config for dev mode
+- [x] Layout responsiveness fixes
+- [x] WebSocket connection fix (/ws → /api/ws)
+- [x] Missing test coverage (LeftPanel, ConfigDashboard specs)
 
 ---
 
-## Phase 2.5: Dashboard Skeleton (Sequential — 1 agent)
+## Phase R1: Grid Redesign
 
-**Goal**: Create the `ConfigDashboardComponent` shell with the two-panel flex layout and placeholder content, so the overall structure is visually verifiable before building child components.
+**Goal**: Convert the status grid from flex/color-coded to a native `<table>` with text abbreviation cells, column hover, and cell focus.
 
-**Completion gate**: Skeleton renders with correct two-panel layout, placeholder text in each section, Cancel/Save buttons bottom-right.
+**Completion gate**: Grid renders as a `<table>`, cells show 3-letter abbreviations, column hover and cell focus work, no coloring.
 
-- [x] T070 Create `ConfigDashboardModule` importing `CommonModule`, `MatButtonModule` in `src/app/components/config-dashboard/config-dashboard.module.ts`
-- [x] T071 Create `ConfigDashboardComponent` as a shell — no form logic, no service wiring yet in `src/app/components/config-dashboard/config-dashboard.component.ts`
-- [x] T072 Create template with two-panel flex layout and placeholder sections in `src/app/components/config-dashboard/config-dashboard.component.html`
-- [x] T073 Style: two-panel flex layout (40/60 split), dark surface backgrounds, spacing tokens, footer button positioning in `src/app/components/config-dashboard/config-dashboard.component.scss`
-- [x] T074 Update `AppModule` to import `ConfigDashboardModule`, place `<app-config-dashboard>` in `app.component.html` in `src/app/app.module.ts`, `src/app/app.component.html`
-- [x] T075 Verify skeleton renders correctly with `ng serve`
-
-**Note**: The demo page currently shows the AppDropdown demo. This phase replaces it with the dashboard skeleton. The dropdown demo can be restored on a separate route later if needed.
-
----
-
-## Phase 3: Component Layer (Parallel — up to 4 agents)
-
-**Goal**: Build all 4 child components. Fully parallel — each agent works in its own module folder. Requires Phase 2 Stream A (AppDropdown) and Stream B (models) to be complete.
-
-**Completion gate**: All 4 components render in isolation, all unit tests pass.
-
-**Post-Phase 3 cleanup**: `CommandPair` is temporarily defined in `config-dashboard/models/dashboard-form.models.ts`. Once Phase 3 Stream B creates the canonical `cmd-form-panel/cmd-form-panel.models.ts`, update `dashboard-form.models.ts` to import `CommandPair` from `../../cmd-form-panel/cmd-form-panel.models` and remove the local duplicate.
-
-### Stream A: TopBarModule (Agent A)
-
-**Files touched**: `src/app/components/top-bar/*` only
-
-- [x] T024 [P] Create `TopBarModule` importing `AppDropdownModule`, `CommonModule`, `MatButtonModule` in `src/app/components/top-bar/top-bar.module.ts`
-- [x] T025 [P] Implement `TopBarComponent` (dumb/presentational) with `@Input() selectedAction: string`, `@Input() actionOptions: DropdownOption[]`, `@Output() actionChanged: EventEmitter<string>`, `@Output() resetClicked: EventEmitter<void>` in `src/app/components/top-bar/top-bar.component.ts`
-- [x] T026 [P] Create template: flex row with "Action" label + `<app-dropdown>` for action + spacer + "Reset" button in `src/app/components/top-bar/top-bar.component.html`
-- [x] T027 [P] Style: full-width bar, `display: flex`, `align-items: center`, `justify-content: space-between`, dark surface background, padding in `src/app/components/top-bar/top-bar.component.scss`
-- [x] T028 [P] Write unit tests: renders "Action" label, emits actionChanged when dropdown value changes, emits resetClicked when Reset button clicked in `src/app/components/top-bar/top-bar.component.spec.ts`
-
-### Stream B: CmdFormPanelModule (Agent B)
-
-**Files touched**: `src/app/components/cmd-form-panel/*` only
-
-- [x] T028b [P] Define `CommandPair` interface (co-located with the component) in `src/app/components/cmd-form-panel/cmd-form-panel.models.ts`
-- [x] T029 [P] Create `CmdFormPanelModule` importing `AppDropdownModule`, `CommonModule` in `src/app/components/cmd-form-panel/cmd-form-panel.module.ts`
-- [x] T030 [P] Implement `CmdFormPanelComponent` with `ControlValueAccessor` emitting `CommandPair`. Input: `@Input() cmdOptions: DropdownOption[]`. File: `src/app/components/cmd-form-panel/cmd-form-panel.component.ts`
-- [x] T031 [P] Create template: "CMD" inline label + two `<app-dropdown>` side by side with labels "cmd 1" and "cmd 2" in `src/app/components/cmd-form-panel/cmd-form-panel.component.html`
-- [x] T032 [P] Style: horizontal flex layout for dropdowns with gap, padding in `src/app/components/cmd-form-panel/cmd-form-panel.component.scss`
-- [x] T033 [P] Write unit tests: CVA writeValue sets both dropdowns, changing either dropdown emits updated CommandPair via onChange, setDisabledState disables both dropdowns in `src/app/components/cmd-form-panel/cmd-form-panel.component.spec.ts`
-
-### Stream C: OperationsFormListModule (Agent C)
-
-**Files touched**: `src/app/components/operations-form-list/*` only
-
-- [x] T034 [P] Create `OperationsFormListModule` importing `AppDropdownModule`, `CommonModule` in `src/app/components/operations-form-list/operations-form-list.module.ts`
-- [x] T035 [P] Implement `OperationsFormListComponent` with `ControlValueAccessor` emitting `string[]` (always length 10). Input: `@Input() operationOptions: DropdownOption[]`. File: `src/app/components/operations-form-list/operations-form-list.component.ts`
-- [x] T036 [P] Create template: "OPR" heading above + `*ngFor` rendering 10 rows, each with "act N" inline label + `<app-dropdown>` in `src/app/components/operations-form-list/operations-form-list.component.html`
-- [x] T037 [P] Style: vertical list layout, heading above, consistent spacing between rows in `src/app/components/operations-form-list/operations-form-list.component.scss`
-- [x] T038 [P] Write unit tests: CVA writeValue sets all 10 dropdowns, changing dropdown at index 3 emits updated array with only index 3 changed, setDisabledState disables all 10 dropdowns in `src/app/components/operations-form-list/operations-form-list.component.spec.ts`
-
-### Stream D: StatusGridModule (Agent D)
-
-**Files touched**: `src/app/components/status-grid/*` only
-
-- [x] T039 [P] Create `StatusGridModule` importing `CommonModule` in `src/app/components/status-grid/status-grid.module.ts`
-- [x] T040 [P] Implement `StatusGridComponent` (dumb/presentational) with `@Input() gridConfig: GridConfig`, `@Input() gridRows: GridRow[]` in `src/app/components/status-grid/status-grid.component.ts`
-- [x] T041 [P] Create template: per row — label+value as plain text (outside grid), status cells in a bordered grid (no headers, no row labels) in `src/app/components/status-grid/status-grid.component.html`
-- [x] T042 [P] Style: bordered grid cells, dark background, colored dots for color-type columns, text labels for text-type columns, label+value outside grid with flex alignment in `src/app/components/status-grid/status-grid.component.scss`
-- [x] T043 [P] Write unit tests: renders correct number of rows/columns, label+value rendered outside grid, active/inactive cell indicators in `src/app/components/status-grid/status-grid.component.spec.ts`
+- [ ] R1.1 Update `GridConfig` interface to include row definitions (`{ field, label }[]`) and column definitions (`{ id, header }[]`)
+- [ ] R1.2 Update `GridColumn` interface: remove `color` and `type` fields, add `header: string`
+- [ ] R1.3 Update `RowViewModel` to use `cells: Record<string, string>` (columnId → abbreviation string, empty = blank)
+- [ ] R1.4 Rewrite `status-grid.component.html` as a `<table>` with `<thead>` (column headers: L1–R4) and `<tbody>` (rows with labels + abbreviation cells)
+- [ ] R1.5 Rewrite `status-grid.component.scss`: table styling, bordered cells, column hover (light background tint), cell click focus (border + stronger background)
+- [ ] R1.6 Remove confirmed value display — show labels only (no values column)
+- [ ] R1.7 Update `StatusGridService.applyUpdate()` to work with abbreviation-based `RowViewModel[]`
+- [ ] R1.8 Update `status-grid.component.spec.ts` and `status-grid.service.spec.ts` for new structure
 
 ---
 
-## Phase 4: Dashboard Wiring (Sequential — 1 agent)
+## Phase R2: CMD Panel Multi-Select
 
-**Goal**: Replace skeleton placeholders with real child components. `LeftPanelComponent` owns the left-column `FormGroup` and emits `formChanged` / `saved` / `cancelled`. `ConfigDashboardComponent` is a **layout orchestrator**: composes `TopBar`, `LeftPanel`, and `StatusGrid`, wires `DashboardStateService`, and implements Save/Cancel/Reset.
+**Goal**: Convert CMD dropdowns to multi-select with Side (Left/Right) and Wheel (1/2/3/4) options. Wire grid column computation from CMD selections.
 
-**Completion gate**: Full dashboard renders with real components, form interactions work end-to-end, grid updates on form changes.
+**Completion gate**: CMD panel shows two multi-select dropdowns with correct options, grid columns are L1–R4.
 
-- [ ] T044a Create `LeftPanelModule` importing `CmdFormPanelModule`, `OperationsFormListModule`, `CommonModule`, `ReactiveFormsModule` in `src/app/components/left-panel/left-panel.module.ts`
-- [ ] T044b Implement `LeftPanelComponent` — owns `FormGroup` with controls `commands` (FormControl<CommandPair>), `operations` (FormControl<string[]>), initialized from `DEFAULT_FORM_VALUE`; `@Output() formChanged`, `@Output() saved`, `@Output() cancelled`; template wires `<app-cmd-form-panel formControlName="commands">`, `<app-operations-form-list formControlName="operations">` in `src/app/components/left-panel/left-panel.component.ts` (and `.html`/`.scss`/`.spec.ts`)
-- [ ] T044 Update `ConfigDashboardModule` to import `TopBarModule`, `LeftPanelModule`, `StatusGridModule`, `ReactiveFormsModule` only (layout orchestrator — **do not** import `CmdFormPanelModule` or `OperationsFormListModule` directly; they come via `LeftPanelModule`) in `src/app/components/config-dashboard/config-dashboard.module.ts`
-- [ ] T045 Refactor `ConfigDashboardComponent` to a layout orchestrator: no `FormGroup` for `commands`/`operations` on the dashboard — those live on `LeftPanelComponent`. Coordinate `action` with `TopBar` (e.g. `FormControl<string>` or equivalent `@Input`/`@Output`). Inject `DashboardStateService`. Merge `action` with left-panel values when calling `updateFormState`. File: `src/app/components/config-dashboard/config-dashboard.component.ts`
-- [ ] T046 Replace placeholder content in template with `<app-top-bar>`, `<app-left-panel (formChanged)="..." (saved)="..." (cancelled)="...">`, `<app-status-grid [gridData]="gridData$ | async">` in `src/app/components/config-dashboard/config-dashboard.component.html`
-- [ ] T047 Implement Save logic: `onSave()` snapshots merged `DashboardFormValue` (`action` + left-panel `FormGroup` value) into `savedBaseline`, marks the involved controls pristine, and coordinates with `LeftPanelComponent` `@Output() saved` where applicable in `src/app/components/config-dashboard/config-dashboard.component.ts`
-- [ ] T048 Implement Cancel logic: `onCancel()` restores `savedBaseline` into `action` and the left-panel `FormGroup`, marks pristine, and coordinates with `LeftPanelComponent` `@Output() cancelled` where applicable in `src/app/components/config-dashboard/config-dashboard.component.ts`
-- [ ] T049 Implement Reset logic: `onReset()` resets `action` and left-panel form to `DEFAULT_FORM_VALUE` in `src/app/components/config-dashboard/config-dashboard.component.ts`
-- [ ] T050 Wire DashboardStateService: subscribe to `(formChanged)` from `<app-left-panel>` (or `valueChanges` on the left `FormGroup` exposed via output), merge with `action`, call `service.updateFormState(value)` on each change, expose `gridData$ = service.gridData$` for the template in `src/app/components/config-dashboard/config-dashboard.component.ts`
-- [ ] T051 Wire TopBar: pass current `action` to `selectedAction`, `ACTIONS` to `actionOptions`, handle `(actionChanged)` by updating `action` and `updateFormState`, handle `(resetClicked)` by calling `onReset()` in `src/app/components/config-dashboard/config-dashboard.component.html`
-- [ ] T056 Write integration tests: initial load shows all sections, changing operation dropdown updates form value via `LeftPanelComponent`, Save snapshots and Cancel restores, Reset returns to defaults, grid data updates on form changes in `src/app/components/config-dashboard/config-dashboard.component.spec.ts`
+- [ ] R2.1 Replace both `AppDropdownComponent`s in CmdPanel with `AppMultiDropdownComponent`s
+- [ ] R2.2 Define Side options (`[{ value: 'left', label: 'Left', abbr: 'L' }, { value: 'right', label: 'Right', abbr: 'R' }]`) and Wheel options (`[{ value: '1', label: '1' }, ..., { value: '4', label: '4' }]`)
+- [ ] R2.3 Update CMD value model from `{ transmission: string, driveMode: string }` to `{ sides: string[], wheels: string[] }`
+- [ ] R2.4 In `ConfigDashboardComponent`, compute grid column definitions from Side × Wheel (L1, L2, L3, L4, R1, R2, R3, R4) and pass via `@Input` to StatusGrid
+- [ ] R2.5 Update `cmd-panel.component.spec.ts`
 
 ---
 
-## Phase 5: Polish & Verify (Sequential — 1 agent)
+## Phase R3: Operations List — Specific Options per Dropdown
 
-**Goal**: Visual QA against Stitch design, verify all tests pass, production build succeeds.
+**Goal**: Replace generic driving sim options with specific per-dropdown options and labels. Each option must include an `abbr` field.
 
-**Completion gate**: All tests green, production build clean, visual match with Stitch design.
+**Completion gate**: All 11 dropdowns show correct labels and options with abbreviations.
 
-- [ ] T057 Visual QA: compare rendered dashboard against Stitch screenshot — verify spacing, colors, typography, layout proportions
-- [ ] T058 Fine-tune theme SCSS variables if any colors or spacing don't match the Stitch design
-- [ ] T059 Verify all unit tests pass by running `npx ng test --watch=false --browsers=ChromeHeadless`
-- [ ] T060 Verify production build succeeds by running `npx ng build --configuration production`
-- [ ] T061 Clean up any remaining Angular CLI boilerplate files (`src/assets/.gitkeep`, unused `src/environments/` files if not needed)
+- [ ] R3.1 Define per-dropdown option configs with `abbr` fields:
+  - Row 1 (TTM): Not Active (N/A), Real (REA), Captive (CAP)
+  - Row 2 (Weather): No (NO), Yes (YES)
+  - Row 3 (Video rec): Internal (INT), External (EXT)
+  - Row 4 (Video Type, **multi-select**): No (NO), HD (HD), 4K (4K), 8K (8K). Grid cell shows comma-separated abbreviations (e.g., "HD,4K")
+  - Row 5 (Headlights): No (NO), Yes (YES)
+  - Row 6 (PWR On/Off): On (ON), Off (OFF)
+  - Row 7 (Force): Normal (NRM), Force F (FRC), Force No (FNO)
+  - Row 8 (Stability): No (NO), Yes (YES)
+  - Row 9 (Cruise Ctrl): No (NO), Yes (YES)
+  - Row 10 (PLR): No (NO), Yes (YES)
+  - Row 11 (AUX): No (NO), Yes (YES)
+- [ ] R3.2 Update dropdown 4 to use `AppMultiDropdownComponent`. Revert dropdowns 1 and 2 from multi-select back to single-select (they were made multi-select in driving sim phase but now only dropdown 4 is multi-select)
+- [ ] R3.3 Assign specific labels to all 11 dropdowns (TTM, Weather, Video rec, Video Type, Headlights, PWR On/Off, Force, Stability, Cruise Ctrl, PLR, AUX)
+- [ ] R3.4 Update `OperationsValue` interface keys to match new labels: `ttm`, `weather`, `videoRec`, `videoType`, `headlights`, `pwrOnOff`, `force`, `stability`, `cruiseCtrl`, `plr`, `aux`
+- [ ] R3.5 Update default values in `dashboard-defaults.ts`
+- [ ] R3.6 Update `operations-list.component.spec.ts`
 
-**Note**: Phase 2.5 replaced the AppDropdown demo page with the dashboard skeleton. If the demo is still needed for reference, it can be restored on a separate route during this phase.
+---
+
+## Phase R4: Top Bar + Footer Changes
+
+**Goal**: Remove Reset button from top bar. Add Default button to footer next to Cancel/Save.
+
+**Completion gate**: Top bar has Scenario dropdown only. Footer has Default + Cancel + Save. Default resets left panel only.
+
+- [ ] R4.1 Remove Reset button and `resetClicked` output from `TopBarComponent`
+- [ ] R4.2 Add Default button to `LeftPanelComponent` footer (next to Cancel and Save)
+- [ ] R4.3 Add `@Output() defaultClicked` to `LeftPanelComponent`
+- [ ] R4.4 Handle `defaultClicked` in `ConfigDashboardComponent` — call `DashboardStateService.resetToDefaults()` for left panel only (do NOT call `StatusGridService.resetToDefaults()`)
+- [ ] R4.5 Remove `onReset()` handling from TopBar wiring in `ConfigDashboardComponent`
+- [ ] R4.6 Update `top-bar.component.spec.ts`, `left-panel.component.spec.ts`, `config-dashboard.component.spec.ts`
+
+---
+
+## Phase R5: Testing & Naming Infrastructure
+
+**Goal**: Add `data-testid` attributes to all dropdowns/options. Create centralized label dictionary for naming swap.
+
+**Completion gate**: All dropdowns and options have `data-testid`. Label dictionary exists and is used by components.
+
+- [ ] R5.1 Add `[attr.data-testid]` binding to `AppDropdownComponent` template (on the `mat-select` element)
+- [ ] R5.2 Add `[attr.data-testid]` binding to `AppMultiDropdownComponent` template
+- [ ] R5.3 Add `[attr.data-testid]` to each `mat-option` element in both dropdown components (e.g., `data-testid="option-{value}"`)
+- [ ] R5.4 Create centralized label dictionary (`src/app/labels/labels.ts` or similar) — a flat key-value map
+- [ ] R5.5 Update all components to source user-facing text from the dictionary
+- [ ] R5.6 Document the naming swap process (how to provide an alternate dictionary for confidential deployment)
+
+---
+
+## Phase R6: Backend Update
+
+**Goal**: Update the Node.js server and Angular services for the new payload format and abbreviation-based grid updates.
+
+**Completion gate**: POST payload uses new structure, WebSocket emits abbreviation-based FieldUpdate messages, grid updates correctly.
+
+**Prerequisites**: R1 + R2 + R3 (finalized models and interfaces)
+
+- [ ] R6.1 Update `DashboardState` interface in `server/src/models.ts` for new CMD structure (`sides: string[], wheels: string[]` instead of `transmission`/`driveMode`)
+- [ ] R6.2 Update `FieldUpdate` interface to carry abbreviation strings per column (e.g., `cells: Record<string, string>`)
+- [ ] R6.3 Update `processConfig` in `server/src/simulation-engine.ts` to generate abbreviation-based updates for affected wheels
+- [ ] R6.4 Update Angular `DashboardStateService` to construct and POST the new payload format
+- [ ] R6.5 Update `StatusGridService` to process new `FieldUpdate` format and update `RowViewModel[]`
+- [ ] R6.6 Update service unit tests
+
+---
+
+## Phase R7: Polish & Verify
+
+**Goal**: End-to-end verification, visual QA, all tests pass.
+
+**Completion gate**: All features work end-to-end, all tests green, production build clean.
+
+**Prerequisites**: All previous phases complete.
+
+- [ ] R7.1 Visual QA — verify grid table rendering, column headers, abbreviation cells, hover/focus
+- [ ] R7.2 Verify disabled state on "Realtime" scenario selection
+- [ ] R7.3 Verify Default button resets left panel only (right panel unchanged)
+- [ ] R7.4 Verify all unit tests pass (`npx ng test --watch=false --browsers=ChromeHeadless`)
+- [ ] R7.5 Verify production build (`npx ng build --configuration production`)
+- [ ] R7.6 End-to-end test: save → WS → grid update with abbreviations for selected wheels
+- [ ] R7.7 Verify `data-testid` attributes present on all dropdowns and options
 
 ---
 
 ## Dependency Graph
 
 ```
-Phase 1 (Setup)
-  │
-  ├──► Phase 2 Stream A (AppDropdown)  ──┐
-  ├──► Phase 2 Stream B (Models+Service) ─┼──► Phase 2.5 (Skeleton) ──┐
-  └──► Phase 2 Stream C (Theme)  ────────┘                            │
-                                                                       │
-  Phase 2 Stream A (AppDropdown) ──► Phase 3 Streams A,B,C,D ─────────┼──► Phase 4 ──► Phase 5
-  Phase 2 Stream B (Models)      ──► Phase 3 Stream D (Grid)          │    (Wiring)    (Polish)
-                                          (all 4 parallel)   ─────────┘
+Phase R1 (Grid Redesign)    ──┐
+Phase R2 (CMD Multi-Select) ──┼──► Phase R6 (Backend) ──► Phase R7 (Polish)
+Phase R3 (Operations Options)─┤
+Phase R4 (Top Bar + Footer) ──┘
+Phase R5 (Infrastructure)  ───┘
 ```
 
-**Critical path**: Phase 1 → Phase 2A (AppDropdown) → Phase 3 (any component using it) → Phase 4 → Phase 5
-
-**Parallel opportunities**:
-- Phase 2: 3 streams fully parallel (T008b-T013 || T014-T018 || T019-T023)
-- Phase 2.5: Sequential (T070-T075), can run in parallel with Phase 3 if skeleton is ready
-- Phase 3: 4 streams fully parallel (T024-T028 || T028b-T033 || T034-T038 || T039-T043)
-
-**Note**: Phase 2.5 (skeleton) and Phase 3 (components) can overlap — the skeleton only needs Phase 2 complete, not Phase 3. However, Phase 4 (wiring) requires both.
-
----
-
-## Parallel Execution Examples
-
-### Phase 2 — Launch 3 agents simultaneously:
-
-```
-Agent A (start immediately): T008b → T009 → T010 → T011 → T012 → T013
-Agent B (start immediately): T014 → T015 → T015b → T016 → T017 → T018
-Agent C (start immediately): T019 → T020 → T021 → T022 → T023
-```
-
-### Phase 2.5 — Sequential (after Phase 2 completes):
-
-```
-Agent A: T070 → T071 → T072 → T073 → T074 → T075
-```
-
-### Phase 3 — Launch 4 agents simultaneously (after Phase 2 completes, can overlap with Phase 2.5):
-
-```
-Agent A (start immediately): T024 → T025 → T026 → T027 → T028
-Agent B (start immediately): T028b → T029 → T030 → T031 → T032 → T033
-Agent C (start immediately): T034 → T035 → T036 → T037 → T038
-Agent D (start immediately): T039 → T040 → T041 → T042 → T043
-```
-
----
-
-## Implementation Strategy
-
-### MVP Scope
-
-Phase 1 (Setup) + Phase 2 (Foundation) + Phase 3 (Components) + Phase 4 (Integration) = **fully functional dashboard**
-
-Phase 5 (Polish) is incremental refinement.
-
-### Incremental Delivery Order
-
-1. **After Phase 1**: Verifiable — Angular app runs
-2. **After Phase 2**: Verifiable — AppDropdown renders standalone, service tests pass, dark theme visible
-3. **After Phase 2.5**: Verifiable — Dashboard skeleton renders with two-panel layout and placeholder content
-4. **After Phase 3**: Verifiable — each component renders in isolation with correct behavior
-5. **After Phase 4**: Verifiable — full dashboard works end-to-end
-6. **After Phase 5**: Verifiable — visual polish matches Stitch design, all tests green, production build clean
+**Parallel opportunities**: R1, R2, R3, R4, R5 are fully independent (different files).
 
 ---
 
@@ -247,13 +172,8 @@ Phase 5 (Polish) is incremental refinement.
 
 | Metric | Value |
 |--------|-------|
-| Total tasks | 69 |
-| Phase 1 (Setup) | 8 tasks |
-| Phase 2 (Foundation) | 17 tasks (3 parallel streams, includes co-located model tasks) |
-| Phase 2.5 (Skeleton) | 6 tasks (sequential) |
-| Phase 3 (Components) | 21 tasks (4 parallel streams, includes co-located model tasks) |
-| Phase 4 (Wiring) | 11 tasks (includes `LeftPanelModule` / `LeftPanelComponent`) |
-| Phase 5 (Polish) | 6 tasks |
-| Max parallel agents | 4 (Phase 3) |
-| Parallel tasks | 38 out of 69 (55%) |
-| Agent sessions total | ~11 across 6 phases |
+| New tasks (this revision) | 38 |
+| Phases | 7 (R1–R7) |
+| Max parallel agents | 5 (R1–R5) |
+| Critical path | R1 + R2 + R3 → R6 → R7 |
+| Previously completed tasks | All original phases (60+ tasks) |

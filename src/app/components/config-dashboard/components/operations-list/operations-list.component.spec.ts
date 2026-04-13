@@ -6,7 +6,7 @@ import { By } from '@angular/platform-browser';
 
 import { OperationsListComponent } from './operations-list.component';
 import { OperationsListModule } from './operations-list.module';
-import { DEFAULT_VEHICLE_CONTROLS, VEHICLE_CONTROL_FIELDS, VehicleControls } from './operations-list.models';
+import { DEFAULT_OPERATIONS, OPERATIONS_FIELDS, OperationsValue } from './operations-list.models';
 
 describe('OperationsListComponent', () => {
   let component: OperationsListComponent;
@@ -30,14 +30,15 @@ describe('OperationsListComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should initialize with DEFAULT_VEHICLE_CONTROLS', () => {
-    expect(component.value).toEqual(DEFAULT_VEHICLE_CONTROLS);
+  it('should initialize with DEFAULT_OPERATIONS', () => {
+    expect(component.value).toEqual(DEFAULT_OPERATIONS);
   });
 
   it('setting value input should update the component', () => {
-    const incoming: VehicleControls = {
-      terrain: ['gravel', 'sand'], weather: ['rain'], speedLimit: '60', gear: 'd', headlights: 'auto',
-      wipers: 'fast', tractionCtrl: 'off', stability: 'esc-off', cruiseCtrl: 'adaptive', brakeAssist: 'full-assist',
+    const incoming: OperationsValue = {
+      ttm: 'captive', weather: 'yes', videoRec: 'external', videoType: ['hd', '4k'],
+      headlights: 'yes', pwrOnOff: 'off', force: 'force-f', stability: 'yes',
+      cruiseCtrl: 'yes', plr: 'yes', aux: 'yes',
     };
     component.value = incoming;
     expect(component.value).toEqual(incoming);
@@ -45,52 +46,58 @@ describe('OperationsListComponent', () => {
 
   it('onControlChanged should update a single-select key and emit', () => {
     const spy = spyOn(component.changed, 'emit');
-    component.value = { ...DEFAULT_VEHICLE_CONTROLS };
+    component.value = { ...DEFAULT_OPERATIONS };
 
-    component.onControlChanged('gear', 'd');
+    component.onControlChanged('force', 'force-f');
 
-    expect(component.value.gear).toBe('d');
+    expect(component.value.force).toBe('force-f');
     expect(spy).toHaveBeenCalledTimes(1);
-    const emitted = spy.calls.mostRecent().args[0] as VehicleControls;
-    expect(emitted.gear).toBe('d');
+    const emitted = spy.calls.mostRecent().args[0] as OperationsValue;
+    expect(emitted.force).toBe('force-f');
   });
 
-  it('onControlChanged should update a multi-select key and emit', () => {
+  it('onControlChanged should update the multi-select key (videoType) and emit', () => {
     const spy = spyOn(component.changed, 'emit');
-    component.value = { ...DEFAULT_VEHICLE_CONTROLS };
+    component.value = { ...DEFAULT_OPERATIONS };
 
-    component.onControlChanged('terrain', ['gravel', 'mud']);
+    component.onControlChanged('videoType', ['hd', '4k']);
 
-    expect(component.value.terrain).toEqual(['gravel', 'mud']);
+    expect(component.value.videoType).toEqual(['hd', '4k']);
     expect(spy).toHaveBeenCalledTimes(1);
-    const emitted = spy.calls.mostRecent().args[0] as VehicleControls;
-    expect(emitted.terrain).toEqual(['gravel', 'mud']);
+    const emitted = spy.calls.mostRecent().args[0] as OperationsValue;
+    expect(emitted.videoType).toEqual(['hd', '4k']);
   });
 
-  it('disabled input should propagate to all 10 dropdowns', () => {
+  it('disabled input should propagate to all 11 dropdowns', () => {
     component.disabled = true;
     fixture.detectChanges();
 
-    const selects = fixture.debugElement.queryAll(By.css('mat-select'));
-    expect(selects.length).toBe(10);
+    const selects = fixture.debugElement.queryAll(By.directive(MatSelect));
+    expect(selects.length).toBe(11);
     selects.forEach((de) => {
       expect((de.componentInstance as MatSelect).disabled).toBe(true);
     });
   });
 
-  it('should render 10 rows with driving labels', () => {
+  it('should render 11 rows with correct labels', () => {
     const labels = fixture.nativeElement.querySelectorAll('.app-dropdown-label');
-    expect(labels.length).toBe(10);
-    const expectedLabels = VEHICLE_CONTROL_FIELDS.map(f => f.label);
-    for (let i = 0; i < 10; i++) {
+    expect(labels.length).toBe(11);
+    const expectedLabels = OPERATIONS_FIELDS.map(f => f.label);
+    for (let i = 0; i < 11; i++) {
       expect(labels[i].textContent?.trim()).toBe(expectedLabels[i]);
     }
   });
 
-  it('first two dropdowns should be multi-select', () => {
-    const selects = fixture.debugElement.queryAll(By.css('mat-select'));
-    expect((selects[0].componentInstance as MatSelect).multiple).toBe(true);
-    expect((selects[1].componentInstance as MatSelect).multiple).toBe(true);
-    expect((selects[2].componentInstance as MatSelect).multiple).toBeFalsy();
+  it('only dropdown 4 (Video Type) should be multi-select', () => {
+    const selects = fixture.debugElement.queryAll(By.directive(MatSelect));
+    expect(selects.length).toBe(11);
+    selects.forEach((de, i) => {
+      const isMulti = (de.componentInstance as MatSelect).multiple;
+      if (i === 3) {
+        expect(isMulti).toBe(true);
+      } else {
+        expect(isMulti).toBeFalsy();
+      }
+    });
   });
 });

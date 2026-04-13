@@ -4,9 +4,10 @@ import { map } from 'rxjs/operators';
 
 import { DropdownOption } from '../app-dropdown/app-dropdown.models';
 import { DashboardState, LeftPanelPayload } from './models/dashboard.models';
+import { GridConfig, RowViewModel } from './models/grid.models';
 import { DashboardStateService } from './services/dashboard-state.service';
 import { StatusGridService } from './services/status-grid.service';
-import { SCENARIOS } from '../../mocks/mock-data';
+import { SCENARIOS, DEFAULT_GRID_CONFIG } from '../../mocks/mock-data';
 
 interface DashboardViewModel {
   state: DashboardState;
@@ -21,7 +22,9 @@ interface DashboardViewModel {
 })
 export class ConfigDashboardComponent implements OnInit, OnDestroy {
   readonly scenarioOptions: DropdownOption[] = SCENARIOS;
+  readonly gridConfig: GridConfig = DEFAULT_GRID_CONFIG;
   readonly vm$: Observable<DashboardViewModel>;
+  readonly gridRows$: Observable<RowViewModel[]>;
 
   constructor(
     private readonly stateService: DashboardStateService,
@@ -33,6 +36,7 @@ export class ConfigDashboardComponent implements OnInit, OnDestroy {
         isRealtime: state.scenario === 'realtime',
       })),
     );
+    this.gridRows$ = this.gridService.gridRows$;
   }
 
   ngOnInit(): void {
@@ -47,9 +51,8 @@ export class ConfigDashboardComponent implements OnInit, OnDestroy {
     this.stateService.updateState({ ...currentState, scenario: value });
   }
 
-  onReset(): void {
+  onDefault(): void {
     this.stateService.resetToDefaults();
-    this.gridService.resetToDefaults();
   }
 
   onStateChanged(partial: LeftPanelPayload, scenario: string): void {
@@ -67,8 +70,8 @@ export class ConfigDashboardComponent implements OnInit, OnDestroy {
   private buildState(partial: LeftPanelPayload, scenario: string): DashboardState {
     return {
       scenario,
-      driveCommand: partial.driveCommand,
-      vehicleControls: partial.vehicleControls,
+      cmd: partial.cmd,
+      operations: partial.operations,
     };
   }
 }

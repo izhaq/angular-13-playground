@@ -60,8 +60,8 @@ let lastSavedState: DashboardState | null = null;
 app.post('/api/config', (req, res) => {
   const state: DashboardState = req.body;
 
-  if (!state || !state.vehicleControls) {
-    res.status(400).json({ error: 'Invalid payload: vehicleControls required' });
+  if (!state || !state.operations) {
+    res.status(400).json({ error: 'Invalid payload: operations required' });
     return;
   }
 

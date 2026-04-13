@@ -1,15 +1,15 @@
 <div class="cmd-panel">
-  <span class="cmd-panel__label">DRIVE CMD</span>
-  <app-dropdown
-    [value]="value.transmission"
-    [options]="transmissionOptions"
+  <span class="cmd-panel__label">CMD</span>
+  <app-multi-dropdown
+    [value]="value.sides"
+    [options]="sideOptions"
     [disabled]="disabled"
-    (changed)="onFieldChanged('transmission', $event)">
-  </app-dropdown>
-  <app-dropdown
-    [value]="value.driveMode"
-    [options]="driveModeOptions"
+    (changed)="onSidesChanged($event)">
+  </app-multi-dropdown>
+  <app-multi-dropdown
+    [value]="value.wheels"
+    [options]="wheelOptions"
     [disabled]="disabled"
-    (changed)="onFieldChanged('driveMode', $event)">
-  </app-dropdown>
+    (changed)="onWheelsChanged($event)">
+  </app-multi-dropdown>
 </div>

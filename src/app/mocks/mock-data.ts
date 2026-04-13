@@ -1,8 +1,9 @@
 import {
-  GridColumn,
+  GridColumnDef,
   GridConfig,
 } from '../components/config-dashboard/models/grid.models';
 import { DropdownOption } from '../components/app-dropdown/app-dropdown.models';
+import { buildGridRowDefs } from '../components/config-dashboard/models/dashboard-defaults';
 
 export const SCENARIOS: DropdownOption[] = [
   { value: 'highway-cruise', label: 'Highway Cruise' },
@@ -11,15 +12,18 @@ export const SCENARIOS: DropdownOption[] = [
   { value: 'realtime', label: 'Realtime' },
 ];
 
-export const GRID_COLUMNS: GridColumn[] = [
-  { id: 'red', label: '', type: 'color', color: '#ee7d77' },
-  { id: 'yellow', label: '', type: 'color', color: '#f0c75e' },
-  { id: 'green', label: '', type: 'color', color: '#6ecf6e' },
-  { id: 'n', label: 'N', type: 'text' },
-  { id: 'p', label: 'P', type: 'text' },
-  { id: 'l', label: 'L', type: 'text' },
+export const GRID_COLUMNS: GridColumnDef[] = [
+  { id: 'L1', header: 'L1' },
+  { id: 'L2', header: 'L2' },
+  { id: 'L3', header: 'L3' },
+  { id: 'L4', header: 'L4' },
+  { id: 'R1', header: 'R1' },
+  { id: 'R2', header: 'R2' },
+  { id: 'R3', header: 'R3' },
+  { id: 'R4', header: 'R4' },
 ];
 
 export const DEFAULT_GRID_CONFIG: GridConfig = {
+  rows: buildGridRowDefs(),
   columns: GRID_COLUMNS,
 };

@@ -2,9 +2,9 @@
   <div class="panel">
     <div class="panel__row">
       <app-cmd-panel
-        [value]="driveCommand"
+        [value]="cmd"
         [disabled]="disabled"
-        (changed)="onDriveCommandChanged($event)">
+        (changed)="onCmdChanged($event)">
       </app-cmd-panel>
     </div>
 
@@ -12,14 +12,16 @@
 
     <div class="panel__section">
       <app-operations-list
-        [value]="vehicleControls"
+        [value]="operations"
         [disabled]="disabled"
-        (changed)="onVehicleControlsChanged($event)">
+        (changed)="onOperationsChanged($event)">
       </app-operations-list>
     </div>
   </div>
 
   <footer class="panel__actions">
+    <button mat-stroked-button type="button" [disabled]="disabled" (click)="onDefault()">Default</button>
+    <span class="panel__actions-spacer"></span>
     <button mat-stroked-button type="button" [disabled]="disabled" (click)="onCancel()">Cancel</button>
     <button mat-flat-button color="primary" type="button" [disabled]="disabled" (click)="onSave()">Save</button>
   </footer>

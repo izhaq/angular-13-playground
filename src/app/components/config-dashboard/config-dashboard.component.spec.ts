@@ -8,15 +8,14 @@ import { DEFAULT_STATE } from './models/dashboard-defaults';
 import { DashboardStateService } from './services/dashboard-state.service';
 import { StatusGridService } from './services/status-grid.service';
 import { ConfigDashboardComponent } from './config-dashboard.component';
-import { DEFAULT_DRIVE_COMMAND } from './components/cmd-panel/cmd-panel.models';
-import { DEFAULT_VEHICLE_CONTROLS } from './components/operations-list/operations-list.models';
+import { DEFAULT_CMD_SELECTION } from './components/cmd-panel/cmd-panel.models';
+import { DEFAULT_OPERATIONS } from './components/operations-list/operations-list.models';
 
 @Component({ selector: 'app-top-bar', template: '' })
 class MockTopBarComponent {
   @Input() selectedScenario = '';
   @Input() scenarioOptions: unknown[] = [];
   @Output() scenarioChanged = new EventEmitter<string>();
-  @Output() resetClicked = new EventEmitter<void>();
 }
 
 @Component({ selector: 'app-left-panel', template: '' })
@@ -26,10 +25,14 @@ class MockLeftPanelComponent {
   @Output() stateChanged = new EventEmitter<LeftPanelPayload>();
   @Output() saved = new EventEmitter<LeftPanelPayload>();
   @Output() cancelled = new EventEmitter<void>();
+  @Output() defaultClicked = new EventEmitter<void>();
 }
 
 @Component({ selector: 'app-status-grid', template: '' })
-class MockStatusGridComponent {}
+class MockStatusGridComponent {
+  @Input() config: unknown;
+  @Input() rows: unknown[] = [];
+}
 
 describe('ConfigDashboardComponent', () => {
   let fixture: ComponentFixture<ConfigDashboardComponent>;
@@ -48,6 +51,7 @@ describe('ConfigDashboardComponent', () => {
 
     gridService = jasmine.createSpyObj('StatusGridService',
       ['connect', 'disconnect', 'resetToDefaults'],
+      { gridRows$: new BehaviorSubject([]).asObservable() },
     );
 
     await TestBed.configureTestingModule({
@@ -110,40 +114,40 @@ describe('ConfigDashboardComponent', () => {
     });
   });
 
-  it('onReset should call both stateService and gridService resetToDefaults', () => {
-    component.onReset();
+  it('onDefault should call stateService.resetToDefaults only (not gridService)', () => {
+    component.onDefault();
 
     expect(stateService.resetToDefaults).toHaveBeenCalledTimes(1);
-    expect(gridService.resetToDefaults).toHaveBeenCalledTimes(1);
+    expect(gridService.resetToDefaults).not.toHaveBeenCalled();
   });
 
   it('onStateChanged should call stateService.updateState with built state', () => {
     const partial: LeftPanelPayload = {
-      driveCommand: { transmission: 'sport', driveMode: 'awd' },
-      vehicleControls: DEFAULT_VEHICLE_CONTROLS,
+      cmd: { sides: ['right'], wheels: ['3', '4'] },
+      operations: DEFAULT_OPERATIONS,
     };
 
     component.onStateChanged(partial, 'highway-cruise');
 
     expect(stateService.updateState).toHaveBeenCalledWith({
       scenario: 'highway-cruise',
-      driveCommand: partial.driveCommand,
-      vehicleControls: partial.vehicleControls,
+      cmd: partial.cmd,
+      operations: partial.operations,
     });
   });
 
   it('onSaved should call stateService.saveConfig with built state', () => {
     const partial: LeftPanelPayload = {
-      driveCommand: DEFAULT_DRIVE_COMMAND,
-      vehicleControls: { ...DEFAULT_VEHICLE_CONTROLS, gear: 'd' },
+      cmd: DEFAULT_CMD_SELECTION,
+      operations: { ...DEFAULT_OPERATIONS, force: 'force-f' },
     };
 
     component.onSaved(partial, 'off-road-trail');
 
     expect(stateService.saveConfig).toHaveBeenCalledWith({
       scenario: 'off-road-trail',
-      driveCommand: partial.driveCommand,
-      vehicleControls: partial.vehicleControls,
+      cmd: partial.cmd,
+      operations: partial.operations,
     });
   });
 

@@ -47,7 +47,7 @@ Phases 0–3 from the original plan are **complete**. The following exists:
 
 ---
 
-## What Needs to Change (Delta from Current)
+## What Changed (Completed in R1–R4, R6)
 
 ### 1. CMD Panel → Multi-Select with Side/Wheel Options
 
@@ -141,7 +141,7 @@ Each option must include an `abbr` field (3-letter abbreviation for grid cells).
 
 ## Implementation Phases (Revised)
 
-### Phase R1: Grid Redesign (1 agent)
+### Phase R1: Grid Redesign (1 agent) ✅ COMPLETE
 
 Convert the status grid from flex/color-coded to native `<table>` with text abbreviations.
 
@@ -156,7 +156,7 @@ Convert the status grid from flex/color-coded to native `<table>` with text abbr
 | R1.7 | Update `StatusGridService` to emit `RowViewModel[]` with abbreviation strings | `status-grid.service.ts` |
 | R1.8 | Update unit tests for new grid structure | `status-grid.component.spec.ts`, `status-grid.service.spec.ts` |
 
-### Phase R2: CMD Panel Multi-Select (1 agent)
+### Phase R2: CMD Panel Multi-Select (1 agent) ✅ COMPLETE
 
 Convert CMD dropdowns to multi-select with Side/Wheel options.
 
@@ -168,7 +168,7 @@ Convert CMD dropdowns to multi-select with Side/Wheel options.
 | R2.4 | Wire grid column computation: Side × Wheel → L1, L2, ..., R4 | `config-dashboard.component.ts` |
 | R2.5 | Update unit tests | `cmd-panel.component.spec.ts` |
 
-### Phase R3: Operations List Specific Options (1 agent)
+### Phase R3: Operations List Specific Options (1 agent) ✅ COMPLETE
 
 Replace generic driving sim options with specific per-dropdown options.
 
@@ -180,7 +180,7 @@ Replace generic driving sim options with specific per-dropdown options.
 | R3.4 | Update default values for all dropdowns | `dashboard-defaults.ts` |
 | R3.5 | Update unit tests | `operations-list.component.spec.ts` |
 
-### Phase R4: Top Bar + Footer Changes (1 agent)
+### Phase R4: Top Bar + Footer Changes (1 agent) ✅ COMPLETE
 
 Move Default button to footer, remove Reset from top bar.
 
@@ -204,9 +204,9 @@ Add `data-testid` attributes and naming abstraction layer.
 | R5.4 | Create centralized label dictionary (`labels.ts`) | New file |
 | R5.5 | Update all components to source user-facing text from the dictionary | All component files |
 
-### Phase R6: Backend Update (1 agent)
+### Phase R6: Backend Update (1 agent) ✅ COMPLETE
 
-Update server to handle new payload format and emit abbreviation-based grid updates.
+Update server to handle new payload format and emit abbreviation-based grid updates. Includes client-side abbreviation lookup via `StatusGridService`.
 
 | # | Task | Files |
 |---|------|-------|
@@ -226,21 +226,48 @@ Update server to handle new payload format and emit abbreviation-based grid upda
 | R7.4 | Test end-to-end: save → WS → grid update with abbreviations |
 | R7.5 | Verify disabled state on Realtime scenario |
 
+### Phase R8: Architecture & Code Quality Refactor (1 agent)
+
+Addresses code review findings to improve naming, file organization, service decoupling, and template type safety. Prepares grid and operations components for reuse across multiple dashboards.
+
+| # | Task | Files |
+|---|------|-------|
+| R8.1.1 | Rename `OperationsValue` → `FrequentOperationsModel` | `operations-list.models.ts`, all consumers |
+| R8.1.2 | Rename `OperationsListComponent` → `FrequentOperationsListComponent` (class, selector, folder) | `operations-list/` → `frequent-operations-list/` |
+| R8.1.3 | Update all imports, references, specs, modules | All affected files |
+| R8.1.4 | Move `DashboardViewModel` to `models/dashboard-view.model.ts` | `config-dashboard.component.ts` |
+| R8.1.5 | Rename `vm$` → `dashboardView$` | `config-dashboard.component.ts`, `.html` |
+| R8.2.1 | Move `grid.models.ts` into `status-grid/` folder | `models/grid.models.ts` |
+| R8.2.2 | Move `status-grid.service.ts` into `status-grid/` folder | `services/status-grid.service.ts` |
+| R8.2.3 | Move `status-grid.service.spec.ts` into `status-grid/` folder | `services/status-grid.service.spec.ts` |
+| R8.2.4 | Move grid builders into `status-grid/grid-defaults.ts` | `dashboard-defaults.ts` |
+| R8.2.5 | Update all import paths | All affected files |
+| R8.3.1 | Extract `AbbrLookup` + `buildAbbrLookup()` to `status-grid/abbr-lookup.ts` | `status-grid.service.ts` |
+| R8.3.2 | Make `StatusGridService` accept abbr lookup via `configure()` instead of importing `OPERATIONS_FIELDS` | `status-grid.service.ts` |
+| R8.3.3 | Have `ConfigDashboardComponent` build and pass the lookup | `config-dashboard.component.ts` |
+| R8.3.4 | Update tests for decoupled service | `status-grid.service.spec.ts` |
+| R8.4.1 | Extract WebSocket connection logic to `status-grid/ws-connection.ts` | `status-grid.service.ts` |
+| R8.4.2 | `StatusGridService` uses extracted connection utility | `status-grid.service.ts` |
+| R8.4.3 | Move `RECONNECT_DELAY_MS` to connection utility | `status-grid.service.ts` |
+| R8.4.4 | Update tests for connection extraction | `status-grid.service.spec.ts` |
+| R8.5.1 | Replace `$any()` in operations template with typed helper methods | `operations-list.component.html`, `.ts` |
+| R8.5.2 | Update component tests for typed helpers | `operations-list.component.spec.ts` |
+
 ---
 
 ## Parallelism Map
 
 ```
-Phase R1 (Grid Redesign)  ──┐
-Phase R2 (CMD Multi-Select) ─┼──► Phase R6 (Backend) ──► Phase R7 (Polish)
-Phase R3 (Operations Options)┤
-Phase R4 (Top Bar + Footer) ─┘
-Phase R5 (Infrastructure) ───┘
+Completed: R1, R2, R3, R4, R6, Code Review Fixes
+
+Remaining:
+Phase R5 (Testing & Naming) ──┐
+Phase R8 (Refactor)           ├──► Phase R7 (Polish & Verify)
+                              ┘
 ```
 
-R1, R2, R3, R4, R5 can run in parallel (different files).
-R6 depends on R1 + R2 + R3 (needs finalized models).
-R7 depends on all previous phases.
+R5 and R8 are independent and can run in parallel.
+R7 depends on both R5 and R8.
 
 ---
 
@@ -252,3 +279,5 @@ R7 depends on all previous phases.
 | `abbr` field missing from some dropdown options | Low | High | Define all `abbr` values upfront in option configs; validate at build time |
 | Multi-select abbreviation display in grid cells may overflow | Medium | Low | Truncate or use tooltip for overflow; design cells with `min-width` |
 | Naming abstraction adds indirection for simple labels | Low | Low | Keep dictionary flat and simple; avoid over-engineering |
+| R8 renaming touches many files — risk of broken imports | Medium | Medium | Run full test suite after each rename sub-task; commit incrementally |
+| Decoupling `StatusGridService` from `OPERATIONS_FIELDS` changes the initialization API | Low | Medium | Ensure `ConfigDashboardComponent` passes lookup on init; add integration test |

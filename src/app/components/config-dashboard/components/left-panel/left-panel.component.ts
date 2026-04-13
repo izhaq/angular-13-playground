@@ -24,6 +24,8 @@ import { DEFAULT_OPERATIONS } from '../operations-list/operations-list.models';
 export class LeftPanelComponent {
   @Input() set dashboardState(value: DashboardState | null) {
     if (!value) {
+      this.cmd = { ...DEFAULT_CMD_SELECTION };
+      this.operations = { ...DEFAULT_OPERATIONS };
       return;
     }
     this.cmd = value.cmd;

@@ -23,12 +23,17 @@ export class DashboardStateService {
   }
 
   saveConfig(value: DashboardState): void {
+    const previousBaseline = { ...this.savedBaseline };
     this.savedBaseline = { ...value };
     this.stateSubject.next(value);
 
     this.http.post<{ status: string }>('/api/config', value).subscribe({
       next: (res) => console.log('[DashboardStateService] Config saved:', res.status),
-      error: (err) => console.error('[DashboardStateService] Save failed:', err.message),
+      error: (err) => {
+        console.error('[DashboardStateService] Save failed:', err.message);
+        this.savedBaseline = previousBaseline;
+        this.stateSubject.next(previousBaseline);
+      },
     });
   }
 

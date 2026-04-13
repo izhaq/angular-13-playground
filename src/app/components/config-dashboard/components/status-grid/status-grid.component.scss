@@ -1,11 +1,11 @@
 @import 'variables';
 
-$cell-border: #d0d0d0;
-$header-bg: #f5f5f5;
-$cell-bg: #ffffff;
-$hover-bg: #e8e8e8;
-$focus-bg: #d6d6d6;
-$focus-border-color: $secondary-text;
+$cell-border: rgba($primary-text, 0.15);
+$header-bg: $surface-container-highest;
+$cell-bg: $surface-container;
+$hover-bg: $surface-container-high;
+$focus-bg: $surface-container-highest;
+$focus-border-color: $primary;
 
 .status-grid {
   width: 100%;
@@ -31,13 +31,13 @@ $focus-border-color: $secondary-text;
     text-align: center;
     font-weight: 600;
     font-size: 0.75rem;
-    color: $inverse-text;
+    color: $secondary-text;
     background-color: $header-bg;
     border: 1px solid $cell-border;
     transition: background-color 0.15s ease;
 
     &--hovered {
-      background-color: $hover-bg;
+      background-color: rgba($primary, 0.12);
     }
   }
 
@@ -56,18 +56,18 @@ $focus-border-color: $secondary-text;
     text-align: center;
     font-weight: 600;
     font-size: 0.75rem;
-    color: $inverse-text;
+    color: $primary-text;
     background-color: $cell-bg;
     border: 1px solid $cell-border;
     cursor: pointer;
     transition: background-color 0.15s ease, border-color 0.15s ease;
 
     &--hovered {
-      background-color: $hover-bg;
+      background-color: rgba($primary, 0.08);
     }
 
     &--focused {
-      background-color: $focus-bg;
+      background-color: rgba($primary, 0.18);
       border: 2px solid $focus-border-color;
       padding: calc(#{$spacing-xs} - 1px);
     }

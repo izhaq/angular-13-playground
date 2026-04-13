@@ -83,6 +83,28 @@ describe('DashboardStateService', () => {
     req.flush({ status: 'accepted' });
   });
 
+  it('saveConfig rolls back baseline and state on HTTP error', (done) => {
+    const originalBaseline = service.getSavedBaseline();
+
+    const modified: DashboardState = {
+      scenario: 'off-road-trail',
+      cmd: { sides: ['right'], wheels: ['3', '4'] },
+      operations: makeTestOperations(),
+    };
+
+    service.saveConfig(modified);
+
+    const req = httpMock.expectOne('/api/config');
+    req.flush('Server Error', { status: 500, statusText: 'Internal Server Error' });
+
+    expect(service.getSavedBaseline()).toEqual(originalBaseline);
+
+    service.state$.pipe(take(1)).subscribe((value) => {
+      expect(value).toEqual(originalBaseline);
+      done();
+    });
+  });
+
   it('cancelChanges restores the saved baseline', (done) => {
     const modified: DashboardState = {
       scenario: 'city-traffic',

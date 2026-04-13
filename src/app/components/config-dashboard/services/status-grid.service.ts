@@ -105,6 +105,8 @@ export class StatusGridService {
     if (rawValue.includes(',')) {
       return rawValue
         .split(',')
+        .map(part => part.trim())
+        .filter(Boolean)
         .map(part => fieldMap[part] ?? part)
         .join(',');
     }

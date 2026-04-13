@@ -9,7 +9,4 @@ export interface DashboardState {
   operations: OperationsValue;
 }
 
-export interface LeftPanelPayload {
-  cmd: CmdSelection;
-  operations: OperationsValue;
-}
+export type LeftPanelPayload = Omit<DashboardState, 'scenario'>;

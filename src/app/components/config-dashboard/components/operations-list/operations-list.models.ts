@@ -23,13 +23,13 @@ export interface OperationsFieldConfig {
   multi?: boolean;
 }
 
-const TTM_OPTIONS: DropdownOption[] = [
+const  TTM_OPTIONS: DropdownOption[] = [
   { value: 'not-active', label: 'Not Active', abbr: 'N/A' },
   { value: 'real', label: 'Real', abbr: 'REA' },
   { value: 'captive', label: 'Captive', abbr: 'CAP' },
 ];
 
-const WEATHER_OPTIONS: DropdownOption[] = [
+const YES_NO_OPTIONS: DropdownOption[] = [
   { value: 'no', label: 'No', abbr: 'NO' },
   { value: 'yes', label: 'Yes', abbr: 'YES' },
 ];
@@ -46,11 +46,6 @@ const VIDEO_TYPE_OPTIONS: DropdownOption[] = [
   { value: '8k', label: '8K', abbr: '8K' },
 ];
 
-const HEADLIGHTS_OPTIONS: DropdownOption[] = [
-  { value: 'no', label: 'No', abbr: 'NO' },
-  { value: 'yes', label: 'Yes', abbr: 'YES' },
-];
-
 const PWR_ON_OFF_OPTIONS: DropdownOption[] = [
   { value: 'on', label: 'On', abbr: 'ON' },
   { value: 'off', label: 'Off', abbr: 'OFF' },
@@ -62,38 +57,18 @@ const FORCE_OPTIONS: DropdownOption[] = [
   { value: 'force-no', label: 'Force No', abbr: 'FNO' },
 ];
 
-const STABILITY_OPTIONS: DropdownOption[] = [
-  { value: 'no', label: 'No', abbr: 'NO' },
-  { value: 'yes', label: 'Yes', abbr: 'YES' },
-];
-
-const CRUISE_CTRL_OPTIONS: DropdownOption[] = [
-  { value: 'no', label: 'No', abbr: 'NO' },
-  { value: 'yes', label: 'Yes', abbr: 'YES' },
-];
-
-const PLR_OPTIONS: DropdownOption[] = [
-  { value: 'no', label: 'No', abbr: 'NO' },
-  { value: 'yes', label: 'Yes', abbr: 'YES' },
-];
-
-const AUX_OPTIONS: DropdownOption[] = [
-  { value: 'no', label: 'No', abbr: 'NO' },
-  { value: 'yes', label: 'Yes', abbr: 'YES' },
-];
-
 export const OPERATIONS_FIELDS: OperationsFieldConfig[] = [
   { key: 'ttm', label: 'TTM', options: TTM_OPTIONS },
-  { key: 'weather', label: 'Weather', options: WEATHER_OPTIONS },
+  { key: 'weather', label: 'Weather', options: YES_NO_OPTIONS },
   { key: 'videoRec', label: 'Video rec', options: VIDEO_REC_OPTIONS },
   { key: 'videoType', label: 'Video Type', options: VIDEO_TYPE_OPTIONS, multi: true },
-  { key: 'headlights', label: 'Headlights', options: HEADLIGHTS_OPTIONS },
+  { key: 'headlights', label: 'Headlights', options: YES_NO_OPTIONS },
   { key: 'pwrOnOff', label: 'PWR On/Off', options: PWR_ON_OFF_OPTIONS },
   { key: 'force', label: 'Force', options: FORCE_OPTIONS },
-  { key: 'stability', label: 'Stability', options: STABILITY_OPTIONS },
-  { key: 'cruiseCtrl', label: 'Cruise Ctrl', options: CRUISE_CTRL_OPTIONS },
-  { key: 'plr', label: 'PLR', options: PLR_OPTIONS },
-  { key: 'aux', label: 'AUX', options: AUX_OPTIONS },
+  { key: 'stability', label: 'Stability', options: YES_NO_OPTIONS },
+  { key: 'cruiseCtrl', label: 'Cruise Ctrl', options: YES_NO_OPTIONS },
+  { key: 'plr', label: 'PLR', options: YES_NO_OPTIONS },
+  { key: 'aux', label: 'AUX', options: YES_NO_OPTIONS },
 ];
 
 export const OPERATIONS_KEYS: OperationsKey[] =

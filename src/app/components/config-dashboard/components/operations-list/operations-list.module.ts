@@ -3,11 +3,11 @@ import { CommonModule } from '@angular/common';
 
 import { AppDropdownModule } from '../../../app-dropdown/app-dropdown.module';
 import { AppMultiDropdownModule } from '../../../app-multi-dropdown/app-multi-dropdown.module';
-import { OperationsListComponent } from './operations-list.component';
+import { FrequentOperationsListComponent } from './operations-list.component';
 
 @NgModule({
-  declarations: [OperationsListComponent],
+  declarations: [FrequentOperationsListComponent],
   imports: [CommonModule, AppDropdownModule, AppMultiDropdownModule],
-  exports: [OperationsListComponent],
+  exports: [FrequentOperationsListComponent],
 })
-export class OperationsListModule {}
+export class FrequentOperationsListModule {}

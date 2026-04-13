@@ -1,10 +1,11 @@
 import { TestBed } from '@angular/core/testing';
 import { take } from 'rxjs/operators';
-import { GRID_COLUMNS } from '../../../mocks/mock-data';
+import { GRID_COLUMNS } from '../../../../mocks/mock-data';
 import {
   OPERATIONS_FIELDS,
   OPERATIONS_KEYS,
-} from '../components/operations-list/operations-list.models';
+} from '../operations-list/operations-list.models';
+import { buildAbbrLookup } from './abbr-lookup';
 import { StatusGridService } from './status-grid.service';
 
 describe('StatusGridService', () => {
@@ -13,6 +14,7 @@ describe('StatusGridService', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({});
     service = TestBed.inject(StatusGridService);
+    service.configure(GRID_COLUMNS, buildAbbrLookup(OPERATIONS_FIELDS));
   });
 
   it('should be created', () => {
@@ -23,7 +25,7 @@ describe('StatusGridService', () => {
     expect(service.columnCount).toBe(GRID_COLUMNS.length);
   });
 
-  it('initial gridRows$ has correct number of rows', (done) => {
+  it('initial gridRows$ has correct number of rows after configure', (done) => {
     service.gridRows$.pipe(take(1)).subscribe((rows) => {
       expect(rows.length).toBe(OPERATIONS_FIELDS.length);
       done();

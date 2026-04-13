@@ -1,12 +1,12 @@
 import { CmdSelection } from '../components/cmd-panel/cmd-panel.models';
-import { OperationsValue } from '../components/operations-list/operations-list.models';
+import { FrequentOperationsModel } from '../components/operations-list/operations-list.models';
 
-export { CmdSelection, OperationsValue };
+export { CmdSelection, FrequentOperationsModel };
 
 export interface DashboardState {
   scenario: string;
   cmd: CmdSelection;
-  operations: OperationsValue;
+  operations: FrequentOperationsModel;
 }
 
 export type LeftPanelPayload = Omit<DashboardState, 'scenario'>;

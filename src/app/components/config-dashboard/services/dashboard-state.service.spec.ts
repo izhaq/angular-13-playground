@@ -2,10 +2,10 @@ import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { take } from 'rxjs/operators';
 import { DEFAULT_STATE } from '../models/dashboard-defaults';
-import { DashboardState, OperationsValue } from '../models/dashboard.models';
+import { DashboardState, FrequentOperationsModel } from '../models/dashboard.models';
 import { DashboardStateService } from './dashboard-state.service';
 
-function makeTestOperations(): OperationsValue {
+function makeTestOperations(): FrequentOperationsModel {
   return {
     ttm: 'captive',
     weather: 'yes',

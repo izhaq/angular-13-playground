@@ -2,7 +2,7 @@
   <ng-container *ngFor="let field of fields; trackBy: trackByKey">
     <div class="operations__row" *ngIf="field.multi; else singleTpl">
       <app-multi-dropdown
-        [value]="$any(value[field.key])"
+        [value]="getArrayValue(field.key)"
         [options]="field.options"
         [label]="field.label"
         [disabled]="disabled"
@@ -12,7 +12,7 @@
     <ng-template #singleTpl>
       <div class="operations__row">
         <app-dropdown
-          [value]="$any(value[field.key])"
+          [value]="getStringValue(field.key)"
           [options]="field.options"
           [label]="field.label"
           [disabled]="disabled"

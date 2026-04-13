@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 
-import { GridConfig, RowViewModel } from '../../models/grid.models';
+import { GridConfig, RowViewModel } from './grid.models';
 
 @Component({
   selector: 'app-status-grid',

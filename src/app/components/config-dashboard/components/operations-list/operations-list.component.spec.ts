@@ -4,20 +4,20 @@ import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { MatSelect } from '@angular/material/select';
 import { By } from '@angular/platform-browser';
 
-import { OperationsListComponent } from './operations-list.component';
-import { OperationsListModule } from './operations-list.module';
-import { DEFAULT_OPERATIONS, OPERATIONS_FIELDS, OperationsValue } from './operations-list.models';
+import { FrequentOperationsListComponent } from './operations-list.component';
+import { FrequentOperationsListModule } from './operations-list.module';
+import { DEFAULT_OPERATIONS, OPERATIONS_FIELDS, FrequentOperationsModel } from './operations-list.models';
 
-describe('OperationsListComponent', () => {
-  let component: OperationsListComponent;
-  let fixture: ComponentFixture<OperationsListComponent>;
+describe('FrequentOperationsListComponent', () => {
+  let component: FrequentOperationsListComponent;
+  let fixture: ComponentFixture<FrequentOperationsListComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [OperationsListModule, NoopAnimationsModule],
+      imports: [FrequentOperationsListModule, NoopAnimationsModule],
     }).compileComponents();
 
-    fixture = TestBed.createComponent(OperationsListComponent);
+    fixture = TestBed.createComponent(FrequentOperationsListComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });
@@ -35,7 +35,7 @@ describe('OperationsListComponent', () => {
   });
 
   it('setting value input should update the component', () => {
-    const incoming: OperationsValue = {
+    const incoming: FrequentOperationsModel = {
       ttm: 'captive', weather: 'yes', videoRec: 'external', videoType: ['hd', '4k'],
       headlights: 'yes', pwrOnOff: 'off', force: 'force-f', stability: 'yes',
       cruiseCtrl: 'yes', plr: 'yes', aux: 'yes',
@@ -52,7 +52,7 @@ describe('OperationsListComponent', () => {
 
     expect(component.value.force).toBe('force-f');
     expect(spy).toHaveBeenCalledTimes(1);
-    const emitted = spy.calls.mostRecent().args[0] as OperationsValue;
+    const emitted = spy.calls.mostRecent().args[0] as FrequentOperationsModel;
     expect(emitted.force).toBe('force-f');
   });
 
@@ -64,7 +64,7 @@ describe('OperationsListComponent', () => {
 
     expect(component.value.videoType).toEqual(['hd', '4k']);
     expect(spy).toHaveBeenCalledTimes(1);
-    const emitted = spy.calls.mostRecent().args[0] as OperationsValue;
+    const emitted = spy.calls.mostRecent().args[0] as FrequentOperationsModel;
     expect(emitted.videoType).toEqual(['hd', '4k']);
   });
 

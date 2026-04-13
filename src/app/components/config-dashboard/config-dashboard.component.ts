@@ -4,15 +4,13 @@ import { map } from 'rxjs/operators';
 
 import { DropdownOption } from '../app-dropdown/app-dropdown.models';
 import { DashboardState, LeftPanelPayload } from './models/dashboard.models';
-import { GridConfig, RowViewModel } from './models/grid.models';
+import { DashboardViewModel } from './models/dashboard-view.model';
+import { GridConfig, RowViewModel } from './components/status-grid/grid.models';
+import { buildAbbrLookup } from './components/status-grid/abbr-lookup';
 import { DashboardStateService } from './services/dashboard-state.service';
-import { StatusGridService } from './services/status-grid.service';
+import { StatusGridService } from './components/status-grid/status-grid.service';
+import { OPERATIONS_FIELDS } from './components/operations-list/operations-list.models';
 import { SCENARIOS, DEFAULT_GRID_CONFIG } from '../../mocks/mock-data';
-
-interface DashboardViewModel {
-  state: DashboardState;
-  isRealtime: boolean;
-}
 
 @Component({
   selector: 'app-config-dashboard',
@@ -23,14 +21,14 @@ interface DashboardViewModel {
 export class ConfigDashboardComponent implements OnInit, OnDestroy {
   readonly scenarioOptions: DropdownOption[] = SCENARIOS;
   readonly gridConfig: GridConfig = DEFAULT_GRID_CONFIG;
-  readonly vm$: Observable<DashboardViewModel>;
+  readonly dashboardView$: Observable<DashboardViewModel>;
   readonly gridRows$: Observable<RowViewModel[]>;
 
   constructor(
     private readonly stateService: DashboardStateService,
     private readonly gridService: StatusGridService,
   ) {
-    this.vm$ = this.stateService.state$.pipe(
+    this.dashboardView$ = this.stateService.state$.pipe(
       map((state) => ({
         state,
         isRealtime: state.scenario === 'realtime',
@@ -40,6 +38,10 @@ export class ConfigDashboardComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.gridService.configure(
+      DEFAULT_GRID_CONFIG.columns,
+      buildAbbrLookup(OPERATIONS_FIELDS),
+    );
     this.gridService.connect();
   }
 

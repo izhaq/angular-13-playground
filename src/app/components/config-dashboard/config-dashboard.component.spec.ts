@@ -6,7 +6,7 @@ import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { DashboardState, LeftPanelPayload } from './models/dashboard.models';
 import { DEFAULT_STATE } from './models/dashboard-defaults';
 import { DashboardStateService } from './services/dashboard-state.service';
-import { StatusGridService } from './services/status-grid.service';
+import { StatusGridService } from './components/status-grid/status-grid.service';
 import { ConfigDashboardComponent } from './config-dashboard.component';
 import { DEFAULT_CMD_SELECTION } from './components/cmd-panel/cmd-panel.models';
 import { DEFAULT_OPERATIONS } from './components/operations-list/operations-list.models';
@@ -50,7 +50,7 @@ describe('ConfigDashboardComponent', () => {
     );
 
     gridService = jasmine.createSpyObj('StatusGridService',
-      ['connect', 'disconnect', 'resetToDefaults'],
+      ['connect', 'disconnect', 'resetToDefaults', 'configure'],
       { gridRows$: new BehaviorSubject([]).asObservable() },
     );
 
@@ -77,7 +77,8 @@ describe('ConfigDashboardComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should call gridService.connect on init', () => {
+  it('should call gridService.configure and connect on init', () => {
+    expect(gridService.configure).toHaveBeenCalledTimes(1);
     expect(gridService.connect).toHaveBeenCalledTimes(1);
   });
 
@@ -86,19 +87,19 @@ describe('ConfigDashboardComponent', () => {
     expect(gridService.disconnect).toHaveBeenCalledTimes(1);
   });
 
-  it('vm$ should emit state and isRealtime false for non-realtime scenario', (done) => {
-    component.vm$.subscribe(vm => {
+  it('dashboardView$ should emit state and isRealtime false for non-realtime scenario', (done) => {
+    component.dashboardView$.subscribe(vm => {
       expect(vm.state).toEqual(DEFAULT_STATE);
       expect(vm.isRealtime).toBe(false);
       done();
     });
   });
 
-  it('vm$ should emit isRealtime true when scenario is realtime', (done) => {
+  it('dashboardView$ should emit isRealtime true when scenario is realtime', (done) => {
     const realtimeState: DashboardState = { ...DEFAULT_STATE, scenario: 'realtime' };
     stateSubject.next(realtimeState);
 
-    component.vm$.subscribe(vm => {
+    component.dashboardView$.subscribe(vm => {
       expect(vm.isRealtime).toBe(true);
       done();
     });

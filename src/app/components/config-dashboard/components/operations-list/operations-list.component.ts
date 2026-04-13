@@ -3,29 +3,37 @@ import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from 
 import {
   DEFAULT_OPERATIONS,
   OPERATIONS_FIELDS,
-  OperationsKey,
-  OperationsValue,
+  FrequentOperationsKey,
+  FrequentOperationsModel,
 } from './operations-list.models';
 
 @Component({
-  selector: 'app-operations-list',
+  selector: 'app-frequent-operations-list',
   templateUrl: './operations-list.component.html',
   styleUrls: ['./operations-list.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class OperationsListComponent {
+export class FrequentOperationsListComponent {
   readonly fields = OPERATIONS_FIELDS;
 
-  @Input() value: OperationsValue = { ...DEFAULT_OPERATIONS };
+  @Input() value: FrequentOperationsModel = { ...DEFAULT_OPERATIONS };
   @Input() disabled = false;
 
-  @Output() changed = new EventEmitter<OperationsValue>();
+  @Output() changed = new EventEmitter<FrequentOperationsModel>();
 
   trackByKey(_: number, field: { key: string }): string {
     return field.key;
   }
 
-  onControlChanged(key: OperationsKey, newValue: string | string[]): void {
+  getStringValue(key: FrequentOperationsKey): string {
+    return this.value[key] as string;
+  }
+
+  getArrayValue(key: FrequentOperationsKey): string[] {
+    return this.value[key] as string[];
+  }
+
+  onControlChanged(key: FrequentOperationsKey, newValue: string | string[]): void {
     this.value = { ...this.value, [key]: newValue };
     this.changed.emit(this.value);
   }

@@ -1,4 +1,4 @@
-<div class="dashboard" *ngIf="vm$ | async as vm">
+<div class="dashboard" *ngIf="dashboardView$ | async as vm">
   <header class="dashboard__topbar">
     <app-top-bar
       [selectedScenario]="vm.state.scenario"

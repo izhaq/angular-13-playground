@@ -10,7 +10,7 @@ import {
   CmdSelection,
   DashboardState,
   LeftPanelPayload,
-  OperationsValue,
+  FrequentOperationsModel,
 } from '../../models/dashboard.models';
 import { DEFAULT_CMD_SELECTION } from '../cmd-panel/cmd-panel.models';
 import { DEFAULT_OPERATIONS } from '../operations-list/operations-list.models';
@@ -40,14 +40,14 @@ export class LeftPanelComponent {
   @Output() defaultClicked = new EventEmitter<void>();
 
   cmd: CmdSelection = { ...DEFAULT_CMD_SELECTION };
-  operations: OperationsValue = { ...DEFAULT_OPERATIONS };
+  operations: FrequentOperationsModel = { ...DEFAULT_OPERATIONS };
 
   onCmdChanged(value: CmdSelection): void {
     this.cmd = value;
     this.stateChanged.emit(this.buildPayload());
   }
 
-  onOperationsChanged(value: OperationsValue): void {
+  onOperationsChanged(value: FrequentOperationsModel): void {
     this.operations = value;
     this.stateChanged.emit(this.buildPayload());
   }

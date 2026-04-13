@@ -4,7 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { By } from '@angular/platform-browser';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 
-import { CmdSelection, DashboardState, LeftPanelPayload, OperationsValue } from '../../models/dashboard.models';
+import { CmdSelection, DashboardState, LeftPanelPayload, FrequentOperationsModel } from '../../models/dashboard.models';
 import { DEFAULT_CMD_SELECTION } from '../cmd-panel/cmd-panel.models';
 import { DEFAULT_OPERATIONS } from '../operations-list/operations-list.models';
 import { LeftPanelComponent } from './left-panel.component';
@@ -16,11 +16,11 @@ class MockCmdPanelComponent {
   @Output() changed = new EventEmitter<CmdSelection>();
 }
 
-@Component({ selector: 'app-operations-list', template: '' })
-class MockOperationsListComponent {
-  @Input() value!: OperationsValue;
+@Component({ selector: 'app-frequent-operations-list', template: '' })
+class MockFrequentOperationsListComponent {
+  @Input() value!: FrequentOperationsModel;
   @Input() disabled = false;
-  @Output() changed = new EventEmitter<OperationsValue>();
+  @Output() changed = new EventEmitter<FrequentOperationsModel>();
 }
 
 function buildTestState(): DashboardState {
@@ -42,7 +42,7 @@ describe('LeftPanelComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      declarations: [LeftPanelComponent, MockCmdPanelComponent, MockOperationsListComponent],
+      declarations: [LeftPanelComponent, MockCmdPanelComponent, MockFrequentOperationsListComponent],
       imports: [MatButtonModule, NoopAnimationsModule],
     }).compileComponents();
 
@@ -99,7 +99,7 @@ describe('LeftPanelComponent', () => {
     const state = buildTestState();
     setInputAndDetect('dashboardState', state);
 
-    const opsList = fixture.debugElement.query(By.directive(MockOperationsListComponent));
+    const opsList = fixture.debugElement.query(By.directive(MockFrequentOperationsListComponent));
     expect(opsList.componentInstance.value).toEqual(state.operations);
   });
 
@@ -107,7 +107,7 @@ describe('LeftPanelComponent', () => {
     setInputAndDetect('disabled', true);
 
     const cmdPanel = fixture.debugElement.query(By.directive(MockCmdPanelComponent));
-    const opsList = fixture.debugElement.query(By.directive(MockOperationsListComponent));
+    const opsList = fixture.debugElement.query(By.directive(MockFrequentOperationsListComponent));
     expect(cmdPanel.componentInstance.disabled).toBe(true);
     expect(opsList.componentInstance.disabled).toBe(true);
   });
@@ -127,7 +127,7 @@ describe('LeftPanelComponent', () => {
 
   it('onOperationsChanged should update operations and emit stateChanged', () => {
     const spy = spyOn(component.stateChanged, 'emit');
-    const newOps: OperationsValue = { ...DEFAULT_OPERATIONS, force: 'force-f', stability: 'yes' };
+    const newOps: FrequentOperationsModel = { ...DEFAULT_OPERATIONS, force: 'force-f', stability: 'yes' };
 
     component.onOperationsChanged(newOps);
 

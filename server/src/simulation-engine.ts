@@ -30,10 +30,16 @@ function formatValue(val: string | string[]): string {
   return Array.isArray(val) ? val.join(',') : val;
 }
 
+const DEFAULT_CMD_TEST: CmdTestValue = {
+  nta: 'no',
+  tisMtrRec: 'no',
+  rideMtrRec: 'no',
+};
+
 export function processConfig(state: DashboardState): FieldUpdate[] {
   const columns = computeColumnIds(state.cmd.sides, state.cmd.wheels);
   const ops = state.operations;
-  const cmdTest = state.cmdTest;
+  const cmdTest = state.cmdTest || DEFAULT_CMD_TEST;
 
   const operationUpdates = OPERATIONS_KEYS.map((key) => {
     const cellValue = formatValue(ops[key]);

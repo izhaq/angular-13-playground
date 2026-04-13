@@ -1,6 +1,6 @@
 import { DropdownOption } from '../../../app-dropdown/app-dropdown.models';
 
-export interface OperationsValue {
+export interface FrequentOperationsModel {
   ttm: string;
   weather: string;
   videoRec: string;
@@ -14,10 +14,10 @@ export interface OperationsValue {
   aux: string;
 }
 
-export type OperationsKey = keyof OperationsValue;
+export type FrequentOperationsKey = keyof FrequentOperationsModel;
 
-export interface OperationsFieldConfig {
-  key: OperationsKey;
+export interface FrequentOperationsFieldConfig {
+  key: FrequentOperationsKey;
   label: string;
   options: DropdownOption[];
   multi?: boolean;
@@ -57,7 +57,7 @@ const FORCE_OPTIONS: DropdownOption[] = [
   { value: 'force-no', label: 'Force No', abbr: 'FNO' },
 ];
 
-export const OPERATIONS_FIELDS: OperationsFieldConfig[] = [
+export const OPERATIONS_FIELDS: FrequentOperationsFieldConfig[] = [
   { key: 'ttm', label: 'TTM', options: TTM_OPTIONS },
   { key: 'weather', label: 'Weather', options: YES_NO_OPTIONS },
   { key: 'videoRec', label: 'Video rec', options: VIDEO_REC_OPTIONS },
@@ -71,10 +71,10 @@ export const OPERATIONS_FIELDS: OperationsFieldConfig[] = [
   { key: 'aux', label: 'AUX', options: YES_NO_OPTIONS },
 ];
 
-export const OPERATIONS_KEYS: OperationsKey[] =
+export const OPERATIONS_KEYS: FrequentOperationsKey[] =
   OPERATIONS_FIELDS.map(f => f.key);
 
-export const DEFAULT_OPERATIONS: OperationsValue = {
+export const DEFAULT_OPERATIONS: FrequentOperationsModel = {
   ttm: 'not-active',
   weather: 'no',
   videoRec: 'internal',

@@ -4,7 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 
 import { LeftPanelComponent } from './left-panel.component';
 import { CmdPanelModule } from '../cmd-panel/cmd-panel.module';
-import { OperationsListModule } from '../operations-list/operations-list.module';
+import { FrequentOperationsListModule } from '../operations-list/operations-list.module';
 
 @NgModule({
   declarations: [LeftPanelComponent],
@@ -12,7 +12,7 @@ import { OperationsListModule } from '../operations-list/operations-list.module'
     CommonModule,
     MatButtonModule,
     CmdPanelModule,
-    OperationsListModule,
+    FrequentOperationsListModule,
   ],
   exports: [LeftPanelComponent],
 })

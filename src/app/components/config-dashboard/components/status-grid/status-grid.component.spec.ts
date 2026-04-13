@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 
-import { GridConfig, RowViewModel } from '../../models/grid.models';
+import { GridConfig, RowViewModel } from './grid.models';
 import { StatusGridComponent } from './status-grid.component';
 import { StatusGridModule } from './status-grid.module';
 
@@ -125,4 +125,5 @@ describe('StatusGridComponent', () => {
     expect(component.focusedCell).toEqual({ field: 'weather', columnId: 'R1' });
   });
 });
+
 

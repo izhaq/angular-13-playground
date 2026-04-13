@@ -1,6 +1,6 @@
 <div class="panel-wrapper" [class.panel-wrapper--disabled]="disabled">
   <div class="panel">
-    <div class="panel__row">
+    <div class="panel__header">
       <app-cmd-panel
         [value]="cmd"
         [disabled]="disabled"
@@ -8,29 +8,31 @@
       </app-cmd-panel>
     </div>
 
-    <div class="panel__section">
-      <app-frequent-operations-list
-        [value]="operations"
-        [disabled]="disabled"
-        (changed)="onOperationsChanged($event)">
-      </app-frequent-operations-list>
+    <div class="panel__body">
+      <div class="panel__section">
+        <app-frequent-operations-list
+          [value]="operations"
+          [disabled]="disabled"
+          (changed)="onOperationsChanged($event)">
+        </app-frequent-operations-list>
+      </div>
+
+      <hr class="panel__separator">
+
+      <div class="panel__section">
+        <app-cmd-test-panel
+          [value]="cmdTest"
+          [disabled]="disabled"
+          (changed)="onCmdTestChanged($event)">
+        </app-cmd-test-panel>
+      </div>
     </div>
 
-    <hr class="panel__separator">
-
-    <div class="panel__section">
-      <app-cmd-test-panel
-        [value]="cmdTest"
-        [disabled]="disabled"
-        (changed)="onCmdTestChanged($event)">
-      </app-cmd-test-panel>
-    </div>
+    <footer class="panel__footer">
+      <button mat-stroked-button type="button" [disabled]="disabled" (click)="onDefault()">Default</button>
+      <span class="panel__footer-spacer"></span>
+      <button mat-stroked-button type="button" [disabled]="disabled" (click)="onCancel()">Cancel</button>
+      <button mat-flat-button color="primary" type="button" [disabled]="disabled" (click)="onSave()">Save</button>
+    </footer>
   </div>
-
-  <footer class="panel__actions">
-    <button mat-stroked-button type="button" [disabled]="disabled" (click)="onDefault()">Default</button>
-    <span class="panel__actions-spacer"></span>
-    <button mat-stroked-button type="button" [disabled]="disabled" (click)="onCancel()">Cancel</button>
-    <button mat-flat-button color="primary" type="button" [disabled]="disabled" (click)="onSave()">Save</button>
-  </footer>
 </div>

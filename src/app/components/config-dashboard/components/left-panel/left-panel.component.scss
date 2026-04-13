@@ -25,16 +25,22 @@ $panel-bg: $surface-container-low;
 .panel {
   background-color: $panel-bg;
   border-radius: $border-radius;
-  padding: $spacing-lg;
+  display: flex;
+  flex-direction: column;
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
 
-  &__row {
-    display: flex;
-    align-items: flex-start;
-    gap: $spacing-md;
+  &__header {
+    flex-shrink: 0;
+    padding: $spacing-lg $spacing-lg 0;
     margin-bottom: $spacing-md;
+  }
+
+  &__body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 0 $spacing-lg;
   }
 
   &__section {
@@ -48,15 +54,16 @@ $panel-bg: $surface-container-low;
     margin: $spacing-md 0;
   }
 
-  &__actions {
+  &__footer {
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     gap: $spacing-sm;
-    margin-top: auto;
-    padding-top: $spacing-lg;
+    padding: $spacing-lg;
+    border-top: 1px solid $separator-color;
   }
 
-  &__actions-spacer {
+  &__footer-spacer {
     flex: 1;
   }
 }

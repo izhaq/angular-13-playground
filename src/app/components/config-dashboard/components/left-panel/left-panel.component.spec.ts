@@ -181,7 +181,7 @@ describe('LeftPanelComponent', () => {
   });
 
   it('should render three footer buttons: Default, Cancel, Save', () => {
-    const buttons = fixture.nativeElement.querySelectorAll('.panel__actions button');
+    const buttons = fixture.nativeElement.querySelectorAll('.panel__footer button');
     expect(buttons.length).toBe(3);
     expect(buttons[0].textContent.trim()).toBe('Default');
     expect(buttons[1].textContent.trim()).toBe('Cancel');

@@ -7,6 +7,8 @@ import { FrequentCmdsTabModule } from './components/frequent-cmds-tab/frequent-c
 import { RareCmdsTabModule } from './components/rare-cmds-tab/rare-cmds-tab.module';
 import { DashboardWrapperComponent } from './dashboard-wrapper.component';
 
+import { TestIdDirectiveModule } from '../../shared/directives/test-id.module';
+
 @NgModule({
   declarations: [DashboardWrapperComponent],
   imports: [
@@ -15,6 +17,7 @@ import { DashboardWrapperComponent } from './dashboard-wrapper.component';
     TopBarModule,
     FrequentCmdsTabModule,
     RareCmdsTabModule,
+    TestIdDirectiveModule,
   ],
   exports: [DashboardWrapperComponent],
 })

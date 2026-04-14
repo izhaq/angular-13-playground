@@ -15,6 +15,7 @@ export class AppMultiDropdownComponent implements DropdownHost<string[]> {
   @Input() label = '';
   @Input() placeholder = '';
   @Input() disabled = false;
+  @Input() testId = '';
 
   @Output() changed = new EventEmitter<string[]>();
 

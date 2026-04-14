@@ -4,6 +4,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
 
 import { AppDropdownComponent } from './app-dropdown.component';
+import { TestIdDirectiveModule } from '../../shared/directives/test-id.module';
 
 @NgModule({
   declarations: [AppDropdownComponent],
@@ -11,6 +12,7 @@ import { AppDropdownComponent } from './app-dropdown.component';
     CommonModule,
     MatSelectModule,
     MatFormFieldModule,
+    TestIdDirectiveModule
   ],
   exports: [AppDropdownComponent],
 })

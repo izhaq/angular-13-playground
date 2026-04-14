@@ -1,0 +1,19 @@
+@import 'variables';
+
+:host {
+  display: block;
+  height: 100%;
+}
+
+.rare-cmds-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+
+  &__placeholder {
+    font-family: $font-family-body;
+    font-size: 1rem;
+    color: $secondary-text;
+  }
+}

@@ -1,0 +1,6 @@
+<footer class="panel-footer">
+  <button mat-stroked-button type="button" [disabled]="disabled" (click)="defaultClicked.emit()">Default</button>
+  <span class="panel-footer__spacer"></span>
+  <button mat-stroked-button type="button" [disabled]="disabled" (click)="cancelled.emit()">Cancel</button>
+  <button mat-flat-button color="primary" type="button" [disabled]="disabled" (click)="saved.emit()">Save</button>
+</footer>

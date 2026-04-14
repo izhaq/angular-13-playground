@@ -13,13 +13,13 @@ import { CMD_TEST_FIELDS } from './components/cmd-test-panel/cmd-test-panel.mode
 import { DEFAULT_GRID_CONFIG } from '../../mocks/mock-data';
 
 @Component({
-  selector: 'app-config-dashboard',
-  templateUrl: './config-dashboard.component.html',
-  styleUrls: ['./config-dashboard.component.scss'],
+  selector: 'app-frequent-cmds-tab',
+  templateUrl: './frequent-cmds-tab.component.html',
+  styleUrls: ['./frequent-cmds-tab.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [StatusGridService],
 })
-export class ConfigDashboardComponent implements OnInit, OnDestroy {
+export class FrequentCmdsTabComponent implements OnInit, OnDestroy {
   @Input() scenario = 'highway-cruise';
   @Input() isRealtime = false;
 

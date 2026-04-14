@@ -9,7 +9,7 @@ import { DashboardStateService } from './services/dashboard-state.service';
 import { WsService } from './services/ws.service';
 import { StatusGridService } from './components/status-grid/status-grid.service';
 import { FieldUpdate } from './components/status-grid/grid.models';
-import { ConfigDashboardComponent } from './config-dashboard.component';
+import { FrequentCmdsTabComponent } from './frequent-cmds-tab.component';
 import { DEFAULT_CMD_SELECTION } from './components/cmd-panel/cmd-panel.models';
 import { DEFAULT_OPERATIONS } from './components/operations-list/operations-list.models';
 import { DEFAULT_CMD_TEST } from './components/cmd-test-panel/cmd-test-panel.models';
@@ -30,9 +30,9 @@ class MockStatusGridComponent {
   @Input() rows: unknown[] = [];
 }
 
-describe('ConfigDashboardComponent', () => {
-  let fixture: ComponentFixture<ConfigDashboardComponent>;
-  let component: ConfigDashboardComponent;
+describe('FrequentCmdsTabComponent', () => {
+  let fixture: ComponentFixture<FrequentCmdsTabComponent>;
+  let component: FrequentCmdsTabComponent;
   let stateService: jasmine.SpyObj<DashboardStateService>;
   let gridService: jasmine.SpyObj<StatusGridService>;
   let wsMessageSubject: Subject<FieldUpdate>;
@@ -56,7 +56,7 @@ describe('ConfigDashboardComponent', () => {
 
     await TestBed.configureTestingModule({
       declarations: [
-        ConfigDashboardComponent,
+        FrequentCmdsTabComponent,
         MockLeftPanelComponent,
         MockStatusGridComponent,
       ],
@@ -66,12 +66,12 @@ describe('ConfigDashboardComponent', () => {
         { provide: WsService, useValue: wsService },
       ],
     })
-      .overrideComponent(ConfigDashboardComponent, {
+      .overrideComponent(FrequentCmdsTabComponent, {
         set: { providers: [{ provide: StatusGridService, useValue: gridService }] },
       })
       .compileComponents();
 
-    fixture = TestBed.createComponent(ConfigDashboardComponent);
+    fixture = TestBed.createComponent(FrequentCmdsTabComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });

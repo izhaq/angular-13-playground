@@ -15,8 +15,8 @@ class MockTopBarComponent {
   @Output() scenarioChanged = new EventEmitter<string>();
 }
 
-@Component({ selector: 'app-config-dashboard', template: '' })
-class MockConfigDashboardComponent {
+@Component({ selector: 'app-frequent-cmds-tab', template: '' })
+class MockFrequentCmdsTabComponent {
   @Input() scenario = '';
   @Input() isRealtime = false;
 }
@@ -33,7 +33,7 @@ describe('DashboardWrapperComponent', () => {
       declarations: [
         DashboardWrapperComponent,
         MockTopBarComponent,
-        MockConfigDashboardComponent,
+        MockFrequentCmdsTabComponent,
       ],
       imports: [NoopAnimationsModule, MatTabsModule],
     })
@@ -92,13 +92,13 @@ describe('DashboardWrapperComponent', () => {
     });
   });
 
-  it('should render app-config-dashboard in first tab', () => {
-    const dashboard = fixture.debugElement.query(By.directive(MockConfigDashboardComponent));
+  it('should render app-frequent-cmds-tab in first tab', () => {
+    const dashboard = fixture.debugElement.query(By.directive(MockFrequentCmdsTabComponent));
     expect(dashboard).toBeTruthy();
   });
 
-  it('should pass scenario and isRealtime to app-config-dashboard', () => {
-    const dashboard = fixture.debugElement.query(By.directive(MockConfigDashboardComponent));
+  it('should pass scenario and isRealtime to app-frequent-cmds-tab', () => {
+    const dashboard = fixture.debugElement.query(By.directive(MockFrequentCmdsTabComponent));
     expect(dashboard.componentInstance.scenario).toBe('highway-cruise');
     expect(dashboard.componentInstance.isRealtime).toBe(false);
   });

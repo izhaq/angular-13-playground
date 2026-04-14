@@ -1,17 +1,17 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
-import { ConfigDashboardComponent } from './config-dashboard.component';
+import { FrequentCmdsTabComponent } from './frequent-cmds-tab.component';
 import { LeftPanelModule } from './components/left-panel/left-panel.module';
 import { StatusGridModule } from './components/status-grid/status-grid.module';
 
 @NgModule({
-  declarations: [ConfigDashboardComponent],
+  declarations: [FrequentCmdsTabComponent],
   imports: [
     CommonModule,
     LeftPanelModule,
     StatusGridModule,
   ],
-  exports: [ConfigDashboardComponent],
+  exports: [FrequentCmdsTabComponent],
 })
-export class ConfigDashboardModule {}
+export class FrequentCmdsTabModule {}

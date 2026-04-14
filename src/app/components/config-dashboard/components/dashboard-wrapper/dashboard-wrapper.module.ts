@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { MatTabsModule } from '@angular/material/tabs';
 
 import { TopBarModule } from '../top-bar/top-bar.module';
-import { ConfigDashboardModule } from '../../config-dashboard.module';
+import { FrequentCmdsTabModule } from '../../frequent-cmds-tab.module';
 import { DashboardWrapperComponent } from './dashboard-wrapper.component';
 
 @NgModule({
@@ -12,7 +12,7 @@ import { DashboardWrapperComponent } from './dashboard-wrapper.component';
     CommonModule,
     MatTabsModule,
     TopBarModule,
-    ConfigDashboardModule,
+    FrequentCmdsTabModule,
   ],
   exports: [DashboardWrapperComponent],
 })

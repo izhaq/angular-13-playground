@@ -1,15 +1,17 @@
+import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 
 import { AppComponent } from './app.component';
-import { ConfigDashboardModule } from './components/config-dashboard/config-dashboard.module';
+
+@Component({ selector: 'app-dashboard-wrapper', template: '' })
+class MockDashboardWrapperComponent {}
 
 describe('AppComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [NoopAnimationsModule, HttpClientTestingModule, ConfigDashboardModule],
-      declarations: [AppComponent],
+      imports: [NoopAnimationsModule],
+      declarations: [AppComponent, MockDashboardWrapperComponent],
     }).compileComponents();
   });
 
@@ -19,31 +21,10 @@ describe('AppComponent', () => {
     expect(app).toBeTruthy();
   });
 
-  it('should render config dashboard', () => {
+  it('should render dashboard wrapper', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('app-config-dashboard')).toBeTruthy();
-  });
-
-  it('should render top bar', () => {
-    const fixture = TestBed.createComponent(AppComponent);
-    fixture.detectChanges();
-    const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('app-top-bar')).toBeTruthy();
-  });
-
-  it('should render left panel', () => {
-    const fixture = TestBed.createComponent(AppComponent);
-    fixture.detectChanges();
-    const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('app-left-panel')).toBeTruthy();
-  });
-
-  it('should render status grid', () => {
-    const fixture = TestBed.createComponent(AppComponent);
-    fixture.detectChanges();
-    const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('app-status-grid')).toBeTruthy();
+    expect(compiled.querySelector('app-dashboard-wrapper')).toBeTruthy();
   });
 });

@@ -12,13 +12,6 @@ import { DEFAULT_CMD_SELECTION } from './components/cmd-panel/cmd-panel.models';
 import { DEFAULT_OPERATIONS } from './components/operations-list/operations-list.models';
 import { DEFAULT_CMD_TEST } from './components/cmd-test-panel/cmd-test-panel.models';
 
-@Component({ selector: 'app-top-bar', template: '' })
-class MockTopBarComponent {
-  @Input() selectedScenario = '';
-  @Input() scenarioOptions: unknown[] = [];
-  @Output() scenarioChanged = new EventEmitter<string>();
-}
-
 @Component({ selector: 'app-left-panel', template: '' })
 class MockLeftPanelComponent {
   @Input() dashboardState: DashboardState | null = null;
@@ -58,7 +51,6 @@ describe('ConfigDashboardComponent', () => {
     await TestBed.configureTestingModule({
       declarations: [
         ConfigDashboardComponent,
-        MockTopBarComponent,
         MockLeftPanelComponent,
         MockStatusGridComponent,
       ],
@@ -81,6 +73,11 @@ describe('ConfigDashboardComponent', () => {
     expect(component).toBeTruthy();
   });
 
+  it('should default scenario to highway-cruise and isRealtime to false', () => {
+    expect(component.scenario).toBe('highway-cruise');
+    expect(component.isRealtime).toBe(false);
+  });
+
   it('should call gridService.configure and connect on init', () => {
     expect(gridService.configure).toHaveBeenCalledTimes(1);
     expect(gridService.connect).toHaveBeenCalledTimes(1);
@@ -91,34 +88,6 @@ describe('ConfigDashboardComponent', () => {
     expect(gridService.disconnect).toHaveBeenCalledTimes(1);
   });
 
-  it('dashboardView$ should emit state and isRealtime false for non-realtime scenario', (done) => {
-    component.dashboardView$.subscribe(vm => {
-      expect(vm.state).toEqual(DEFAULT_STATE);
-      expect(vm.isRealtime).toBe(false);
-      done();
-    });
-  });
-
-  it('dashboardView$ should emit isRealtime true when scenario is realtime', (done) => {
-    const realtimeState: DashboardState = { ...DEFAULT_STATE, scenario: 'realtime' };
-    stateSubject.next(realtimeState);
-
-    component.dashboardView$.subscribe(vm => {
-      expect(vm.isRealtime).toBe(true);
-      done();
-    });
-  });
-
-  it('onScenarioChanged should call stateService.updateState with updated scenario', () => {
-    const currentState = { ...DEFAULT_STATE };
-    component.onScenarioChanged('city-traffic', currentState);
-
-    expect(stateService.updateState).toHaveBeenCalledWith({
-      ...currentState,
-      scenario: 'city-traffic',
-    });
-  });
-
   it('onDefault should call stateService.resetToDefaults only (not gridService)', () => {
     component.onDefault();
 
@@ -126,31 +95,33 @@ describe('ConfigDashboardComponent', () => {
     expect(gridService.resetToDefaults).not.toHaveBeenCalled();
   });
 
-  it('onStateChanged should call stateService.updateState with built state', () => {
+  it('onStateChanged should call stateService.updateState with scenario from input', () => {
+    component.scenario = 'city-traffic';
     const partial: LeftPanelPayload = {
       cmd: { sides: ['right'], wheels: ['3', '4'] },
       operations: DEFAULT_OPERATIONS,
       cmdTest: DEFAULT_CMD_TEST,
     };
 
-    component.onStateChanged(partial, 'highway-cruise');
+    component.onStateChanged(partial);
 
     expect(stateService.updateState).toHaveBeenCalledWith({
-      scenario: 'highway-cruise',
+      scenario: 'city-traffic',
       cmd: partial.cmd,
       operations: partial.operations,
       cmdTest: partial.cmdTest,
     });
   });
 
-  it('onSaved should call stateService.saveConfig with built state', () => {
+  it('onSaved should call stateService.saveConfig with scenario from input', () => {
+    component.scenario = 'off-road-trail';
     const partial: LeftPanelPayload = {
       cmd: DEFAULT_CMD_SELECTION,
       operations: { ...DEFAULT_OPERATIONS, force: 'force-f' },
       cmdTest: { ...DEFAULT_CMD_TEST, nta: 'yes' },
     };
 
-    component.onSaved(partial, 'off-road-trail');
+    component.onSaved(partial);
 
     expect(stateService.saveConfig).toHaveBeenCalledWith({
       scenario: 'off-road-trail',
@@ -166,8 +137,10 @@ describe('ConfigDashboardComponent', () => {
     expect(stateService.cancelChanges).toHaveBeenCalledTimes(1);
   });
 
-  it('should expose SCENARIOS as scenarioOptions', () => {
-    expect(component.scenarioOptions.length).toBeGreaterThan(0);
-    expect(component.scenarioOptions.find(o => o.value === 'realtime')).toBeTruthy();
+  it('dashboardState$ should emit current state from service', (done) => {
+    component.dashboardState$.subscribe((state) => {
+      expect(state).toEqual(DEFAULT_STATE);
+      done();
+    });
   });
 });

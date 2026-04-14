@@ -1,0 +1,24 @@
+<div class="wrapper" *ngIf="{ scenario: scenario$ | async, isRealtime: isRealtime$ | async } as vm">
+  <header class="wrapper__topbar">
+    <app-top-bar
+      [selectedScenario]="vm.scenario!"
+      [scenarioOptions]="scenarioOptions"
+      (scenarioChanged)="onScenarioChanged($event)">
+    </app-top-bar>
+  </header>
+
+  <mat-tab-group class="wrapper__tabs" animationDuration="0ms">
+    <mat-tab label="Frequent CMDs">
+      <app-config-dashboard
+        [scenario]="vm.scenario!"
+        [isRealtime]="!!vm.isRealtime">
+      </app-config-dashboard>
+    </mat-tab>
+
+    <mat-tab label="Rare CMDs">
+      <div class="wrapper__placeholder">
+        <span>Rare CMDs — coming soon</span>
+      </div>
+    </mat-tab>
+  </mat-tab-group>
+</div>

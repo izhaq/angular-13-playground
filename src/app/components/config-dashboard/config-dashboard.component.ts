@@ -1,10 +1,7 @@
-import { ChangeDetectionStrategy, Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Input, OnDestroy, OnInit } from '@angular/core';
 import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
 
-import { DropdownOption } from '../app-dropdown/app-dropdown.models';
 import { DashboardState, LeftPanelPayload } from './models/dashboard.models';
-import { DashboardViewModel } from './models/dashboard-view.model';
 import { GridConfig, RowViewModel } from './components/status-grid/grid.models';
 import { buildAbbrLookup } from './components/status-grid/abbr-lookup';
 import { buildGridRowDefs } from './components/status-grid/grid-defaults';
@@ -12,7 +9,7 @@ import { DashboardStateService } from './services/dashboard-state.service';
 import { StatusGridService } from './components/status-grid/status-grid.service';
 import { OPERATIONS_FIELDS } from './components/operations-list/operations-list.models';
 import { CMD_TEST_FIELDS } from './components/cmd-test-panel/cmd-test-panel.models';
-import { SCENARIOS, DEFAULT_GRID_CONFIG } from '../../mocks/mock-data';
+import { DEFAULT_GRID_CONFIG } from '../../mocks/mock-data';
 
 @Component({
   selector: 'app-config-dashboard',
@@ -22,21 +19,18 @@ import { SCENARIOS, DEFAULT_GRID_CONFIG } from '../../mocks/mock-data';
   providers: [StatusGridService],
 })
 export class ConfigDashboardComponent implements OnInit, OnDestroy {
-  readonly scenarioOptions: DropdownOption[] = SCENARIOS;
+  @Input() scenario = 'highway-cruise';
+  @Input() isRealtime = false;
+
   readonly gridConfig: GridConfig = DEFAULT_GRID_CONFIG;
-  readonly dashboardView$: Observable<DashboardViewModel>;
+  readonly dashboardState$: Observable<DashboardState>;
   readonly gridRows$: Observable<RowViewModel[]>;
 
   constructor(
     private readonly stateService: DashboardStateService,
     private readonly gridService: StatusGridService,
   ) {
-    this.dashboardView$ = this.stateService.state$.pipe(
-      map((state) => ({
-        state,
-        isRealtime: state.scenario === 'realtime',
-      })),
-    );
+    this.dashboardState$ = this.stateService.state$;
     this.gridRows$ = this.gridService.gridRows$;
   }
 
@@ -54,29 +48,25 @@ export class ConfigDashboardComponent implements OnInit, OnDestroy {
     this.gridService.disconnect();
   }
 
-  onScenarioChanged(value: string, currentState: DashboardState): void {
-    this.stateService.updateState({ ...currentState, scenario: value });
-  }
-
   onDefault(): void {
     this.stateService.resetToDefaults();
   }
 
-  onStateChanged(partial: LeftPanelPayload, scenario: string): void {
-    this.stateService.updateState(this.buildState(partial, scenario));
+  onStateChanged(partial: LeftPanelPayload): void {
+    this.stateService.updateState(this.buildState(partial));
   }
 
-  onSaved(partial: LeftPanelPayload, scenario: string): void {
-    this.stateService.saveConfig(this.buildState(partial, scenario));
+  onSaved(partial: LeftPanelPayload): void {
+    this.stateService.saveConfig(this.buildState(partial));
   }
 
   onCancelled(): void {
     this.stateService.cancelChanges();
   }
 
-  private buildState(partial: LeftPanelPayload, scenario: string): DashboardState {
+  private buildState(partial: LeftPanelPayload) {
     return {
-      scenario,
+      scenario: this.scenario,
       cmd: partial.cmd,
       operations: partial.operations,
       cmdTest: partial.cmdTest,

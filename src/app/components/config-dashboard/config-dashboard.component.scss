@@ -4,22 +4,13 @@ $separator-color: rgba($primary-text, 0.12);
 
 :host {
   display: block;
-  height: 100vh;
+  height: 100%;
 }
 
 .dashboard {
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: $spacing-lg;
-  box-sizing: border-box;
-
-  &__topbar {
-    flex-shrink: 0;
-    padding-bottom: $spacing-md;
-    border-bottom: 1px solid $separator-color;
-    margin-bottom: $spacing-lg;
-  }
 
   &__content {
     display: flex;

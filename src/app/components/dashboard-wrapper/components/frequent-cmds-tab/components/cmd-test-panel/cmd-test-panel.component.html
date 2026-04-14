@@ -4,6 +4,7 @@
   <div class="cmd-test__rows">
     <div class="cmd-test__row" *ngFor="let field of fields; trackBy: trackByKey">
       <app-dropdown
+        [testId]="'cmd-' + field.key"
         [value]="getStringValue(field.key)"
         [options]="field.options"
         [label]="field.label"

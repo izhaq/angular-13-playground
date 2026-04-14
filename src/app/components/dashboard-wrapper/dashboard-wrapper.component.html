@@ -8,14 +8,16 @@
   </header>
 
   <mat-tab-group class="wrapper__tabs" animationDuration="0ms">
-    <mat-tab label="Frequent CMDs">
+    <mat-tab>
+      <ng-template mat-tab-label><span [appTestId]="'frequent'">Frequent CMDs</span></ng-template>
       <app-frequent-cmds-tab
         [scenario]="vm.scenario!"
         [isRealtime]="!!vm.isRealtime">
       </app-frequent-cmds-tab>
     </mat-tab>
 
-    <mat-tab label="Rare CMDs">
+    <mat-tab>
+      <ng-template mat-tab-label><span [appTestId]="'rare'">Rare CMDs</span></ng-template>
       <app-rare-cmds-tab
         [scenario]="vm.scenario!"
         [isRealtime]="!!vm.isRealtime">

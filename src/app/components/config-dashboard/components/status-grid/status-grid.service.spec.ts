@@ -7,6 +7,7 @@ import {
 } from '../operations-list/operations-list.models';
 import { CMD_TEST_FIELDS, CMD_TEST_KEYS } from '../cmd-test-panel/cmd-test-panel.models';
 import { buildAbbrLookup } from './abbr-lookup';
+import { buildGridRowDefs } from './grid-defaults';
 import { StatusGridService } from './status-grid.service';
 
 const ALL_FIELDS = [...OPERATIONS_FIELDS, ...CMD_TEST_FIELDS];
@@ -16,9 +17,11 @@ describe('StatusGridService', () => {
   let service: StatusGridService;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({});
+    TestBed.configureTestingModule({
+      providers: [StatusGridService],
+    });
     service = TestBed.inject(StatusGridService);
-    service.configure(GRID_COLUMNS, buildAbbrLookup(ALL_FIELDS));
+    service.configure(GRID_COLUMNS, buildAbbrLookup(ALL_FIELDS), buildGridRowDefs());
   });
 
   it('should be created', () => {

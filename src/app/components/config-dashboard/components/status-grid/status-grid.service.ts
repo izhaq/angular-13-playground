@@ -1,15 +1,14 @@
 import { Injectable, NgZone } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { AbbrLookup } from './abbr-lookup';
-import { FieldUpdate, GridColumnDef, RowViewModel } from './grid.models';
+import { FieldUpdate, GridColumnDef, GridRowDef, RowViewModel } from './grid.models';
 import { buildInitialGridRows } from './grid-defaults';
 import { WsConnection } from './ws-connection';
 
-@Injectable({
-  providedIn: 'root',
-})
+@Injectable()
 export class StatusGridService {
   private columns: GridColumnDef[] = [];
+  private rowDefs: GridRowDef[] = [];
   private abbrLookup: AbbrLookup = {};
   private rows: RowViewModel[] = [];
 
@@ -28,10 +27,11 @@ export class StatusGridService {
     return this.columns.length;
   }
 
-  configure(columns: GridColumnDef[], abbrLookup: AbbrLookup): void {
+  configure(columns: GridColumnDef[], abbrLookup: AbbrLookup, rowDefs: GridRowDef[]): void {
     this.columns = columns;
+    this.rowDefs = rowDefs;
     this.abbrLookup = abbrLookup;
-    this.rows = buildInitialGridRows(this.columns);
+    this.rows = buildInitialGridRows(this.columns, this.rowDefs);
     this.rowsSubject.next(this.rows);
   }
 
@@ -70,7 +70,7 @@ export class StatusGridService {
   }
 
   resetToDefaults(): void {
-    this.rows = buildInitialGridRows(this.columns);
+    this.rows = buildInitialGridRows(this.columns, this.rowDefs);
     this.rowsSubject.next(this.rows);
   }
 

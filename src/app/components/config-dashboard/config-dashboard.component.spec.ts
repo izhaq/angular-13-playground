@@ -65,9 +65,12 @@ describe('ConfigDashboardComponent', () => {
       imports: [NoopAnimationsModule],
       providers: [
         { provide: DashboardStateService, useValue: stateService },
-        { provide: StatusGridService, useValue: gridService },
       ],
-    }).compileComponents();
+    })
+      .overrideComponent(ConfigDashboardComponent, {
+        set: { providers: [{ provide: StatusGridService, useValue: gridService }] },
+      })
+      .compileComponents();
 
     fixture = TestBed.createComponent(ConfigDashboardComponent);
     component = fixture.componentInstance;

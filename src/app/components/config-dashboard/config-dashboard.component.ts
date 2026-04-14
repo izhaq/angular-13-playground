@@ -7,6 +7,7 @@ import { DashboardState, LeftPanelPayload } from './models/dashboard.models';
 import { DashboardViewModel } from './models/dashboard-view.model';
 import { GridConfig, RowViewModel } from './components/status-grid/grid.models';
 import { buildAbbrLookup } from './components/status-grid/abbr-lookup';
+import { buildGridRowDefs } from './components/status-grid/grid-defaults';
 import { DashboardStateService } from './services/dashboard-state.service';
 import { StatusGridService } from './components/status-grid/status-grid.service';
 import { OPERATIONS_FIELDS } from './components/operations-list/operations-list.models';
@@ -18,6 +19,7 @@ import { SCENARIOS, DEFAULT_GRID_CONFIG } from '../../mocks/mock-data';
   templateUrl: './config-dashboard.component.html',
   styleUrls: ['./config-dashboard.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  providers: [StatusGridService],
 })
 export class ConfigDashboardComponent implements OnInit, OnDestroy {
   readonly scenarioOptions: DropdownOption[] = SCENARIOS;
@@ -39,9 +41,11 @@ export class ConfigDashboardComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    const allFields = [...OPERATIONS_FIELDS, ...CMD_TEST_FIELDS];
     this.gridService.configure(
       DEFAULT_GRID_CONFIG.columns,
-      buildAbbrLookup([...OPERATIONS_FIELDS, ...CMD_TEST_FIELDS]),
+      buildAbbrLookup(allFields),
+      buildGridRowDefs(),
     );
     this.gridService.connect();
   }

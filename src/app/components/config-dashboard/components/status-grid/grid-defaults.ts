@@ -11,18 +11,18 @@ export function buildGridRowDefs(): GridRowDef[] {
   }));
 }
 
-export function buildInitialGridRows(columns: GridColumnDef[]): RowViewModel[] {
-  const emptyCells = (cols: GridColumnDef[]): Record<string, string> => {
-    const cells: Record<string, string> = {};
-    for (const col of cols) {
-      cells[col.id] = '';
-    }
-    return cells;
-  };
+export function buildInitialGridRows(
+  columns: GridColumnDef[],
+  rowDefs: GridRowDef[],
+): RowViewModel[] {
+  const emptyCells: Record<string, string> = {};
+  for (const col of columns) {
+    emptyCells[col.id] = '';
+  }
 
-  return ALL_GRID_FIELDS.map((field) => ({
-    field: field.key,
-    label: field.label,
-    cells: emptyCells(columns),
+  return rowDefs.map((def) => ({
+    field: def.field,
+    label: def.label,
+    cells: { ...emptyCells },
   }));
 }

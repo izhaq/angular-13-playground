@@ -90,40 +90,40 @@ All core revised phases are **complete**:
 
 ### R8.1 Rename for Domain Clarity
 
-- [ ] R8.1.1 Rename `OperationsValue` → `FrequentOperationsModel` (interface)
-- [ ] R8.1.2 Rename `OperationsListComponent` → `FrequentOperationsListComponent` (class, selector: `app-frequent-operations-list`, folder: `frequent-operations-list/`)
-- [ ] R8.1.3 Update all imports, references, spec files, and module declarations
-- [ ] R8.1.4 Rename `DashboardViewModel` → move to `models/dashboard-view.model.ts`
-- [ ] R8.1.5 Rename `vm$` → `dashboardView$` in `ConfigDashboardComponent`
+- [x] R8.1.1 Rename `OperationsValue` → `FrequentOperationsModel` (interface)
+- [x] R8.1.2 Rename `OperationsListComponent` → `FrequentOperationsListComponent` (class, selector: `app-frequent-operations-list`, folder: `frequent-operations-list/`)
+- [x] R8.1.3 Update all imports, references, spec files, and module declarations
+- [x] R8.1.4 Rename `DashboardViewModel` → move to `models/dashboard-view.model.ts`
+- [x] R8.1.5 Rename `vm$` → `dashboardView$` in `ConfigDashboardComponent`
 
 ### R8.2 Colocate Grid Files
 
-- [ ] R8.2.1 Move `models/grid.models.ts` → `components/status-grid/grid.models.ts`
-- [ ] R8.2.2 Move `services/status-grid.service.ts` → `components/status-grid/status-grid.service.ts`
-- [ ] R8.2.3 Move `services/status-grid.service.spec.ts` → `components/status-grid/status-grid.service.spec.ts`
-- [ ] R8.2.4 Move grid-specific builders (`buildInitialGridRows`, `buildGridRowDefs`) from `dashboard-defaults.ts` → `components/status-grid/grid-defaults.ts`
-- [ ] R8.2.5 Update all import paths
+- [x] R8.2.1 Move `models/grid.models.ts` → `components/status-grid/grid.models.ts`
+- [x] R8.2.2 Move `services/status-grid.service.ts` → `components/status-grid/status-grid.service.ts`
+- [x] R8.2.3 Move `services/status-grid.service.spec.ts` → `components/status-grid/status-grid.service.spec.ts`
+- [x] R8.2.4 Move grid-specific builders (`buildInitialGridRows`, `buildGridRowDefs`) from `dashboard-defaults.ts` → `components/status-grid/grid-defaults.ts`
+- [x] R8.2.5 Update all import paths
 
 ### R8.3 Decouple Grid Service from Operations
 
 The grid service currently imports `OPERATIONS_FIELDS` directly to build abbreviation lookups. This prevents reuse with a different set of fields (e.g., less-frequent operations dashboard).
 
-- [ ] R8.3.1 Extract `AbbrLookup` type and `buildAbbrLookup()` to `components/status-grid/abbr-lookup.ts`
-- [ ] R8.3.2 Make `StatusGridService` accept the abbreviation lookup via a method (e.g., `configure(abbrLookup, columns)`) instead of importing `OPERATIONS_FIELDS` internally
-- [ ] R8.3.3 Have `ConfigDashboardComponent` build and pass the lookup during initialization
-- [ ] R8.3.4 Update tests
+- [x] R8.3.1 Extract `AbbrLookup` type and `buildAbbrLookup()` to `components/status-grid/abbr-lookup.ts`
+- [x] R8.3.2 Make `StatusGridService` accept the abbreviation lookup via a method (e.g., `configure(abbrLookup, columns)`) instead of importing `OPERATIONS_FIELDS` internally
+- [x] R8.3.3 Have `ConfigDashboardComponent` build and pass the lookup during initialization
+- [x] R8.3.4 Update tests
 
 ### R8.4 Extract WebSocket Connection
 
-- [ ] R8.4.1 Extract WebSocket connection/reconnect logic to `components/status-grid/ws-connection.ts` (pure utility, not a service)
-- [ ] R8.4.2 `StatusGridService` uses the extracted connection utility
-- [ ] R8.4.3 Move `RECONNECT_DELAY_MS` to the connection utility file
-- [ ] R8.4.4 Update tests
+- [x] R8.4.1 Extract WebSocket connection/reconnect logic to `components/status-grid/ws-connection.ts` (pure utility, not a service)
+- [x] R8.4.2 `StatusGridService` uses the extracted connection utility
+- [x] R8.4.3 Move `RECONNECT_DELAY_MS` to the connection utility file
+- [x] R8.4.4 Update tests
 
 ### R8.5 Template Type Safety
 
-- [ ] R8.5.1 Replace `$any(value[field.key])` in `operations-list.component.html` with typed helper methods (`getStringValue(key)`, `getArrayValue(key)`)
-- [ ] R8.5.2 Update component tests to cover the new methods
+- [x] R8.5.1 Replace `$any(value[field.key])` in `operations-list.component.html` with typed helper methods (`getStringValue(key)`, `getArrayValue(key)`)
+- [x] R8.5.2 Update component tests to cover the new methods
 
 ---
 

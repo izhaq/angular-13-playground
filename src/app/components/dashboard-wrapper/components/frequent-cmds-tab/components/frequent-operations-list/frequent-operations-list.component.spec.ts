@@ -4,9 +4,9 @@ import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { MatSelect } from '@angular/material/select';
 import { By } from '@angular/platform-browser';
 
-import { FrequentOperationsListComponent } from './operations-list.component';
-import { FrequentOperationsListModule } from './operations-list.module';
-import { DEFAULT_OPERATIONS, OPERATIONS_FIELDS, FrequentOperationsModel } from './operations-list.models';
+import { FrequentOperationsListComponent } from './frequent-operations-list.component';
+import { FrequentOperationsListModule } from './frequent-operations-list.module';
+import { DEFAULT_OPERATIONS, OPERATIONS_FIELDS, FrequentOperationsModel } from './frequent-operations-list.models';
 
 describe('FrequentOperationsListComponent', () => {
   let component: FrequentOperationsListComponent;

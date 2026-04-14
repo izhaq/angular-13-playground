@@ -11,7 +11,7 @@ import { StatusGridService } from '../status-grid/services/status-grid.service';
 import { FieldUpdate } from '../status-grid/models/grid.models';
 import { FrequentCmdsTabComponent } from './frequent-cmds-tab.component';
 import { DEFAULT_CMD_SELECTION } from '../cmd-panel/cmd-panel.models';
-import { DEFAULT_OPERATIONS } from './components/operations-list/operations-list.models';
+import { DEFAULT_OPERATIONS } from './components/frequent-operations-list/frequent-operations-list.models';
 import { DEFAULT_CMD_TEST } from './components/cmd-test-panel/cmd-test-panel.models';
 
 @Component({ selector: 'app-left-panel', template: '' })

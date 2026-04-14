@@ -5,12 +5,12 @@ import {
   OPERATIONS_FIELDS,
   FrequentOperationsKey,
   FrequentOperationsModel,
-} from './operations-list.models';
+} from './frequent-operations-list.models';
 
 @Component({
   selector: 'app-frequent-operations-list',
-  templateUrl: './operations-list.component.html',
-  styleUrls: ['./operations-list.component.scss'],
+  templateUrl: './frequent-operations-list.component.html',
+  styleUrls: ['./frequent-operations-list.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class FrequentOperationsListComponent {

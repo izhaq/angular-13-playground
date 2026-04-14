@@ -5,8 +5,12 @@ import {
   OPERATIONS_FIELDS,
   OPERATIONS_KEYS,
 } from '../operations-list/operations-list.models';
+import { CMD_TEST_FIELDS, CMD_TEST_KEYS } from '../cmd-test-panel/cmd-test-panel.models';
 import { buildAbbrLookup } from './abbr-lookup';
 import { StatusGridService } from './status-grid.service';
+
+const ALL_FIELDS = [...OPERATIONS_FIELDS, ...CMD_TEST_FIELDS];
+const ALL_KEYS = [...OPERATIONS_KEYS, ...CMD_TEST_KEYS];
 
 describe('StatusGridService', () => {
   let service: StatusGridService;
@@ -14,7 +18,7 @@ describe('StatusGridService', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({});
     service = TestBed.inject(StatusGridService);
-    service.configure(GRID_COLUMNS, buildAbbrLookup(OPERATIONS_FIELDS));
+    service.configure(GRID_COLUMNS, buildAbbrLookup(ALL_FIELDS));
   });
 
   it('should be created', () => {
@@ -27,7 +31,7 @@ describe('StatusGridService', () => {
 
   it('initial gridRows$ has correct number of rows after configure', (done) => {
     service.gridRows$.pipe(take(1)).subscribe((rows) => {
-      expect(rows.length).toBe(OPERATIONS_FIELDS.length);
+      expect(rows.length).toBe(ALL_FIELDS.length);
       done();
     });
   });
@@ -35,8 +39,8 @@ describe('StatusGridService', () => {
   it('each initial row has correct structure with empty cells', (done) => {
     service.gridRows$.pipe(take(1)).subscribe((rows) => {
       rows.forEach((row, i) => {
-        expect(row.field).toBe(OPERATIONS_KEYS[i]);
-        expect(row.label).toBe(OPERATIONS_FIELDS[i].label);
+        expect(row.field).toBe(ALL_KEYS[i]);
+        expect(row.label).toBe(ALL_FIELDS[i].label);
         expect(Object.keys(row.cells).length).toBe(GRID_COLUMNS.length);
         GRID_COLUMNS.forEach((col) => {
           expect(row.cells[col.id]).toBe('');

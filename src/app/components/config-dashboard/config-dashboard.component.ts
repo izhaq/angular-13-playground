@@ -10,6 +10,7 @@ import { buildAbbrLookup } from './components/status-grid/abbr-lookup';
 import { DashboardStateService } from './services/dashboard-state.service';
 import { StatusGridService } from './components/status-grid/status-grid.service';
 import { OPERATIONS_FIELDS } from './components/operations-list/operations-list.models';
+import { CMD_TEST_FIELDS } from './components/cmd-test-panel/cmd-test-panel.models';
 import { SCENARIOS, DEFAULT_GRID_CONFIG } from '../../mocks/mock-data';
 
 @Component({
@@ -40,7 +41,7 @@ export class ConfigDashboardComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.gridService.configure(
       DEFAULT_GRID_CONFIG.columns,
-      buildAbbrLookup(OPERATIONS_FIELDS),
+      buildAbbrLookup([...OPERATIONS_FIELDS, ...CMD_TEST_FIELDS]),
     );
     this.gridService.connect();
   }
@@ -74,6 +75,7 @@ export class ConfigDashboardComponent implements OnInit, OnDestroy {
       scenario,
       cmd: partial.cmd,
       operations: partial.operations,
+      cmdTest: partial.cmdTest,
     };
   }
 }

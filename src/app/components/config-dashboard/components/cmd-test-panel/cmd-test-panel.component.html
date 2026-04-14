@@ -1,0 +1,15 @@
+<div class="cmd-test">
+  <span class="cmd-test__heading">CMD to test</span>
+
+  <div class="cmd-test__rows">
+    <div class="cmd-test__row" *ngFor="let field of fields; trackBy: trackByKey">
+      <app-dropdown
+        [value]="getStringValue(field.key)"
+        [options]="field.options"
+        [label]="field.label"
+        [disabled]="disabled"
+        (changed)="onControlChanged(field.key, $event)">
+      </app-dropdown>
+    </div>
+  </div>
+</div>

@@ -10,6 +10,7 @@ import { StatusGridService } from './components/status-grid/status-grid.service'
 import { ConfigDashboardComponent } from './config-dashboard.component';
 import { DEFAULT_CMD_SELECTION } from './components/cmd-panel/cmd-panel.models';
 import { DEFAULT_OPERATIONS } from './components/operations-list/operations-list.models';
+import { DEFAULT_CMD_TEST } from './components/cmd-test-panel/cmd-test-panel.models';
 
 @Component({ selector: 'app-top-bar', template: '' })
 class MockTopBarComponent {
@@ -126,6 +127,7 @@ describe('ConfigDashboardComponent', () => {
     const partial: LeftPanelPayload = {
       cmd: { sides: ['right'], wheels: ['3', '4'] },
       operations: DEFAULT_OPERATIONS,
+      cmdTest: DEFAULT_CMD_TEST,
     };
 
     component.onStateChanged(partial, 'highway-cruise');
@@ -134,6 +136,7 @@ describe('ConfigDashboardComponent', () => {
       scenario: 'highway-cruise',
       cmd: partial.cmd,
       operations: partial.operations,
+      cmdTest: partial.cmdTest,
     });
   });
 
@@ -141,6 +144,7 @@ describe('ConfigDashboardComponent', () => {
     const partial: LeftPanelPayload = {
       cmd: DEFAULT_CMD_SELECTION,
       operations: { ...DEFAULT_OPERATIONS, force: 'force-f' },
+      cmdTest: { ...DEFAULT_CMD_TEST, nta: 'yes' },
     };
 
     component.onSaved(partial, 'off-road-trail');
@@ -149,6 +153,7 @@ describe('ConfigDashboardComponent', () => {
       scenario: 'off-road-trail',
       cmd: partial.cmd,
       operations: partial.operations,
+      cmdTest: partial.cmdTest,
     });
   });
 

@@ -37,6 +37,7 @@ $dark-theme: mat.define-dark-theme((
 @include mat.all-component-themes($dark-theme);
 
 @import './styles/dropdowns';
+@import './styles/tabs';
 
 html, body {
   height: 100%;

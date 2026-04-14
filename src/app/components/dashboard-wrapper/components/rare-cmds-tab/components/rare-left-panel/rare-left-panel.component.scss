@@ -47,10 +47,4 @@ $panel-bg: $surface-container-low;
     display: flex;
     flex-direction: column;
   }
-
-  &__separator {
-    border: none;
-    border-top: 1px solid $separator-color;
-    margin: $spacing-md 0;
-  }
 }

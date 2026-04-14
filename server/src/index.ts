@@ -3,8 +3,8 @@ import cors from 'cors';
 import http from 'http';
 import { WebSocket, WebSocketServer } from 'ws';
 import path from 'path';
-import { DashboardState, FieldUpdate } from './models';
-import { processConfig } from './simulation-engine';
+import { DashboardState, FieldUpdate, RareDashboardState } from './models';
+import { processConfig, processRareConfig } from './simulation-engine';
 
 const PORT = Number(process.env['PORT'] || 3000);
 const WS_UPDATE_DELAY_MS = Number(process.env['WS_UPDATE_DELAY_MS'] || 300);
@@ -87,6 +87,38 @@ app.get('/api/config', (_req, res) => {
   }
 });
 
+let lastSavedRareState: RareDashboardState | null = null;
+
+app.post('/api/rare-config', (req, res) => {
+  const state: RareDashboardState = req.body;
+
+  if (!state || !state.rareOperations) {
+    res.status(400).json({ error: 'Invalid payload: rareOperations required' });
+    return;
+  }
+
+  lastSavedRareState = state;
+  const updates = processRareConfig(state);
+
+  console.log(`[API] POST /api/rare-config — scenario: ${state.scenario}`);
+
+  broadcast(updates);
+
+  res.json({
+    status: 'accepted',
+    updatesScheduled: updates.length,
+    scenario: state.scenario,
+  });
+});
+
+app.get('/api/rare-config', (_req, res) => {
+  if (lastSavedRareState) {
+    res.json(lastSavedRareState);
+  } else {
+    res.status(404).json({ error: 'No rare config saved yet' });
+  }
+});
+
 app.get('/api/health', (_req, res) => {
   res.json({
     status: 'ok',
@@ -110,6 +142,8 @@ server.listen(PORT, () => {
 ║   WS:    ws://localhost:${PORT}/api/ws                ║
 ║   API:   POST /api/config                        ║
 ║   API:   GET  /api/config                        ║
+║   API:   POST /api/rare-config                   ║
+║   API:   GET  /api/rare-config                   ║
 ║   API:   GET  /api/health                        ║
 ╚══════════════════════════════════════════════════╝
   `);

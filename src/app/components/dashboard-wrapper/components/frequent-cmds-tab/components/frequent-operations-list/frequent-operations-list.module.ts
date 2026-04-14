@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 
 import { AppDropdownModule } from '../../../../../app-dropdown/app-dropdown.module';
 import { AppMultiDropdownModule } from '../../../../../app-multi-dropdown/app-multi-dropdown.module';
-import { FrequentOperationsListComponent } from './operations-list.component';
+import { FrequentOperationsListComponent } from './frequent-operations-list.component';
 
 @NgModule({
   declarations: [FrequentOperationsListComponent],

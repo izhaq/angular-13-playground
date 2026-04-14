@@ -5,7 +5,7 @@ import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 
 import { CmdSelection, CmdTestModel, DashboardState, LeftPanelPayload, FrequentOperationsModel } from '../../models/dashboard.models';
 import { DEFAULT_CMD_SELECTION } from '../../../cmd-panel/cmd-panel.models';
-import { DEFAULT_OPERATIONS } from '../operations-list/operations-list.models';
+import { DEFAULT_OPERATIONS } from '../frequent-operations-list/frequent-operations-list.models';
 import { DEFAULT_CMD_TEST } from '../cmd-test-panel/cmd-test-panel.models';
 import { LeftPanelComponent } from './left-panel.component';
 

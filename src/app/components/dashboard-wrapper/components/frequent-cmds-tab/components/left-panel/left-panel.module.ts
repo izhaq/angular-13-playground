@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 
 import { LeftPanelComponent } from './left-panel.component';
 import { CmdPanelModule } from '../../../cmd-panel/cmd-panel.module';
-import { FrequentOperationsListModule } from '../operations-list/operations-list.module';
+import { FrequentOperationsListModule } from '../frequent-operations-list/frequent-operations-list.module';
 import { CmdTestPanelModule } from '../cmd-test-panel/cmd-test-panel.module';
 import { PanelFooterModule } from '../../../panel-footer/panel-footer.module';
 

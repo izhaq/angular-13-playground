@@ -8,7 +8,7 @@ import { buildGridRowDefs } from '../status-grid/models/grid-defaults';
 import { DashboardStateService } from './services/dashboard-state.service';
 import { WsService } from '../../services/ws.service';
 import { StatusGridService } from '../status-grid/services/status-grid.service';
-import { OPERATIONS_FIELDS } from './components/operations-list/operations-list.models';
+import { OPERATIONS_FIELDS } from './components/frequent-operations-list/frequent-operations-list.models';
 import { CMD_TEST_FIELDS } from './components/cmd-test-panel/cmd-test-panel.models';
 import { DEFAULT_GRID_CONFIG } from '../../../../mocks/mock-data';
 

@@ -4,7 +4,7 @@ import { GRID_COLUMNS } from '../../../../../mocks/mock-data';
 import {
   OPERATIONS_FIELDS,
   OPERATIONS_KEYS,
-} from '../../frequent-cmds-tab/components/operations-list/operations-list.models';
+} from '../../frequent-cmds-tab/components/frequent-operations-list/frequent-operations-list.models';
 import { CMD_TEST_FIELDS, CMD_TEST_KEYS } from '../../frequent-cmds-tab/components/cmd-test-panel/cmd-test-panel.models';
 import { buildAbbrLookup } from '../models/abbr-lookup';
 import { buildGridRowDefs } from '../models/grid-defaults';

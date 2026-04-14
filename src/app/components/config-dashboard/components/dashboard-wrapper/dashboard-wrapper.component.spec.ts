@@ -5,6 +5,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { By } from '@angular/platform-browser';
 
 import { DropdownOption } from '../../../app-dropdown/app-dropdown.models';
+import { WsService } from '../../services/ws.service';
 import { DashboardWrapperComponent } from './dashboard-wrapper.component';
 
 @Component({ selector: 'app-top-bar', template: '' })
@@ -23,8 +24,11 @@ class MockConfigDashboardComponent {
 describe('DashboardWrapperComponent', () => {
   let fixture: ComponentFixture<DashboardWrapperComponent>;
   let component: DashboardWrapperComponent;
+  let wsService: jasmine.SpyObj<WsService>;
 
   beforeEach(async () => {
+    wsService = jasmine.createSpyObj('WsService', ['connect', 'disconnect']);
+
     await TestBed.configureTestingModule({
       declarations: [
         DashboardWrapperComponent,
@@ -32,7 +36,11 @@ describe('DashboardWrapperComponent', () => {
         MockConfigDashboardComponent,
       ],
       imports: [NoopAnimationsModule, MatTabsModule],
-    }).compileComponents();
+    })
+      .overrideComponent(DashboardWrapperComponent, {
+        set: { providers: [{ provide: WsService, useValue: wsService }] },
+      })
+      .compileComponents();
 
     fixture = TestBed.createComponent(DashboardWrapperComponent);
     component = fixture.componentInstance;
@@ -41,6 +49,15 @@ describe('DashboardWrapperComponent', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('should call wsService.connect on init', () => {
+    expect(wsService.connect).toHaveBeenCalledTimes(1);
+  });
+
+  it('should call wsService.disconnect on destroy', () => {
+    fixture.destroy();
+    expect(wsService.disconnect).toHaveBeenCalledTimes(1);
   });
 
   it('should render app-top-bar with scenario options', () => {

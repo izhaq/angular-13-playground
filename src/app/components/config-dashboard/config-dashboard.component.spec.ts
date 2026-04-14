@@ -1,12 +1,14 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, Subject } from 'rxjs';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 
 import { DashboardState, LeftPanelPayload } from './models/dashboard.models';
 import { DEFAULT_STATE } from './models/dashboard-defaults';
 import { DashboardStateService } from './services/dashboard-state.service';
+import { WsService } from './services/ws.service';
 import { StatusGridService } from './components/status-grid/status-grid.service';
+import { FieldUpdate } from './components/status-grid/grid.models';
 import { ConfigDashboardComponent } from './config-dashboard.component';
 import { DEFAULT_CMD_SELECTION } from './components/cmd-panel/cmd-panel.models';
 import { DEFAULT_OPERATIONS } from './components/operations-list/operations-list.models';
@@ -33,10 +35,12 @@ describe('ConfigDashboardComponent', () => {
   let component: ConfigDashboardComponent;
   let stateService: jasmine.SpyObj<DashboardStateService>;
   let gridService: jasmine.SpyObj<StatusGridService>;
+  let wsMessageSubject: Subject<FieldUpdate>;
   let stateSubject: BehaviorSubject<DashboardState>;
 
   beforeEach(async () => {
     stateSubject = new BehaviorSubject<DashboardState>({ ...DEFAULT_STATE });
+    wsMessageSubject = new Subject<FieldUpdate>();
 
     stateService = jasmine.createSpyObj('DashboardStateService',
       ['updateState', 'saveConfig', 'cancelChanges', 'resetToDefaults'],
@@ -44,9 +48,11 @@ describe('ConfigDashboardComponent', () => {
     );
 
     gridService = jasmine.createSpyObj('StatusGridService',
-      ['connect', 'disconnect', 'resetToDefaults', 'configure'],
+      ['resetToDefaults', 'configure', 'applyUpdate'],
       { gridRows$: new BehaviorSubject([]).asObservable() },
     );
+
+    const wsService = { message$: wsMessageSubject.asObservable() };
 
     await TestBed.configureTestingModule({
       declarations: [
@@ -57,6 +63,7 @@ describe('ConfigDashboardComponent', () => {
       imports: [NoopAnimationsModule],
       providers: [
         { provide: DashboardStateService, useValue: stateService },
+        { provide: WsService, useValue: wsService },
       ],
     })
       .overrideComponent(ConfigDashboardComponent, {
@@ -78,14 +85,23 @@ describe('ConfigDashboardComponent', () => {
     expect(component.isRealtime).toBe(false);
   });
 
-  it('should call gridService.configure and connect on init', () => {
+  it('should call gridService.configure on init', () => {
     expect(gridService.configure).toHaveBeenCalledTimes(1);
-    expect(gridService.connect).toHaveBeenCalledTimes(1);
   });
 
-  it('should call gridService.disconnect on destroy', () => {
+  it('should forward WsService messages to gridService.applyUpdate', () => {
+    const update: FieldUpdate = { field: 'ttm', cells: { L1: 'captive' } };
+    wsMessageSubject.next(update);
+
+    expect(gridService.applyUpdate).toHaveBeenCalledWith(update);
+  });
+
+  it('should unsubscribe from WsService on destroy', () => {
+    const update: FieldUpdate = { field: 'ttm', cells: { L1: 'captive' } };
     fixture.destroy();
-    expect(gridService.disconnect).toHaveBeenCalledTimes(1);
+    wsMessageSubject.next(update);
+
+    expect(gridService.applyUpdate).not.toHaveBeenCalled();
   });
 
   it('onDefault should call stateService.resetToDefaults only (not gridService)', () => {

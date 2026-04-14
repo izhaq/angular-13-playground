@@ -1,11 +1,12 @@
 import { ChangeDetectionStrategy, Component, Input, OnDestroy, OnInit } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, Subscription } from 'rxjs';
 
 import { DashboardState, LeftPanelPayload } from './models/dashboard.models';
 import { GridConfig, RowViewModel } from './components/status-grid/grid.models';
 import { buildAbbrLookup } from './components/status-grid/abbr-lookup';
 import { buildGridRowDefs } from './components/status-grid/grid-defaults';
 import { DashboardStateService } from './services/dashboard-state.service';
+import { WsService } from './services/ws.service';
 import { StatusGridService } from './components/status-grid/status-grid.service';
 import { OPERATIONS_FIELDS } from './components/operations-list/operations-list.models';
 import { CMD_TEST_FIELDS } from './components/cmd-test-panel/cmd-test-panel.models';
@@ -26,8 +27,11 @@ export class ConfigDashboardComponent implements OnInit, OnDestroy {
   readonly dashboardState$: Observable<DashboardState>;
   readonly gridRows$: Observable<RowViewModel[]>;
 
+  private wsSub?: Subscription;
+
   constructor(
     private readonly stateService: DashboardStateService,
+    private readonly wsService: WsService,
     private readonly gridService: StatusGridService,
   ) {
     this.dashboardState$ = this.stateService.state$;
@@ -41,11 +45,13 @@ export class ConfigDashboardComponent implements OnInit, OnDestroy {
       buildAbbrLookup(allFields),
       buildGridRowDefs(),
     );
-    this.gridService.connect();
+    this.wsSub = this.wsService.message$.subscribe((update) => {
+      this.gridService.applyUpdate(update);
+    });
   }
 
   ngOnDestroy(): void {
-    this.gridService.disconnect();
+    this.wsSub?.unsubscribe();
   }
 
   onDefault(): void {

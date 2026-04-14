@@ -1,9 +1,8 @@
-import { Injectable, NgZone } from '@angular/core';
+import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { AbbrLookup } from './abbr-lookup';
 import { FieldUpdate, GridColumnDef, GridRowDef, RowViewModel } from './grid.models';
 import { buildInitialGridRows } from './grid-defaults';
-import { WsConnection } from './ws-connection';
 
 @Injectable()
 export class StatusGridService {
@@ -13,15 +12,8 @@ export class StatusGridService {
   private rows: RowViewModel[] = [];
 
   private readonly rowsSubject = new BehaviorSubject<RowViewModel[]>(this.rows);
-  private readonly wsConnection: WsConnection;
 
   readonly gridRows$ = this.rowsSubject.asObservable();
-
-  constructor(zone: NgZone) {
-    this.wsConnection = new WsConnection(zone, {
-      onMessage: (data) => this.handleMessage(data),
-    });
-  }
 
   get columnCount(): number {
     return this.columns.length;
@@ -61,26 +53,9 @@ export class StatusGridService {
     this.rowsSubject.next(this.rows);
   }
 
-  connect(): void {
-    this.wsConnection.connect();
-  }
-
-  disconnect(): void {
-    this.wsConnection.disconnect();
-  }
-
   resetToDefaults(): void {
     this.rows = buildInitialGridRows(this.columns, this.rowDefs);
     this.rowsSubject.next(this.rows);
-  }
-
-  private handleMessage(data: string): void {
-    try {
-      const update: FieldUpdate = JSON.parse(data);
-      this.applyUpdate(update);
-    } catch (err) {
-      console.error('[StatusGridService] Invalid message:', data);
-    }
   }
 
   private resolveAbbr(rawValue: string, fieldMap?: Record<string, string>): string {

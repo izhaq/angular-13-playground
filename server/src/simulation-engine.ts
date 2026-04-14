@@ -1,7 +1,8 @@
-import { CmdTestValue, DashboardState, FieldUpdate, OperationsValue } from './models';
+import { CmdTestValue, DashboardState, FieldUpdate, OperationsValue, RareDashboardState, RareOperationsValue } from './models';
 
 type OperationsKey = keyof OperationsValue;
 type CmdTestKey = keyof CmdTestValue;
+type RareOperationsKey = keyof RareOperationsValue;
 
 const SIDE_PREFIX: Record<string, string> = { left: 'L', right: 'R' };
 
@@ -60,4 +61,23 @@ export function processConfig(state: DashboardState): FieldUpdate[] {
   });
 
   return [...operationUpdates, ...cmdTestUpdates];
+}
+
+const RARE_OPERATIONS_KEYS: RareOperationsKey[] = [
+  'absCalibration', 'tractionDiag', 'steeringAlign', 'brakeBleed',
+  'suspReset', 'eepromFlash', 'canBusLog', 'tirePressInit',
+  'fuelMapSwitch', 'coolantPurge',
+];
+
+export function processRareConfig(state: RareDashboardState): FieldUpdate[] {
+  const columns = computeColumnIds(state.cmd.sides, state.cmd.wheels);
+  const ops = state.rareOperations;
+
+  return RARE_OPERATIONS_KEYS.map((key) => {
+    const cells: Record<string, string> = {};
+    for (const col of columns) {
+      cells[col] = ops[key];
+    }
+    return { field: key, cells };
+  });
 }

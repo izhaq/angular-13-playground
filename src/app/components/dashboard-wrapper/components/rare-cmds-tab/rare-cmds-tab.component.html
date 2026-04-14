@@ -1,3 +1,21 @@
-<div class="rare-cmds-tab">
-  <p class="rare-cmds-tab__placeholder">Rare CMDs &mdash; coming soon</p>
+<div class="dashboard" *ngIf="dashboardState$ | async as state">
+  <div class="dashboard__content">
+    <section class="dashboard__left">
+      <app-rare-left-panel
+        [dashboardState]="state"
+        [disabled]="isRealtime"
+        (stateChanged)="onStateChanged($event)"
+        (saved)="onSaved($event)"
+        (cancelled)="onCancelled()"
+        (defaultClicked)="onDefault()">
+      </app-rare-left-panel>
+    </section>
+
+    <main class="dashboard__right">
+      <app-status-grid
+        [config]="gridConfig"
+        [rows]="(gridRows$ | async) || []">
+      </app-status-grid>
+    </main>
+  </div>
 </div>

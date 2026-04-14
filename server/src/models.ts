@@ -30,6 +30,25 @@ export interface DashboardState {
   cmdTest: CmdTestValue;
 }
 
+export interface RareOperationsValue {
+  absCalibration: string;
+  tractionDiag: string;
+  steeringAlign: string;
+  brakeBleed: string;
+  suspReset: string;
+  eepromFlash: string;
+  canBusLog: string;
+  tirePressInit: string;
+  fuelMapSwitch: string;
+  coolantPurge: string;
+}
+
+export interface RareDashboardState {
+  scenario: string;
+  cmd: CmdSelection;
+  rareOperations: RareOperationsValue;
+}
+
 export interface FieldUpdate {
   field: string;
   cells: Record<string, string>;

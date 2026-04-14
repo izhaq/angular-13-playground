@@ -3,7 +3,7 @@ import {
   GridConfig,
 } from '../components/dashboard-wrapper/components/status-grid/models/grid.models';
 import { DropdownOption } from '../components/app-dropdown/app-dropdown.models';
-import { buildGridRowDefs } from '../components/dashboard-wrapper/components/status-grid/models/grid-defaults';
+import { buildGridRowDefs, buildRareGridRowDefs } from '../components/dashboard-wrapper/components/status-grid/models/grid-defaults';
 
 export const SCENARIOS: DropdownOption[] = [
   { value: 'highway-cruise', label: 'Highway Cruise' },
@@ -25,5 +25,10 @@ export const GRID_COLUMNS: GridColumnDef[] = [
 
 export const DEFAULT_GRID_CONFIG: GridConfig = {
   rows: buildGridRowDefs(),
+  columns: GRID_COLUMNS,
+};
+
+export const RARE_DEFAULT_GRID_CONFIG: GridConfig = {
+  rows: buildRareGridRowDefs(),
   columns: GRID_COLUMNS,
 };

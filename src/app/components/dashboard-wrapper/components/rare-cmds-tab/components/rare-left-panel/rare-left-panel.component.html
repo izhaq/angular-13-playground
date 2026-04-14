@@ -10,21 +10,11 @@
 
     <div class="panel__body">
       <div class="panel__section">
-        <app-frequent-operations-list
-          [value]="operations"
+        <app-rare-operations-list
+          [value]="rareOperations"
           [disabled]="disabled"
-          (changed)="onOperationsChanged($event)">
-        </app-frequent-operations-list>
-      </div>
-
-      <hr class="panel__separator">
-
-      <div class="panel__section">
-        <app-cmd-test-panel
-          [value]="cmdTest"
-          [disabled]="disabled"
-          (changed)="onCmdTestChanged($event)">
-        </app-cmd-test-panel>
+          (changed)="onRareOperationsChanged($event)">
+        </app-rare-operations-list>
       </div>
     </div>
 

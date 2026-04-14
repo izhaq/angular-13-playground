@@ -1,0 +1,17 @@
+@import 'variables';
+
+:host {
+  display: block;
+}
+
+.operations {
+  &__rows {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+  }
+
+  &__row {
+    width: 100%;
+  }
+}

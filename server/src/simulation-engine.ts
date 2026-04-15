@@ -59,6 +59,14 @@ const RARE_OPERATIONS_KEYS: RareOperationsKey[] = [
   'fuelMapSwitch', 'coolantPurge',
 ];
 
+const TTL_TTR_FIELDS: Set<RareOperationsKey> = new Set([
+  'steeringAlign', 'brakeBleed', 'canBusLog', 'tirePressInit',
+]);
+
+const SSL_FIELDS: Set<RareOperationsKey> = new Set([
+  'fuelMapSwitch', 'coolantPurge',
+]);
+
 function computeColumnIds(sides: string[], wheels: string[]): string[] {
   const columns: string[] = [];
   for (const side of sides) {
@@ -132,15 +140,31 @@ export function processConfig(state: DashboardState): FieldUpdate[] {
 
 export function processRareConfig(state: RareDashboardState): FieldUpdate[] {
   const columns = computeColumnIds(state.cmd.sides, state.cmd.wheels);
+  const sides = state.cmd.sides;
   const ops = state.rareOperations;
 
   return RARE_OPERATIONS_KEYS.map((key) => {
     const rawValue = ops[key];
     const abbrMap = RARE_ABBR_MAPS[key];
     const cells: Record<string, CellValue> = {};
+
     for (const col of columns) {
       cells[col] = buildCellValue(rawValue, abbrMap);
     }
+
+    if (TTL_TTR_FIELDS.has(key)) {
+      if (sides.includes('left')) {
+        cells['TTL'] = buildCellValue(rawValue, abbrMap);
+      }
+      if (sides.includes('right')) {
+        cells['TTR'] = buildCellValue(rawValue, abbrMap);
+      }
+    }
+
+    if (SSL_FIELDS.has(key)) {
+      cells['SSL'] = buildCellValue(rawValue, abbrMap);
+    }
+
     return { field: key, cells };
   });
 }

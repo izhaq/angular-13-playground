@@ -5,7 +5,8 @@ import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 
 import { DashboardState, LeftPanelPayload } from './models/dashboard.models';
 import { DEFAULT_STATE } from './models/dashboard-defaults';
-import { DashboardStateService } from './services/dashboard-state.service';
+import { TAB_STATE_CONFIG } from '../../services/tab-state.config';
+import { TabStateService } from '../../services/tab-state.service';
 import { WsService } from '../../services/ws.service';
 import { StatusGridService } from '../status-grid/services/status-grid.service';
 import { FieldUpdate } from '../status-grid/models/grid.models';
@@ -33,7 +34,7 @@ class MockStatusGridComponent {
 describe('FrequentCmdsTabComponent', () => {
   let fixture: ComponentFixture<FrequentCmdsTabComponent>;
   let component: FrequentCmdsTabComponent;
-  let stateService: jasmine.SpyObj<DashboardStateService>;
+  let stateService: jasmine.SpyObj<TabStateService<DashboardState>>;
   let gridService: jasmine.SpyObj<StatusGridService>;
   let wsMessageSubject: Subject<FieldUpdate>;
   let stateSubject: BehaviorSubject<DashboardState>;
@@ -42,7 +43,7 @@ describe('FrequentCmdsTabComponent', () => {
     stateSubject = new BehaviorSubject<DashboardState>({ ...DEFAULT_STATE });
     wsMessageSubject = new Subject<FieldUpdate>();
 
-    stateService = jasmine.createSpyObj('DashboardStateService',
+    stateService = jasmine.createSpyObj('TabStateService',
       ['updateState', 'saveConfig', 'cancelChanges', 'resetToDefaults'],
       { state$: stateSubject.asObservable() },
     );
@@ -62,12 +63,17 @@ describe('FrequentCmdsTabComponent', () => {
       ],
       imports: [NoopAnimationsModule],
       providers: [
-        { provide: DashboardStateService, useValue: stateService },
         { provide: WsService, useValue: wsService },
       ],
     })
       .overrideComponent(FrequentCmdsTabComponent, {
-        set: { providers: [{ provide: StatusGridService, useValue: gridService }] },
+        set: {
+          providers: [
+            { provide: TabStateService, useValue: stateService },
+            { provide: StatusGridService, useValue: gridService },
+            { provide: TAB_STATE_CONFIG, useValue: { defaultState: DEFAULT_STATE, apiUrl: '/api/config' } },
+          ],
+        },
       })
       .compileComponents();
 

@@ -5,7 +5,8 @@ import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 
 import { RareDashboardState, RareLeftPanelPayload } from './models/rare-dashboard.models';
 import { RARE_DEFAULT_STATE } from './models/rare-dashboard-defaults';
-import { RareStateService } from './services/rare-state.service';
+import { TAB_STATE_CONFIG } from '../../services/tab-state.config';
+import { TabStateService } from '../../services/tab-state.service';
 import { WsService } from '../../services/ws.service';
 import { StatusGridService } from '../status-grid/services/status-grid.service';
 import { FieldUpdate } from '../status-grid/models/grid.models';
@@ -32,7 +33,7 @@ class MockStatusGridComponent {
 describe('RareCmdsTabComponent', () => {
   let fixture: ComponentFixture<RareCmdsTabComponent>;
   let component: RareCmdsTabComponent;
-  let stateService: jasmine.SpyObj<RareStateService>;
+  let stateService: jasmine.SpyObj<TabStateService<RareDashboardState>>;
   let gridService: jasmine.SpyObj<StatusGridService>;
   let wsMessageSubject: Subject<FieldUpdate>;
   let stateSubject: BehaviorSubject<RareDashboardState>;
@@ -41,7 +42,7 @@ describe('RareCmdsTabComponent', () => {
     stateSubject = new BehaviorSubject<RareDashboardState>({ ...RARE_DEFAULT_STATE });
     wsMessageSubject = new Subject<FieldUpdate>();
 
-    stateService = jasmine.createSpyObj('RareStateService',
+    stateService = jasmine.createSpyObj('TabStateService',
       ['updateState', 'saveConfig', 'cancelChanges', 'resetToDefaults'],
       { state$: stateSubject.asObservable() },
     );
@@ -61,12 +62,17 @@ describe('RareCmdsTabComponent', () => {
       ],
       imports: [NoopAnimationsModule],
       providers: [
-        { provide: RareStateService, useValue: stateService },
         { provide: WsService, useValue: wsService },
       ],
     })
       .overrideComponent(RareCmdsTabComponent, {
-        set: { providers: [{ provide: StatusGridService, useValue: gridService }] },
+        set: {
+          providers: [
+            { provide: TabStateService, useValue: stateService },
+            { provide: StatusGridService, useValue: gridService },
+            { provide: TAB_STATE_CONFIG, useValue: { defaultState: RARE_DEFAULT_STATE, apiUrl: '/api/rare-config' } },
+          ],
+        },
       })
       .compileComponents();
 

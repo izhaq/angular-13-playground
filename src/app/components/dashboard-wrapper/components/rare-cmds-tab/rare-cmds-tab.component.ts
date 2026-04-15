@@ -2,9 +2,11 @@ import { ChangeDetectionStrategy, Component, Input, OnDestroy, OnInit } from '@a
 import { Observable, Subscription } from 'rxjs';
 
 import { RareDashboardState, RareLeftPanelPayload } from './models/rare-dashboard.models';
+import { RARE_DEFAULT_STATE } from './models/rare-dashboard-defaults';
 import { GridConfig, RowViewModel } from '../status-grid/models/grid.models';
 import { buildRareGridRowDefs } from '../status-grid/models/grid-defaults';
-import { RareStateService } from './services/rare-state.service';
+import { TAB_STATE_CONFIG } from '../../services/tab-state.config';
+import { TabStateService } from '../../services/tab-state.service';
 import { WsService } from '../../services/ws.service';
 import { StatusGridService } from '../status-grid/services/status-grid.service';
 import { RARE_GRID_CONFIG } from './models/rare-grid-config';
@@ -14,7 +16,11 @@ import { RARE_GRID_CONFIG } from './models/rare-grid-config';
   templateUrl: './rare-cmds-tab.component.html',
   styleUrls: ['./rare-cmds-tab.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  providers: [StatusGridService],
+  providers: [
+    StatusGridService,
+    { provide: TAB_STATE_CONFIG, useValue: { defaultState: RARE_DEFAULT_STATE, apiUrl: '/api/rare-config' } },
+    TabStateService,
+  ],
 })
 export class RareCmdsTabComponent implements OnInit, OnDestroy {
   @Input() scenario = 'highway-cruise';
@@ -27,7 +33,7 @@ export class RareCmdsTabComponent implements OnInit, OnDestroy {
   private wsSub?: Subscription;
 
   constructor(
-    private readonly stateService: RareStateService,
+    private readonly stateService: TabStateService<RareDashboardState>,
     private readonly wsService: WsService,
     private readonly gridService: StatusGridService,
   ) {

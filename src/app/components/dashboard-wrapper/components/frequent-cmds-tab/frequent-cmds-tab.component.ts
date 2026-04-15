@@ -2,9 +2,11 @@ import { ChangeDetectionStrategy, Component, Input, OnDestroy, OnInit } from '@a
 import { Observable, Subscription } from 'rxjs';
 
 import { DashboardState, LeftPanelPayload } from './models/dashboard.models';
+import { DEFAULT_STATE } from './models/dashboard-defaults';
 import { GridConfig, RowViewModel } from '../status-grid/models/grid.models';
 import { buildGridRowDefs } from '../status-grid/models/grid-defaults';
-import { DashboardStateService } from './services/dashboard-state.service';
+import { TAB_STATE_CONFIG } from '../../services/tab-state.config';
+import { TabStateService } from '../../services/tab-state.service';
 import { WsService } from '../../services/ws.service';
 import { StatusGridService } from '../status-grid/services/status-grid.service';
 import { FREQUENT_GRID_CONFIG } from './models/frequent-grid-config';
@@ -14,7 +16,11 @@ import { FREQUENT_GRID_CONFIG } from './models/frequent-grid-config';
   templateUrl: './frequent-cmds-tab.component.html',
   styleUrls: ['./frequent-cmds-tab.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  providers: [StatusGridService],
+  providers: [
+    StatusGridService,
+    { provide: TAB_STATE_CONFIG, useValue: { defaultState: DEFAULT_STATE, apiUrl: '/api/config' } },
+    TabStateService,
+  ],
 })
 export class FrequentCmdsTabComponent implements OnInit, OnDestroy {
   @Input() scenario = 'highway-cruise';
@@ -27,7 +33,7 @@ export class FrequentCmdsTabComponent implements OnInit, OnDestroy {
   private wsSub?: Subscription;
 
   constructor(
-    private readonly stateService: DashboardStateService,
+    private readonly stateService: TabStateService<DashboardState>,
     private readonly wsService: WsService,
     private readonly gridService: StatusGridService,
   ) {

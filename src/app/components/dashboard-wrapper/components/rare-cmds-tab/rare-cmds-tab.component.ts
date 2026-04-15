@@ -3,13 +3,11 @@ import { Observable, Subscription } from 'rxjs';
 
 import { RareDashboardState, RareLeftPanelPayload } from './models/rare-dashboard.models';
 import { GridConfig, RowViewModel } from '../status-grid/models/grid.models';
-import { buildAbbrLookup } from '../status-grid/models/abbr-lookup';
 import { buildRareGridRowDefs } from '../status-grid/models/grid-defaults';
 import { RareStateService } from './services/rare-state.service';
 import { WsService } from '../../services/ws.service';
 import { StatusGridService } from '../status-grid/services/status-grid.service';
-import { RARE_OPERATIONS_FIELDS } from './components/rare-operations-list/rare-operations-list.models';
-import { RARE_DEFAULT_GRID_CONFIG } from '../../../../mocks/mock-data';
+import { RARE_GRID_CONFIG } from './models/rare-grid-config';
 
 @Component({
   selector: 'app-rare-cmds-tab',
@@ -22,7 +20,7 @@ export class RareCmdsTabComponent implements OnInit, OnDestroy {
   @Input() scenario = 'highway-cruise';
   @Input() isRealtime = false;
 
-  readonly gridConfig: GridConfig = RARE_DEFAULT_GRID_CONFIG;
+  readonly gridConfig: GridConfig = RARE_GRID_CONFIG;
   readonly dashboardState$: Observable<RareDashboardState>;
   readonly gridRows$: Observable<RowViewModel[]>;
 
@@ -39,8 +37,7 @@ export class RareCmdsTabComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.gridService.configure(
-      RARE_DEFAULT_GRID_CONFIG.columns,
-      buildAbbrLookup(RARE_OPERATIONS_FIELDS),
+      RARE_GRID_CONFIG.columns,
       buildRareGridRowDefs(),
     );
     this.wsSub = this.wsService.message$.subscribe((update) => {

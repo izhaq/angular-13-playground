@@ -1,9 +1,11 @@
-import { GridColumnDef, GridRowDef, RowViewModel } from './grid.models';
+import { CellValue, GridColumnDef, GridRowDef, RowViewModel } from './grid.models';
 import { OPERATIONS_FIELDS } from '../../frequent-cmds-tab/components/frequent-operations-list/frequent-operations-list.models';
 import { CMD_TEST_FIELDS } from '../../frequent-cmds-tab/components/cmd-test-panel/cmd-test-panel.models';
 import { RARE_OPERATIONS_FIELDS } from '../../rare-cmds-tab/components/rare-operations-list/rare-operations-list.models';
 
 const ALL_GRID_FIELDS = [...OPERATIONS_FIELDS, ...CMD_TEST_FIELDS];
+
+const EMPTY_CELL: CellValue = { value: '', abbr: '' };
 
 export function buildGridRowDefs(): GridRowDef[] {
   return ALL_GRID_FIELDS.map((field) => ({
@@ -23,9 +25,9 @@ export function buildInitialGridRows(
   columns: GridColumnDef[],
   rowDefs: GridRowDef[],
 ): RowViewModel[] {
-  const emptyCells: Record<string, string> = {};
+  const emptyCells: Record<string, CellValue> = {};
   for (const col of columns) {
-    emptyCells[col.id] = '';
+    emptyCells[col.id] = { ...EMPTY_CELL };
   }
 
   return rowDefs.map((def) => ({

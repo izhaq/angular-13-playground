@@ -13,13 +13,18 @@ export interface GridConfig {
   columns: GridColumnDef[];
 }
 
+export interface CellValue {
+  value: string;
+  abbr: string;
+}
+
 export interface RowViewModel {
   field: string;
   label: string;
-  cells: Record<string, string>;
+  cells: Record<string, CellValue>;
 }
 
 export interface FieldUpdate {
   field: string;
-  cells: Record<string, string>;
+  cells: Record<string, CellValue>;
 }

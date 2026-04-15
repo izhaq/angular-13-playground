@@ -24,7 +24,7 @@
           (mouseenter)="onColumnHover(col.id)"
           (mouseleave)="onColumnHover(null)"
           (click)="onCellClick(row.field, col.id)">
-          {{ row.cells[col.id] }}
+          {{ row.cells[col.id]?.abbr }}
         </td>
       </tr>
     </tbody>

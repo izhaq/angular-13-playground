@@ -33,6 +33,7 @@ export class WsService implements OnDestroy {
   private handleMessage(data: string): void {
     try {
       const update: FieldUpdate = JSON.parse(data);
+      console.log('[WsService] Received:', update.field, update.cells);
       this.messageSubject.next(update);
     } catch (err) {
       console.error('[WsService] Invalid message:', data);

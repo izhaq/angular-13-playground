@@ -3,14 +3,11 @@ import { Observable, Subscription } from 'rxjs';
 
 import { DashboardState, LeftPanelPayload } from './models/dashboard.models';
 import { GridConfig, RowViewModel } from '../status-grid/models/grid.models';
-import { buildAbbrLookup } from '../status-grid/models/abbr-lookup';
 import { buildGridRowDefs } from '../status-grid/models/grid-defaults';
 import { DashboardStateService } from './services/dashboard-state.service';
 import { WsService } from '../../services/ws.service';
 import { StatusGridService } from '../status-grid/services/status-grid.service';
-import { OPERATIONS_FIELDS } from './components/frequent-operations-list/frequent-operations-list.models';
-import { CMD_TEST_FIELDS } from './components/cmd-test-panel/cmd-test-panel.models';
-import { DEFAULT_GRID_CONFIG } from '../../../../mocks/mock-data';
+import { FREQUENT_GRID_CONFIG } from './models/frequent-grid-config';
 
 @Component({
   selector: 'app-frequent-cmds-tab',
@@ -23,7 +20,7 @@ export class FrequentCmdsTabComponent implements OnInit, OnDestroy {
   @Input() scenario = 'highway-cruise';
   @Input() isRealtime = false;
 
-  readonly gridConfig: GridConfig = DEFAULT_GRID_CONFIG;
+  readonly gridConfig: GridConfig = FREQUENT_GRID_CONFIG;
   readonly dashboardState$: Observable<DashboardState>;
   readonly gridRows$: Observable<RowViewModel[]>;
 
@@ -39,10 +36,8 @@ export class FrequentCmdsTabComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    const allFields = [...OPERATIONS_FIELDS, ...CMD_TEST_FIELDS];
     this.gridService.configure(
-      DEFAULT_GRID_CONFIG.columns,
-      buildAbbrLookup(allFields),
+      FREQUENT_GRID_CONFIG.columns,
       buildGridRowDefs(),
     );
     this.wsSub = this.wsService.message$.subscribe((update) => {

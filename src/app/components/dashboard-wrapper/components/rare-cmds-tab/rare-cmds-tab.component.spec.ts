@@ -89,14 +89,14 @@ describe('RareCmdsTabComponent', () => {
   });
 
   it('should forward WsService messages to gridService.applyUpdate', () => {
-    const update: FieldUpdate = { field: 'absCalibration', cells: { L1: 'yes' } };
+    const update: FieldUpdate = { field: 'absCalibration', cells: { L1: { value: 'yes', abbr: 'YES' } } };
     wsMessageSubject.next(update);
 
     expect(gridService.applyUpdate).toHaveBeenCalledWith(update);
   });
 
   it('should unsubscribe from WsService on destroy', () => {
-    const update: FieldUpdate = { field: 'absCalibration', cells: { L1: 'yes' } };
+    const update: FieldUpdate = { field: 'absCalibration', cells: { L1: { value: 'yes', abbr: 'YES' } } };
     fixture.destroy();
     wsMessageSubject.next(update);
 

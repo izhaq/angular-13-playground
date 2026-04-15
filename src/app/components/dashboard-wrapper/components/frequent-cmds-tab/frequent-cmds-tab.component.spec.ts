@@ -90,14 +90,14 @@ describe('FrequentCmdsTabComponent', () => {
   });
 
   it('should forward WsService messages to gridService.applyUpdate', () => {
-    const update: FieldUpdate = { field: 'ttm', cells: { L1: 'captive' } };
+    const update: FieldUpdate = { field: 'ttm', cells: { L1: { value: 'captive', abbr: 'CAP' } } };
     wsMessageSubject.next(update);
 
     expect(gridService.applyUpdate).toHaveBeenCalledWith(update);
   });
 
   it('should unsubscribe from WsService on destroy', () => {
-    const update: FieldUpdate = { field: 'ttm', cells: { L1: 'captive' } };
+    const update: FieldUpdate = { field: 'ttm', cells: { L1: { value: 'captive', abbr: 'CAP' } } };
     fixture.destroy();
     wsMessageSubject.next(update);
 

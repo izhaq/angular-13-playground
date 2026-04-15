@@ -49,7 +49,12 @@ export interface RareDashboardState {
   rareOperations: RareOperationsValue;
 }
 
+export interface CellValue {
+  value: string;
+  abbr: string;
+}
+
 export interface FieldUpdate {
   field: string;
-  cells: Record<string, string>;
+  cells: Record<string, CellValue>;
 }

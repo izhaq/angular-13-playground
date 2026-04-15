@@ -4,7 +4,7 @@ import { map } from 'rxjs/operators';
 
 import { DropdownOption } from '../app-dropdown/app-dropdown.models';
 import { WsService } from './services/ws.service';
-import { SCENARIOS } from '../../mocks/mock-data';
+import { SCENARIOS } from './models/scenario.constants';
 
 @Component({
   selector: 'app-dashboard-wrapper',

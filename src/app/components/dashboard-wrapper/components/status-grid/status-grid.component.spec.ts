@@ -1,7 +1,13 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 
-import { GridConfig, RowViewModel } from './models/grid.models';
+import { CellValue, GridConfig, RowViewModel } from './models/grid.models';
+
+function cell(value: string, abbr: string): CellValue {
+  return { value, abbr };
+}
+
+const e = cell('', '');
 import { StatusGridComponent } from './status-grid.component';
 import { StatusGridModule } from './status-grid.module';
 
@@ -20,9 +26,9 @@ const TEST_CONFIG: GridConfig = {
 };
 
 const TEST_ROWS: RowViewModel[] = [
-  { field: 'ttm', label: 'TTM', cells: { L1: 'CAP', L2: 'CAP', R1: '', R2: '' } },
-  { field: 'weather', label: 'Weather', cells: { L1: 'NO', L2: 'NO', R1: 'YES', R2: '' } },
-  { field: 'videoRec', label: 'Video rec', cells: { L1: '', L2: '', R1: '', R2: '' } },
+  { field: 'ttm', label: 'TTM', cells: { L1: cell('captive', 'CAP'), L2: cell('captive', 'CAP'), R1: e, R2: e } },
+  { field: 'weather', label: 'Weather', cells: { L1: cell('no', 'NO'), L2: cell('no', 'NO'), R1: cell('yes', 'YES'), R2: e } },
+  { field: 'videoRec', label: 'Video rec', cells: { L1: e, L2: e, R1: e, R2: e } },
 ];
 
 describe('StatusGridComponent', () => {

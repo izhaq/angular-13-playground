@@ -30,10 +30,10 @@ export class RareLeftPanelComponent {
 
   @Input() disabled = false;
 
-  @Output() stateChanged = new EventEmitter<RareLeftPanelPayload>();
-  @Output() saved = new EventEmitter<RareLeftPanelPayload>();
-  @Output() cancelled = new EventEmitter<void>();
-  @Output() defaultClicked = new EventEmitter<void>();
+  @Output() readonly stateChanged = new EventEmitter<RareLeftPanelPayload>();
+  @Output() readonly saved = new EventEmitter<RareLeftPanelPayload>();
+  @Output() readonly cancelled = new EventEmitter<void>();
+  @Output() readonly defaultClicked = new EventEmitter<void>();
 
   rareOperations: RareOperationsModel = { ...DEFAULT_RARE_OPERATIONS };
 

@@ -34,10 +34,10 @@ export class LeftPanelComponent {
 
   @Input() disabled = false;
 
-  @Output() stateChanged = new EventEmitter<LeftPanelPayload>();
-  @Output() saved = new EventEmitter<LeftPanelPayload>();
-  @Output() cancelled = new EventEmitter<void>();
-  @Output() defaultClicked = new EventEmitter<void>();
+  @Output() readonly stateChanged = new EventEmitter<LeftPanelPayload>();
+  @Output() readonly saved = new EventEmitter<LeftPanelPayload>();
+  @Output() readonly cancelled = new EventEmitter<void>();
+  @Output() readonly defaultClicked = new EventEmitter<void>();
 
   operations: FrequentOperationsModel = { ...DEFAULT_OPERATIONS };
   cmdTest: CmdTestModel = { ...DEFAULT_CMD_TEST };

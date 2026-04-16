@@ -3,7 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { BehaviorSubject, Subject } from 'rxjs';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 
-import { RareDashboardState, RareLeftPanelPayload } from './models/rare-dashboard.models';
+import { CmdSelection, RareDashboardState, RareLeftPanelPayload } from './models/rare-dashboard.models';
 import { RARE_DEFAULT_STATE } from './models/rare-dashboard-defaults';
 import { TAB_STATE_CONFIG } from '../../services/tab-state.config';
 import { TabStateService } from '../../services/tab-state.service';
@@ -13,6 +13,13 @@ import { FieldUpdate } from '../status-grid/models/grid.models';
 import { RareCmdsTabComponent } from './rare-cmds-tab.component';
 import { DEFAULT_CMD_SELECTION } from '../cmd-panel/cmd-panel.models';
 import { DEFAULT_RARE_OPERATIONS } from './components/rare-operations-list/rare-operations-list.models';
+
+@Component({ selector: 'app-cmd-panel', template: '' })
+class MockCmdPanelComponent {
+  @Input() value!: CmdSelection;
+  @Input() disabled = false;
+  @Output() changed = new EventEmitter<CmdSelection>();
+}
 
 @Component({ selector: 'app-rare-left-panel', template: '' })
 class MockRareLeftPanelComponent {
@@ -43,9 +50,11 @@ describe('RareCmdsTabComponent', () => {
     wsMessageSubject = new Subject<FieldUpdate>();
 
     stateService = jasmine.createSpyObj('TabStateService',
-      ['updateState', 'saveConfig', 'cancelChanges', 'resetToDefaults'],
+      ['updateState', 'saveConfig', 'cancelChanges', 'resetToDefaults', 'getCurrentState', 'getSavedBaseline'],
       { state$: stateSubject.asObservable() },
     );
+    stateService.getCurrentState.and.returnValue({ ...RARE_DEFAULT_STATE });
+    stateService.cancelChanges.and.returnValue({ ...RARE_DEFAULT_STATE });
 
     gridService = jasmine.createSpyObj('StatusGridService',
       ['resetToDefaults', 'configure', 'applyUpdate'],
@@ -57,6 +66,7 @@ describe('RareCmdsTabComponent', () => {
     await TestBed.configureTestingModule({
       declarations: [
         RareCmdsTabComponent,
+        MockCmdPanelComponent,
         MockRareLeftPanelComponent,
         MockStatusGridComponent,
       ],
@@ -116,10 +126,18 @@ describe('RareCmdsTabComponent', () => {
     expect(gridService.resetToDefaults).not.toHaveBeenCalled();
   });
 
+  it('onCmdChanged should call stateService.updateState with new cmd', () => {
+    const newCmd: CmdSelection = { sides: ['right'], wheels: ['3', '4'] };
+
+    component.onCmdChanged(newCmd);
+
+    expect(stateService.getCurrentState).toHaveBeenCalled();
+    expect(stateService.updateState).toHaveBeenCalledWith(jasmine.objectContaining({ cmd: newCmd }));
+  });
+
   it('onStateChanged should call stateService.updateState with scenario from input', () => {
     component.scenario = 'city-traffic';
     const partial: RareLeftPanelPayload = {
-      cmd: { sides: ['right'], wheels: ['3', '4'] },
       rareOperations: DEFAULT_RARE_OPERATIONS,
     };
 
@@ -127,7 +145,7 @@ describe('RareCmdsTabComponent', () => {
 
     expect(stateService.updateState).toHaveBeenCalledWith({
       scenario: 'city-traffic',
-      cmd: partial.cmd,
+      cmd: DEFAULT_CMD_SELECTION,
       rareOperations: partial.rareOperations,
     });
   });
@@ -135,7 +153,6 @@ describe('RareCmdsTabComponent', () => {
   it('onSaved should call stateService.saveConfig with scenario from input', () => {
     component.scenario = 'off-road-trail';
     const partial: RareLeftPanelPayload = {
-      cmd: DEFAULT_CMD_SELECTION,
       rareOperations: { ...DEFAULT_RARE_OPERATIONS, brakeCriticalFail: 'force' },
     };
 
@@ -143,12 +160,12 @@ describe('RareCmdsTabComponent', () => {
 
     expect(stateService.saveConfig).toHaveBeenCalledWith({
       scenario: 'off-road-trail',
-      cmd: partial.cmd,
+      cmd: DEFAULT_CMD_SELECTION,
       rareOperations: partial.rareOperations,
     });
   });
 
-  it('onCancelled should call stateService.cancelChanges', () => {
+  it('onCancelled should call stateService.cancelChanges and restore cmd', () => {
     component.onCancelled();
 
     expect(stateService.cancelChanges).toHaveBeenCalledTimes(1);

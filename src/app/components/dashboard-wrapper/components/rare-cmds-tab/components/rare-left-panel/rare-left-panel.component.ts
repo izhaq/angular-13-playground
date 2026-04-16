@@ -7,12 +7,10 @@ import {
 } from '@angular/core';
 
 import {
-  CmdSelection,
   RareDashboardState,
   RareLeftPanelPayload,
   RareOperationsModel,
 } from '../../models/rare-dashboard.models';
-import { DEFAULT_CMD_SELECTION } from '../../../cmd-panel/cmd-panel.models';
 import { DEFAULT_RARE_OPERATIONS } from '../rare-operations-list/rare-operations-list.models';
 
 @Component({
@@ -24,11 +22,9 @@ import { DEFAULT_RARE_OPERATIONS } from '../rare-operations-list/rare-operations
 export class RareLeftPanelComponent {
   @Input() set dashboardState(value: RareDashboardState | null) {
     if (!value) {
-      this.cmd = { ...DEFAULT_CMD_SELECTION };
       this.rareOperations = { ...DEFAULT_RARE_OPERATIONS };
       return;
     }
-    this.cmd = value.cmd;
     this.rareOperations = value.rareOperations;
   }
 
@@ -39,13 +35,7 @@ export class RareLeftPanelComponent {
   @Output() cancelled = new EventEmitter<void>();
   @Output() defaultClicked = new EventEmitter<void>();
 
-  cmd: CmdSelection = { ...DEFAULT_CMD_SELECTION };
   rareOperations: RareOperationsModel = { ...DEFAULT_RARE_OPERATIONS };
-
-  onCmdChanged(value: CmdSelection): void {
-    this.cmd = value;
-    this.stateChanged.emit(this.buildPayload());
-  }
 
   onRareOperationsChanged(value: RareOperationsModel): void {
     this.rareOperations = value;
@@ -66,7 +56,6 @@ export class RareLeftPanelComponent {
 
   private buildPayload(): RareLeftPanelPayload {
     return {
-      cmd: this.cmd,
       rareOperations: this.rareOperations,
     };
   }

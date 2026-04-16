@@ -3,7 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { BehaviorSubject, Subject } from 'rxjs';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 
-import { DashboardState, LeftPanelPayload } from './models/dashboard.models';
+import { CmdSelection, DashboardState, LeftPanelPayload } from './models/dashboard.models';
 import { DEFAULT_STATE } from './models/dashboard-defaults';
 import { TAB_STATE_CONFIG } from '../../services/tab-state.config';
 import { TabStateService } from '../../services/tab-state.service';
@@ -14,6 +14,13 @@ import { FrequentCmdsTabComponent } from './frequent-cmds-tab.component';
 import { DEFAULT_CMD_SELECTION } from '../cmd-panel/cmd-panel.models';
 import { DEFAULT_OPERATIONS } from './components/frequent-operations-list/frequent-operations-list.models';
 import { DEFAULT_CMD_TEST } from './components/cmd-test-panel/cmd-test-panel.models';
+
+@Component({ selector: 'app-cmd-panel', template: '' })
+class MockCmdPanelComponent {
+  @Input() value!: CmdSelection;
+  @Input() disabled = false;
+  @Output() changed = new EventEmitter<CmdSelection>();
+}
 
 @Component({ selector: 'app-left-panel', template: '' })
 class MockLeftPanelComponent {
@@ -44,9 +51,11 @@ describe('FrequentCmdsTabComponent', () => {
     wsMessageSubject = new Subject<FieldUpdate>();
 
     stateService = jasmine.createSpyObj('TabStateService',
-      ['updateState', 'saveConfig', 'cancelChanges', 'resetToDefaults'],
+      ['updateState', 'saveConfig', 'cancelChanges', 'resetToDefaults', 'getCurrentState', 'getSavedBaseline'],
       { state$: stateSubject.asObservable() },
     );
+    stateService.getCurrentState.and.returnValue({ ...DEFAULT_STATE });
+    stateService.cancelChanges.and.returnValue({ ...DEFAULT_STATE });
 
     gridService = jasmine.createSpyObj('StatusGridService',
       ['resetToDefaults', 'configure', 'applyUpdate'],
@@ -58,6 +67,7 @@ describe('FrequentCmdsTabComponent', () => {
     await TestBed.configureTestingModule({
       declarations: [
         FrequentCmdsTabComponent,
+        MockCmdPanelComponent,
         MockLeftPanelComponent,
         MockStatusGridComponent,
       ],
@@ -117,10 +127,18 @@ describe('FrequentCmdsTabComponent', () => {
     expect(gridService.resetToDefaults).not.toHaveBeenCalled();
   });
 
+  it('onCmdChanged should call stateService.updateState with new cmd', () => {
+    const newCmd: CmdSelection = { sides: ['right'], wheels: ['3', '4'] };
+
+    component.onCmdChanged(newCmd);
+
+    expect(stateService.getCurrentState).toHaveBeenCalled();
+    expect(stateService.updateState).toHaveBeenCalledWith(jasmine.objectContaining({ cmd: newCmd }));
+  });
+
   it('onStateChanged should call stateService.updateState with scenario from input', () => {
     component.scenario = 'city-traffic';
     const partial: LeftPanelPayload = {
-      cmd: { sides: ['right'], wheels: ['3', '4'] },
       operations: DEFAULT_OPERATIONS,
       cmdTest: DEFAULT_CMD_TEST,
     };
@@ -129,7 +147,7 @@ describe('FrequentCmdsTabComponent', () => {
 
     expect(stateService.updateState).toHaveBeenCalledWith({
       scenario: 'city-traffic',
-      cmd: partial.cmd,
+      cmd: DEFAULT_CMD_SELECTION,
       operations: partial.operations,
       cmdTest: partial.cmdTest,
     });
@@ -138,7 +156,6 @@ describe('FrequentCmdsTabComponent', () => {
   it('onSaved should call stateService.saveConfig with scenario from input', () => {
     component.scenario = 'off-road-trail';
     const partial: LeftPanelPayload = {
-      cmd: DEFAULT_CMD_SELECTION,
       operations: { ...DEFAULT_OPERATIONS, force: 'force-f' },
       cmdTest: { ...DEFAULT_CMD_TEST, nta: 'yes' },
     };
@@ -147,13 +164,13 @@ describe('FrequentCmdsTabComponent', () => {
 
     expect(stateService.saveConfig).toHaveBeenCalledWith({
       scenario: 'off-road-trail',
-      cmd: partial.cmd,
+      cmd: DEFAULT_CMD_SELECTION,
       operations: partial.operations,
       cmdTest: partial.cmdTest,
     });
   });
 
-  it('onCancelled should call stateService.cancelChanges', () => {
+  it('onCancelled should call stateService.cancelChanges and restore cmd', () => {
     component.onCancelled();
 
     expect(stateService.cancelChanges).toHaveBeenCalledTimes(1);

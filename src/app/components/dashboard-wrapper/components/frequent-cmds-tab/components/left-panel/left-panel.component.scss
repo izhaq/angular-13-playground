@@ -1,8 +1,6 @@
 @import 'variables';
 
 $separator-color: rgba($primary-text, 0.12);
-$panel-bg: $surface-container-low;
-
 :host {
   display: flex;
   flex-direction: column;
@@ -23,24 +21,15 @@ $panel-bg: $surface-container-low;
 }
 
 .panel {
-  background-color: $panel-bg;
-  border-radius: $border-radius;
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 0;
 
-  &__header {
-    flex-shrink: 0;
-    padding: $spacing-lg $spacing-lg 0;
-    margin-bottom: $spacing-md;
-  }
-
   &__body {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
-    padding: 0 $spacing-lg;
   }
 
   &__section {

@@ -11,4 +11,4 @@ export interface DashboardState {
   cmdTest: CmdTestModel;
 }
 
-export type LeftPanelPayload = Omit<DashboardState, 'scenario'>;
+export type LeftPanelPayload = Omit<DashboardState, 'scenario' | 'cmd'>;

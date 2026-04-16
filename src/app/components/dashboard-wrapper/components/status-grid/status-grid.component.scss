@@ -1,11 +1,14 @@
 @import 'variables';
 
-$cell-border: rgba($primary-text, 0.15);
-$header-bg: $surface-container-highest;
-$cell-bg: $surface-container;
-$hover-bg: $surface-container-high;
-$focus-bg: $surface-container-highest;
-$focus-border-color: $primary;
+// Grid-local palette (white background)
+$cell-border: #d0d0d0;
+$header-bg: #f0f0f0;
+$cell-bg: #ffffff;
+$hover-bg: #e8e8e8;
+$focus-bg: #d9d9d9;
+$focus-border-color: #555555;
+$grid-text: #202124;
+$grid-text-secondary: #5f6368;
 
 .status-grid {
   width: 100%;
@@ -24,6 +27,7 @@ $focus-border-color: $primary;
     width: 8rem;
     min-width: 6rem;
     padding: $spacing-xs $spacing-sm $spacing-xs $spacing-xs;
+    background-color: transparent;
   }
 
   &__col-header {
@@ -31,14 +35,14 @@ $focus-border-color: $primary;
     text-align: center;
     font-weight: 600;
     font-size: 0.625rem;
-    color: $secondary-text;
+    color: $grid-text-secondary;
     background-color: $header-bg;
     border: 1px solid $cell-border;
     transition: background-color 0.15s ease;
 
     &--hovered {
-      background-color: rgba($primary, 0.15);
-      border-color: rgba($primary, 0.4);
+      background-color: $hover-bg;
+      box-shadow: inset 1px 0 0 0 $focus-border-color, inset -1px 0 0 0 $focus-border-color;
     }
   }
 
@@ -50,6 +54,7 @@ $focus-border-color: $primary;
     overflow: hidden;
     text-overflow: ellipsis;
     border: none;
+    background-color: transparent;
   }
 
   &__cell {
@@ -57,22 +62,21 @@ $focus-border-color: $primary;
     text-align: center;
     font-weight: 600;
     font-size: 0.625rem;
-    color: $primary-text;
+    color: $grid-text;
     background-color: $cell-bg;
     border: 1px solid $cell-border;
     cursor: pointer;
     position: relative;
-    transition: background-color 0.15s ease, border-color 0.15s ease;
+    transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 
     &--hovered {
-      background-color: rgba($primary, 0.12);
-      border-color: rgba($primary, 0.4);
+      background-color: $hover-bg;
+      box-shadow: inset 1px 0 0 0 $focus-border-color, inset -1px 0 0 0 $focus-border-color;
     }
 
     &--focused {
-      background-color: rgba($primary, 0.18);
-      border: 2px solid $focus-border-color;
-      padding: calc(#{$spacing-xs} - 1px);
+      background-color: $focus-bg;
+      box-shadow: inset 0 0 0 2px $focus-border-color;
     }
 
     &--popout {
@@ -93,16 +97,16 @@ $focus-border-color: $primary;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%) scale(1.1);
-    background-color: $surface-container-highest;
-    color: $primary-text;
+    background-color: #ffffff;
+    color: $grid-text;
     font-size: 0.75rem;
     font-weight: 600;
     padding: $spacing-sm $spacing-md;
     border-radius: $border-radius;
-    border: 1px solid rgba($primary-text, 0.25);
+    border: 1px solid $cell-border;
     white-space: nowrap;
     z-index: 10;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     animation: cellPopIn 0.15s ease-out;
   }
 
@@ -117,3 +121,4 @@ $focus-border-color: $primary;
     }
   }
 }
+

@@ -1,8 +1,8 @@
 @import 'variables';
 
-$dropdown-font-size: 0.8125rem;
+$dropdown-font-size: 0.75rem;
 $dropdown-line-height: 1.25;
-$dropdown-v-padding: 0.375em;
+$dropdown-v-padding: 0.25em;
 $dropdown-h-padding: 0.625em;
 
 .app-dropdown-wrapper {
@@ -26,7 +26,7 @@ $dropdown-h-padding: 0.625em;
 
 .app-dropdown-field {
   flex-shrink: 0;
-  width: 7rem;
+  width: 6rem;
 
   &.mat-form-field-appearance-fill .mat-form-field-flex {
     background-color: $surface-container;

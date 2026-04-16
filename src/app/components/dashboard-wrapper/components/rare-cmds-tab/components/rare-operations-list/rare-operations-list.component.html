@@ -1,7 +1,6 @@
 <div class="operations__rows">
   <div class="operations__row" *ngFor="let field of fields; trackBy: trackByKey">
     <app-dropdown
-      [testId]="field.key"
       [value]="value[field.key]"
       [options]="field.options"
       [label]="field.label"

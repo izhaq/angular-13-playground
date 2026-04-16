@@ -13,6 +13,7 @@ export class StatusGridComponent {
   @Input() rows: RowViewModel[] = [];
 
   hoveredColumnId: string | null = null;
+  hoveredCell: { field: string; columnId: string } | null = null;
   focusedCell: { field: string; columnId: string } | null = null;
 
   trackByField(_index: number, row: RowViewModel): string {
@@ -27,6 +28,11 @@ export class StatusGridComponent {
     this.hoveredColumnId = columnId;
   }
 
+  onCellHover(field: string | null, columnId: string | null): void {
+    this.hoveredCell = field && columnId ? { field, columnId } : null;
+    this.hoveredColumnId = columnId;
+  }
+
   onCellClick(field: string, columnId: string): void {
     if (this.focusedCell?.field === field && this.focusedCell?.columnId === columnId) {
       this.focusedCell = null;
@@ -37,6 +43,10 @@ export class StatusGridComponent {
 
   isColumnHovered(columnId: string): boolean {
     return this.hoveredColumnId === columnId;
+  }
+
+  isCellHovered(field: string, columnId: string): boolean {
+    return this.hoveredCell?.field === field && this.hoveredCell?.columnId === columnId;
   }
 
   isCellFocused(field: string, columnId: string): boolean {

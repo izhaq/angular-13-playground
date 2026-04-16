@@ -22,10 +22,14 @@
           [appTestId]="'cell-' + row.field + '-' + col.id"
           [class.status-grid__cell--hovered]="isColumnHovered(col.id)"
           [class.status-grid__cell--focused]="isCellFocused(row.field, col.id)"
-          (mouseenter)="onColumnHover(col.id)"
-          (mouseleave)="onColumnHover(null)"
+          [class.status-grid__cell--popout]="isCellHovered(row.field, col.id)"
+          (mouseenter)="onCellHover(row.field, col.id)"
+          (mouseleave)="onCellHover(null, null)"
           (click)="onCellClick(row.field, col.id)">
-          {{ row.cells[col.id]?.abbr }}
+          <span class="status-grid__cell-text">{{ row.cells[col.id]?.abbr }}</span>
+          <span class="status-grid__cell-popout" *ngIf="isCellHovered(row.field, col.id) && row.cells[col.id]?.value">
+            {{ row.cells[col.id]?.value }}
+          </span>
         </td>
       </tr>
     </tbody>

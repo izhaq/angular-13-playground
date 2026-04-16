@@ -130,6 +130,34 @@ describe('StatusGridComponent', () => {
     component.onCellClick('weather', 'R1');
     expect(component.focusedCell).toEqual({ field: 'weather', columnId: 'R1' });
   });
+
+  it('should show popout with full value on cell hover', () => {
+    const firstRow = fixture.debugElement.queryAll(By.css('tbody tr'))[0];
+    const firstCell = firstRow.queryAll(By.css('.status-grid__cell'))[0];
+
+    firstCell.triggerEventHandler('mouseenter', {});
+    fixture.detectChanges();
+
+    expect(component.hoveredCell).toEqual({ field: 'ttm', columnId: 'L1' });
+    expect(firstCell.nativeElement.classList).toContain('status-grid__cell--popout');
+
+    const popout = firstCell.query(By.css('.status-grid__cell-popout'));
+    expect(popout).toBeTruthy();
+    expect(popout.nativeElement.textContent.trim()).toBe('captive');
+  });
+
+  it('should hide popout on cell mouseleave', () => {
+    component.onCellHover('ttm', 'L1');
+    fixture.detectChanges();
+    expect(component.hoveredCell).toEqual({ field: 'ttm', columnId: 'L1' });
+
+    component.onCellHover(null, null);
+    fixture.detectChanges();
+    expect(component.hoveredCell).toBeNull();
+
+    const popouts = fixture.debugElement.queryAll(By.css('.status-grid__cell-popout'));
+    expect(popouts.length).toBe(0);
+  });
 });
 
 

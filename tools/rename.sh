@@ -175,15 +175,38 @@ FOLDER_RENAMES=$(node -e "
   renames.forEach(([from, to]) => console.log(from + '\t' + to));
 ")
 
+move_merge() {
+  local src="$1" dest="$2"
+  if [[ ! -d "$dest" ]]; then
+    mkdir -p "$dest"
+  fi
+  for item in "$src"/*; do
+    [[ ! -e "$item" ]] && continue
+    local name
+    name=$(basename "$item")
+    if [[ -d "$item" && -d "$dest/$name" ]]; then
+      move_merge "$item" "$dest/$name"
+      rmdir "$item" 2>/dev/null || true
+    else
+      mv "$item" "$dest/$name"
+    fi
+  done
+}
+
 if [[ -n "$FOLDER_RENAMES" ]]; then
   echo "$FOLDER_RENAMES" | while IFS=$'\t' read -r from to; do
     find "${TARGET_DIRS[@]}" -depth -name "*${from}*" \
-      -not -path "*/node_modules/*" -not -path "*/dist/*" 2>/dev/null | while read -r path; do
-      dir=$(dirname "$path")
-      base=$(basename "$path")
+      -not -path "*/node_modules/*" -not -path "*/dist/*" 2>/dev/null | while read -r fpath; do
+      dir=$(dirname "$fpath")
+      base=$(basename "$fpath")
       new_base="${base//$from/$to}"
       if [[ "$base" != "$new_base" ]]; then
-        mv "$path" "$dir/$new_base"
+        if [[ -d "$fpath" && -d "$dir/$new_base" ]]; then
+          move_merge "$fpath" "$dir/$new_base"
+          rmdir "$fpath" 2>/dev/null || true
+        else
+          mv "$fpath" "$dir/$new_base"
+        fi
         echo "  Renamed: $base -> $new_base"
       fi
     done

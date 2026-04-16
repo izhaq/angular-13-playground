@@ -4,7 +4,6 @@
     "version": "1.0",
     "generated": "2026-04-16"
   },
-
   "labels": {
     "Scenario": "___",
     "CMD": "___",
@@ -15,7 +14,6 @@
     "Cancel": "___",
     "Save": "___"
   },
-
   "operationLabels": {
     "TTM": "___",
     "Weather": "___",
@@ -32,7 +30,6 @@
     "Tis Mtr Rec": "___",
     "Ride Mtr Rec": "___"
   },
-
   "rareOperationLabels": {
     "ABS Critical Fail": "___",
     "ABS Warning Fail": "___",
@@ -45,7 +42,6 @@
     "Fuel Map Temp Fail": "___",
     "Coolant Critical Fail": "___"
   },
-
   "optionLabels": {
     "Not Active": "___",
     "Real": "___",
@@ -59,7 +55,6 @@
     "Left": "___",
     "Right": "___"
   },
-
   "optionValues": {
     "not-active": "___",
     "real": "___",
@@ -69,7 +64,6 @@
     "force-f": "___",
     "force-no": "___"
   },
-
   "abbreviations": {
     "N/A": "___",
     "REA": "___",
@@ -81,21 +75,18 @@
     "FNO": "___",
     "IGN": "___"
   },
-
   "scenarioLabels": {
     "Highway Cruise": "___",
     "City Traffic": "___",
     "Off-Road Trail": "___",
     "Realtime": "___"
   },
-
   "scenarioValues": {
     "highway-cruise": "___",
     "city-traffic": "___",
     "off-road-trail": "___",
     "realtime": "___"
   },
-
   "propertyNames": {
     "selectedScenario": "___",
     "onScenarioChanged": "___",
@@ -132,7 +123,6 @@
     "operations": "___",
     "cmdTest": "___"
   },
-
   "typeNames": {
     "FrequentOperationsModel": "___",
     "FrequentOperationsKey": "___",
@@ -149,22 +139,44 @@
     "LeftPanelPayload": "___",
     "RareLeftPanelPayload": "___"
   },
-
   "componentNames": {
+    "DashboardWrapperComponent": "___",
+    "DashboardWrapperModule": "___",
     "DashboardWrapper": "___",
+    "FrequentCmdsTabComponent": "___",
+    "FrequentCmdsTabModule": "___",
     "FrequentCmdsTab": "___",
+    "RareCmdsTabComponent": "___",
+    "RareCmdsTabModule": "___",
     "RareCmdsTab": "___",
+    "CmdPanelComponent": "___",
+    "CmdPanelModule": "___",
     "CmdPanel": "___",
+    "StatusGridComponent": "___",
+    "StatusGridModule": "___",
     "StatusGrid": "___",
+    "LeftPanelComponent": "___",
+    "LeftPanelModule": "___",
     "LeftPanel": "___",
+    "RareLeftPanelComponent": "___",
+    "RareLeftPanelModule": "___",
     "RareLeftPanel": "___",
+    "FrequentOperationsListComponent": "___",
+    "FrequentOperationsListModule": "___",
     "FrequentOperationsList": "___",
+    "RareOperationsListComponent": "___",
+    "RareOperationsListModule": "___",
     "RareOperationsList": "___",
+    "CmdTestPanelComponent": "___",
+    "CmdTestPanelModule": "___",
     "CmdTestPanel": "___",
+    "PanelFooterComponent": "___",
+    "PanelFooterModule": "___",
     "PanelFooter": "___",
+    "TopBarComponent": "___",
+    "TopBarModule": "___",
     "TopBar": "___"
   },
-
   "folderNames": {
     "dashboard-wrapper": "___",
     "frequent-cmds-tab": "___",
@@ -187,14 +199,12 @@
     "panel-footer": "___",
     "top-bar": "___"
   },
-
   "apiPaths": {
     "/api/config": "___",
     "/api/rare-config": "___",
     "/api/ws": "___",
     "/api/health": "___"
   },
-
   "testIds": {
     "topbar-scenario": "___",
     "cmd-sides": "___",
@@ -202,7 +212,6 @@
     "frequent": "___",
     "rare": "___"
   },
-
   "constants": {
     "OPERATIONS_FIELDS": "___",
     "OPERATIONS_KEYS": "___",

@@ -1,10 +1,9 @@
 {
   "meta": {
-    "description": "Driving-simulation → Flight-systems domain naming swap",
+    "description": "Driving-simulation \u2192 Flight-systems domain naming swap",
     "version": "1.1",
     "generated": "2026-04-16"
   },
-
   "labels": {
     "Scenario": "Flight-Plan",
     "CMD to test": "SYS to test",
@@ -15,7 +14,6 @@
     "Cancel": "Cancel",
     "Save": "Save"
   },
-
   "operationLabels": {
     "TTM": "Throttle",
     "Weather": "WXRDR",
@@ -32,7 +30,6 @@
     "Tis Mtr Rec": "Eng Mtr Rec",
     "Ride Mtr Rec": "Cabin Mtr Rec"
   },
-
   "rareOperationLabels": {
     "ABS Critical Fail": "GPWS Critical Fail",
     "ABS Warning Fail": "GPWS Warning Fail",
@@ -45,7 +42,6 @@
     "Fuel Map Temp Fail": "Fuel Valve Fail",
     "Coolant Critical Fail": "ECS Critical Fail"
   },
-
   "optionLabels": {
     "Not Active": "Disarmed",
     "Real": "Live",
@@ -59,7 +55,6 @@
     "Left": "Port",
     "Right": "Starboard"
   },
-
   "optionValues": {
     "not-active": "disarmed",
     "real": "live",
@@ -69,7 +64,6 @@
     "force-f": "override-f",
     "force-no": "override-no"
   },
-
   "abbreviations": {
     "N/A": "DIS",
     "REA": "LIV",
@@ -81,21 +75,18 @@
     "FNO": "ONO",
     "IGN": "BYP"
   },
-
   "scenarioLabels": {
     "Highway Cruise": "Cruise FL350",
     "City Traffic": "Holding Pattern",
     "Off-Road Trail": "Low-Level Route",
     "Realtime": "Realtime"
   },
-
   "scenarioValues": {
     "highway-cruise": "cruise-fl350",
     "city-traffic": "holding-pattern",
     "off-road-trail": "low-level-route",
     "realtime": "realtime"
   },
-
   "propertyNames": {
     "selectedScenario": "selectedFlightPlan",
     "onScenarioChanged": "onFlightPlanChanged",
@@ -132,7 +123,6 @@
     "operations": "systems",
     "cmdTest": "sysTest"
   },
-
   "typeNames": {
     "FrequentOperationsFieldConfig": "PrimarySystemsFieldConfig",
     "FrequentOperationsModel": "PrimarySystemsModel",
@@ -149,22 +139,44 @@
     "RareLeftPanelPayload": "RareLeftPanelPayload",
     "LeftPanelPayload": "LeftPanelPayload"
   },
-
   "componentNames": {
+    "DashboardWrapperComponent": "FlightDeckWrapperComponent",
+    "DashboardWrapperModule": "FlightDeckWrapperModule",
     "DashboardWrapper": "FlightDeckWrapper",
+    "FrequentCmdsTabComponent": "PrimarySystemsTabComponent",
+    "FrequentCmdsTabModule": "PrimarySystemsTabModule",
     "FrequentCmdsTab": "PrimarySystemsTab",
+    "RareCmdsTabComponent": "SecondarySystemsTabComponent",
+    "RareCmdsTabModule": "SecondarySystemsTabModule",
     "RareCmdsTab": "SecondarySystemsTab",
+    "FrequentOperationsListComponent": "PrimarySystemsListComponent",
+    "FrequentOperationsListModule": "PrimarySystemsListModule",
     "FrequentOperationsList": "PrimarySystemsList",
+    "RareOperationsListComponent": "SecondarySystemsListComponent",
+    "RareOperationsListModule": "SecondarySystemsListModule",
     "RareOperationsList": "SecondarySystemsList",
+    "CmdTestPanelComponent": "SysTestPanelComponent",
+    "CmdTestPanelModule": "SysTestPanelModule",
     "CmdTestPanel": "SysTestPanel",
+    "CmdPanelComponent": "SysPanelComponent",
+    "CmdPanelModule": "SysPanelModule",
     "CmdPanel": "SysPanel",
+    "StatusGridComponent": "StatusGridComponent",
+    "StatusGridModule": "StatusGridModule",
     "StatusGrid": "StatusGrid",
+    "LeftPanelComponent": "LeftPanelComponent",
+    "LeftPanelModule": "LeftPanelModule",
     "LeftPanel": "LeftPanel",
-    "RareLeftPanel": "RareLeftPanel",
+    "RareLeftPanelComponent": "SecondaryLeftPanelComponent",
+    "RareLeftPanelModule": "SecondaryLeftPanelModule",
+    "RareLeftPanel": "SecondaryLeftPanel",
+    "PanelFooterComponent": "PanelFooterComponent",
+    "PanelFooterModule": "PanelFooterModule",
     "PanelFooter": "PanelFooter",
+    "TopBarComponent": "TopBarComponent",
+    "TopBarModule": "TopBarModule",
     "TopBar": "TopBar"
   },
-
   "folderNames": {
     "dashboard-wrapper": "flight-deck-wrapper",
     "frequent-cmds-tab": "primary-systems-tab",
@@ -183,18 +195,16 @@
     "scenario.constants": "flight-plan.constants",
     "status-grid": "status-grid",
     "left-panel": "left-panel",
-    "rare-left-panel": "rare-left-panel",
+    "rare-left-panel": "secondary-left-panel",
     "panel-footer": "panel-footer",
     "top-bar": "top-bar"
   },
-
   "apiPaths": {
     "/api/config": "/api/flight-config",
     "/api/rare-config": "/api/secondary-config",
     "/api/ws": "/api/flight-ws",
     "/api/health": "/api/health"
   },
-
   "testIds": {
     "topbar-scenario": "topbar-flight-plan",
     "cmd-sides": "sys-engines",
@@ -202,7 +212,6 @@
     "frequent": "primary",
     "rare": "secondary"
   },
-
   "constants": {
     "DEFAULT_RARE_DASHBOARD_STATE": "DEFAULT_SECONDARY_FLIGHT_DECK_STATE",
     "DEFAULT_DASHBOARD_STATE": "DEFAULT_FLIGHT_DECK_STATE",

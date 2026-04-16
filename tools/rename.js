@@ -156,9 +156,15 @@ if (!SCOPE_DIR) {
 allFiles = [...new Set(allFiles)];
 console.log(`Scanning ${allFiles.length} files...`);
 
+function needsBoundary(str) {
+  return /^[a-zA-Z0-9_]+$/.test(str);
+}
+
 let totalReplacements = 0;
 for (const { from, to } of pairs) {
-  const regex = new RegExp(escapeRegex(from), 'g');
+  const escaped = escapeRegex(from);
+  const pattern = needsBoundary(from) ? `\\b${escaped}\\b` : escaped;
+  const regex = new RegExp(pattern, 'g');
 
   for (const filePath of allFiles) {
     let content;
@@ -194,6 +200,22 @@ if (map.folderNames) {
 }
 folderRenames.sort((a, b) => b.from.length - a.from.length);
 
+function moveContents(srcDir, destDir) {
+  if (!fs.existsSync(destDir)) {
+    fs.mkdirSync(destDir, { recursive: true });
+  }
+  for (const entry of fs.readdirSync(srcDir, { withFileTypes: true })) {
+    const srcPath = path.join(srcDir, entry.name);
+    const destPath = path.join(destDir, entry.name);
+    if (entry.isDirectory() && fs.existsSync(destPath)) {
+      moveContents(srcPath, destPath);
+      fs.rmdirSync(srcPath);
+    } else {
+      fs.renameSync(srcPath, destPath);
+    }
+  }
+}
+
 if (folderRenames.length > 0) {
   for (const { from, to } of folderRenames) {
     const renameDirs = SCOPE_DIR ? [SCOPE_DIR] : targetDirs;
@@ -202,7 +224,6 @@ if (folderRenames.length > 0) {
       allPaths.push(...walkAllPaths(dir));
     }
 
-    // Sort deepest-first so children are renamed before parents
     allPaths.sort((a, b) => b.split(path.sep).length - a.split(path.sep).length);
 
     for (const itemPath of allPaths) {
@@ -213,7 +234,16 @@ if (folderRenames.length > 0) {
       const newPath = path.join(path.dirname(itemPath), newBase);
 
       if (itemPath !== newPath && fs.existsSync(itemPath)) {
-        fs.renameSync(itemPath, newPath);
+        try {
+          fs.renameSync(itemPath, newPath);
+        } catch (err) {
+          if (err.code === 'ENOTEMPTY' && fs.statSync(itemPath).isDirectory()) {
+            moveContents(itemPath, newPath);
+            fs.rmdirSync(itemPath);
+          } else {
+            throw err;
+          }
+        }
         console.log(`  Renamed: ${baseName} -> ${newBase}`);
       }
     }

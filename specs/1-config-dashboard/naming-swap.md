@@ -13,11 +13,13 @@ The dashboard uses a driving-simulation naming convention (TTM, Captive, ABS Cri
 
 | File | Purpose |
 |------|---------|
-| `tools/naming-map.json` | JSON mapping file: `current name → target name` |
+| `tools/naming-map.json` | JSON mapping template: `current name → ___` (fill in targets) |
+| `tools/naming-map.flight.json` | Pre-built map: driving-sim → flight systems |
+| `tools/naming-map.food.json` | Pre-built map: driving-sim → food production |
 | `tools/rename.sh` | Bash script (macOS / Linux) |
 | `tools/rename.js` | Node.js script (Windows / macOS / Linux — cross-platform) |
 
-Both scripts have identical behavior and read the same `naming-map.json`.
+Both scripts have identical behavior. Use `--map` to point to any mapping file.
 
 ---
 
@@ -92,6 +94,40 @@ node tools/rename.js --skip-verify
 | `--scope <dir>` | Limit scan to a specific folder and its recursive children (default: `src/` + `server/`) |
 | `--map <file>` | Path to a naming-map JSON file (default: `tools/naming-map.json` next to the script) |
 | `--help` | Print usage information |
+
+---
+
+## Quick Test (Ready-Made Maps)
+
+Two pre-built domain maps are included for testing:
+
+**Flight systems** (`tools/naming-map.flight.json`):
+
+```bash
+# Preview
+node tools/rename.js --map tools/naming-map.flight.json --scope src --dry-run
+
+# Apply
+node tools/rename.js --map tools/naming-map.flight.json --scope src --skip-verify
+
+# Revert
+git checkout . && git clean -fd src/
+```
+
+**Food production** (`tools/naming-map.food.json`):
+
+```bash
+# Preview
+node tools/rename.js --map tools/naming-map.food.json --scope src --dry-run
+
+# Apply
+node tools/rename.js --map tools/naming-map.food.json --scope src --skip-verify
+
+# Revert
+git checkout . && git clean -fd src/
+```
+
+Both maps swap all domain identifiers (labels, properties, types, components, folders, API paths, test IDs, constants) from the driving-simulation domain to their respective target domain.
 
 ---
 

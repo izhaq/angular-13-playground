@@ -1,13 +1,5 @@
 <div class="panel-wrapper" [class.panel-wrapper--disabled]="disabled">
   <div class="panel">
-    <div class="panel__header">
-      <app-cmd-panel
-        [value]="cmd"
-        [disabled]="disabled"
-        (changed)="onCmdChanged($event)">
-      </app-cmd-panel>
-    </div>
-
     <div class="panel__body">
       <div class="panel__section">
         <app-frequent-operations-list

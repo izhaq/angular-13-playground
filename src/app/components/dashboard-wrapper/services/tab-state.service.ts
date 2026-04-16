@@ -50,6 +50,10 @@ export class TabStateService<T> {
     return defaults;
   }
 
+  getCurrentState(): T {
+    return { ...this.stateSubject.getValue() };
+  }
+
   getSavedBaseline(): T {
     return { ...this.savedBaseline };
   }

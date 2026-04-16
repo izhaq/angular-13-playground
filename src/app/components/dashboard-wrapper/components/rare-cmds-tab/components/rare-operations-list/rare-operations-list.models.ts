@@ -1,16 +1,16 @@
 import { DropdownOption } from '../../../../../app-dropdown/app-dropdown.models';
 
 export interface RareOperationsModel {
-  absCalibration: string;
-  tractionDiag: string;
-  steeringAlign: string;
-  brakeBleed: string;
-  suspReset: string;
-  eepromFlash: string;
-  canBusLog: string;
-  tirePressInit: string;
-  fuelMapSwitch: string;
-  coolantPurge: string;
+  absCriticalFail: string;
+  absWarningFail: string;
+  absFatalFail: string;
+  brakeCriticalFail: string;
+  masterResetFail: string;
+  flashCriticalFail: string;
+  busTempFail: string;
+  tireCommFail: string;
+  fuelMapTempFail: string;
+  coolantCriticalFail: string;
 }
 
 export type RareOperationsKey = keyof RareOperationsModel;
@@ -26,31 +26,37 @@ const YES_NO_OPTIONS: DropdownOption[] = [
   { value: 'yes', label: 'Yes', abbr: 'YES' },
 ];
 
+const NORMAL_FORCE_IGNORE_OPTIONS: DropdownOption[] = [
+  { value: 'normal', label: 'Normal', abbr: 'NRM' },
+  { value: 'force', label: 'Force', abbr: 'FRC' },
+  { value: 'ignore', label: 'Ignore', abbr: 'IGN' },
+];
+
 export const RARE_OPERATIONS_FIELDS: RareOperationsFieldConfig[] = [
-  { key: 'absCalibration', label: 'ABS Calibration', options: YES_NO_OPTIONS },
-  { key: 'tractionDiag', label: 'Traction Diag', options: YES_NO_OPTIONS },
-  { key: 'steeringAlign', label: 'Steering Align', options: YES_NO_OPTIONS },
-  { key: 'brakeBleed', label: 'Brake Bleed', options: YES_NO_OPTIONS },
-  { key: 'suspReset', label: 'Susp Reset', options: YES_NO_OPTIONS },
-  { key: 'eepromFlash', label: 'EEPROM Flash', options: YES_NO_OPTIONS },
-  { key: 'canBusLog', label: 'CAN Bus Log', options: YES_NO_OPTIONS },
-  { key: 'tirePressInit', label: 'Tire Press Init', options: YES_NO_OPTIONS },
-  { key: 'fuelMapSwitch', label: 'Fuel Map Switch', options: YES_NO_OPTIONS },
-  { key: 'coolantPurge', label: 'Coolant Purge', options: YES_NO_OPTIONS },
+  { key: 'absCriticalFail', label: 'ABS Critical Fail', options: NORMAL_FORCE_IGNORE_OPTIONS },
+  { key: 'absWarningFail', label: 'ABS Warning Fail', options: NORMAL_FORCE_IGNORE_OPTIONS },
+  { key: 'absFatalFail', label: 'ABS Fatal Fail', options: NORMAL_FORCE_IGNORE_OPTIONS },
+  { key: 'brakeCriticalFail', label: 'Brake Critical Fail', options: NORMAL_FORCE_IGNORE_OPTIONS },
+  { key: 'masterResetFail', label: 'Master Reset Fail', options: NORMAL_FORCE_IGNORE_OPTIONS },
+  { key: 'flashCriticalFail', label: 'Flash Critical Fail', options: NORMAL_FORCE_IGNORE_OPTIONS },
+  { key: 'busTempFail', label: 'Bus Temp Fail', options: NORMAL_FORCE_IGNORE_OPTIONS },
+  { key: 'tireCommFail', label: 'Tire Comm Fail', options: YES_NO_OPTIONS },
+  { key: 'fuelMapTempFail', label: 'Fuel Map Temp Fail', options: NORMAL_FORCE_IGNORE_OPTIONS },
+  { key: 'coolantCriticalFail', label: 'Coolant Critical Fail', options: NORMAL_FORCE_IGNORE_OPTIONS },
 ];
 
 export const RARE_OPERATIONS_KEYS: RareOperationsKey[] =
   RARE_OPERATIONS_FIELDS.map(f => f.key);
 
 export const DEFAULT_RARE_OPERATIONS: RareOperationsModel = {
-  absCalibration: 'no',
-  tractionDiag: 'no',
-  steeringAlign: 'no',
-  brakeBleed: 'no',
-  suspReset: 'no',
-  eepromFlash: 'no',
-  canBusLog: 'no',
-  tirePressInit: 'no',
-  fuelMapSwitch: 'no',
-  coolantPurge: 'no',
+  absCriticalFail: 'normal',
+  absWarningFail: 'normal',
+  absFatalFail: 'normal',
+  brakeCriticalFail: 'normal',
+  masterResetFail: 'normal',
+  flashCriticalFail: 'normal',
+  busTempFail: 'normal',
+  tireCommFail: 'no',
+  fuelMapTempFail: 'normal',
+  coolantCriticalFail: 'normal',
 };

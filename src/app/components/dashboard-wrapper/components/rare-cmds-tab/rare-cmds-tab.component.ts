@@ -1,8 +1,9 @@
 import { ChangeDetectionStrategy, Component, Input, OnDestroy, OnInit } from '@angular/core';
 import { Observable, Subscription } from 'rxjs';
 
-import { RareDashboardState, RareLeftPanelPayload } from './models/rare-dashboard.models';
+import { CmdSelection, RareDashboardState, RareLeftPanelPayload } from './models/rare-dashboard.models';
 import { RARE_DEFAULT_STATE } from './models/rare-dashboard-defaults';
+import { DEFAULT_CMD_SELECTION } from '../cmd-panel/cmd-panel.models';
 import { GridConfig, RowViewModel } from '../status-grid/models/grid.models';
 import { buildRareGridRowDefs } from '../status-grid/models/grid-defaults';
 import { TAB_STATE_CONFIG } from '../../services/tab-state.config';
@@ -30,6 +31,7 @@ export class RareCmdsTabComponent implements OnInit, OnDestroy {
   readonly dashboardState$: Observable<RareDashboardState>;
   readonly gridRows$: Observable<RowViewModel[]>;
 
+  private cmd: CmdSelection = { ...DEFAULT_CMD_SELECTION };
   private wsSub?: Subscription;
 
   constructor(
@@ -55,26 +57,34 @@ export class RareCmdsTabComponent implements OnInit, OnDestroy {
     this.wsSub?.unsubscribe();
   }
 
+  onCmdChanged(value: CmdSelection): void {
+    this.cmd = value;
+    const current = this.stateService.getCurrentState();
+    this.stateService.updateState({ ...current, cmd: value });
+  }
+
   onDefault(): void {
+    this.cmd = { ...DEFAULT_CMD_SELECTION };
     this.stateService.resetToDefaults();
   }
 
   onStateChanged(partial: RareLeftPanelPayload): void {
-    this.stateService.updateState(this.buildState(partial));
+    this.stateService.updateState(this.buildFullState(partial));
   }
 
   onSaved(partial: RareLeftPanelPayload): void {
-    this.stateService.saveConfig(this.buildState(partial));
+    this.stateService.saveConfig(this.buildFullState(partial));
   }
 
   onCancelled(): void {
-    this.stateService.cancelChanges();
+    const restored = this.stateService.cancelChanges();
+    this.cmd = restored.cmd;
   }
 
-  private buildState(partial: RareLeftPanelPayload): RareDashboardState {
+  private buildFullState(partial: RareLeftPanelPayload): RareDashboardState {
     return {
       scenario: this.scenario,
-      cmd: partial.cmd,
+      cmd: this.cmd,
       rareOperations: partial.rareOperations,
     };
   }

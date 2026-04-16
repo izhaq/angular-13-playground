@@ -9,4 +9,4 @@ export interface RareDashboardState {
   rareOperations: RareOperationsModel;
 }
 
-export type RareLeftPanelPayload = Omit<RareDashboardState, 'scenario'>;
+export type RareLeftPanelPayload = Omit<RareDashboardState, 'scenario' | 'cmd'>;

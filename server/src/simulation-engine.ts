@@ -30,17 +30,19 @@ const CMD_TEST_ABBR_MAPS: Record<string, AbbrMap> = {
   rideMtrRec: YES_NO_ABBR,
 };
 
+const NORMAL_FORCE_IGNORE_ABBR: AbbrMap = { 'normal': 'NRM', 'force': 'FRC', 'ignore': 'IGN' };
+
 const RARE_ABBR_MAPS: Record<string, AbbrMap> = {
-  absCalibration: YES_NO_ABBR,
-  tractionDiag:   YES_NO_ABBR,
-  steeringAlign:  YES_NO_ABBR,
-  brakeBleed:     YES_NO_ABBR,
-  suspReset:      YES_NO_ABBR,
-  eepromFlash:    YES_NO_ABBR,
-  canBusLog:      YES_NO_ABBR,
-  tirePressInit:  YES_NO_ABBR,
-  fuelMapSwitch:  YES_NO_ABBR,
-  coolantPurge:   YES_NO_ABBR,
+  absCriticalFail:     NORMAL_FORCE_IGNORE_ABBR,
+  absWarningFail:      NORMAL_FORCE_IGNORE_ABBR,
+  absFatalFail:        NORMAL_FORCE_IGNORE_ABBR,
+  brakeCriticalFail:   NORMAL_FORCE_IGNORE_ABBR,
+  masterResetFail:     NORMAL_FORCE_IGNORE_ABBR,
+  flashCriticalFail:   NORMAL_FORCE_IGNORE_ABBR,
+  busTempFail:         NORMAL_FORCE_IGNORE_ABBR,
+  tireCommFail:        YES_NO_ABBR,
+  fuelMapTempFail:     NORMAL_FORCE_IGNORE_ABBR,
+  coolantCriticalFail: NORMAL_FORCE_IGNORE_ABBR,
 };
 
 const OPERATIONS_KEYS: OperationsKey[] = [
@@ -54,17 +56,17 @@ const CMD_TEST_KEYS: CmdTestKey[] = [
 ];
 
 const RARE_OPERATIONS_KEYS: RareOperationsKey[] = [
-  'absCalibration', 'tractionDiag', 'steeringAlign', 'brakeBleed',
-  'suspReset', 'eepromFlash', 'canBusLog', 'tirePressInit',
-  'fuelMapSwitch', 'coolantPurge',
+  'absCriticalFail', 'absWarningFail', 'absFatalFail', 'brakeCriticalFail',
+  'masterResetFail', 'flashCriticalFail', 'busTempFail', 'tireCommFail',
+  'fuelMapTempFail', 'coolantCriticalFail',
 ];
 
 const TTL_TTR_FIELDS: Set<RareOperationsKey> = new Set([
-  'steeringAlign', 'brakeBleed', 'canBusLog', 'tirePressInit',
+  'absFatalFail', 'brakeCriticalFail', 'busTempFail', 'tireCommFail',
 ]);
 
 const SSL_FIELDS: Set<RareOperationsKey> = new Set([
-  'fuelMapSwitch', 'coolantPurge',
+  'fuelMapTempFail', 'coolantCriticalFail',
 ]);
 
 function computeColumnIds(sides: string[], wheels: string[]): string[] {

@@ -3,17 +3,9 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 
-import { CmdSelection, RareDashboardState, RareLeftPanelPayload, RareOperationsModel } from '../../models/rare-dashboard.models';
-import { DEFAULT_CMD_SELECTION } from '../../../cmd-panel/cmd-panel.models';
+import { RareDashboardState, RareLeftPanelPayload, RareOperationsModel } from '../../models/rare-dashboard.models';
 import { DEFAULT_RARE_OPERATIONS } from '../rare-operations-list/rare-operations-list.models';
 import { RareLeftPanelComponent } from './rare-left-panel.component';
-
-@Component({ selector: 'app-cmd-panel', template: '' })
-class MockCmdPanelComponent {
-  @Input() value!: CmdSelection;
-  @Input() disabled = false;
-  @Output() changed = new EventEmitter<CmdSelection>();
-}
 
 @Component({ selector: 'app-rare-operations-list', template: '' })
 class MockRareOperationsListComponent {
@@ -36,8 +28,8 @@ function buildTestState(): RareDashboardState {
     cmd: { sides: ['left', 'right'], wheels: ['1', '2'] },
     rareOperations: {
       ...DEFAULT_RARE_OPERATIONS,
-      absCalibration: 'yes',
-      brakeBleed: 'yes',
+      absCriticalFail: 'force',
+      brakeCriticalFail: 'force',
     },
   };
 }
@@ -51,7 +43,6 @@ describe('RareLeftPanelComponent', () => {
     await TestBed.configureTestingModule({
       declarations: [
         RareLeftPanelComponent,
-        MockCmdPanelComponent,
         MockRareOperationsListComponent,
         MockPanelFooterComponent,
       ],
@@ -74,32 +65,21 @@ describe('RareLeftPanelComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should initialize with default cmd and rareOperations', () => {
-    expect(component.cmd).toEqual(DEFAULT_CMD_SELECTION);
+  it('should initialize with default rareOperations', () => {
     expect(component.rareOperations).toEqual(DEFAULT_RARE_OPERATIONS);
   });
 
-  it('dashboardState setter should update cmd and rareOperations', () => {
+  it('dashboardState setter should update rareOperations', () => {
     const state = buildTestState();
     component.dashboardState = state;
 
-    expect(component.cmd).toEqual(state.cmd);
     expect(component.rareOperations).toEqual(state.rareOperations);
   });
 
   it('dashboardState setter should reset to defaults on null', () => {
     component.dashboardState = null;
 
-    expect(component.cmd).toEqual(DEFAULT_CMD_SELECTION);
     expect(component.rareOperations).toEqual(DEFAULT_RARE_OPERATIONS);
-  });
-
-  it('should pass cmd to app-cmd-panel', () => {
-    const state = buildTestState();
-    setInputAndDetect('dashboardState', state);
-
-    const cmdPanel = fixture.debugElement.query(By.directive(MockCmdPanelComponent));
-    expect(cmdPanel.componentInstance.value).toEqual(state.cmd);
   });
 
   it('should pass rareOperations to app-rare-operations-list', () => {
@@ -113,30 +93,15 @@ describe('RareLeftPanelComponent', () => {
   it('should pass disabled to all child components including footer', () => {
     setInputAndDetect('disabled', true);
 
-    const cmdPanel = fixture.debugElement.query(By.directive(MockCmdPanelComponent));
     const opsList = fixture.debugElement.query(By.directive(MockRareOperationsListComponent));
     const footer = fixture.debugElement.query(By.directive(MockPanelFooterComponent));
-    expect(cmdPanel.componentInstance.disabled).toBe(true);
     expect(opsList.componentInstance.disabled).toBe(true);
     expect(footer.componentInstance.disabled).toBe(true);
   });
 
-  it('onCmdChanged should update cmd and emit stateChanged', () => {
-    const spy = spyOn(component.stateChanged, 'emit');
-    const newCmd: CmdSelection = { sides: ['right'], wheels: ['2', '4'] };
-
-    component.onCmdChanged(newCmd);
-
-    expect(component.cmd).toEqual(newCmd);
-    expect(spy).toHaveBeenCalledTimes(1);
-    const payload = spy.calls.mostRecent().args[0] as RareLeftPanelPayload;
-    expect(payload.cmd).toEqual(newCmd);
-    expect(payload.rareOperations).toEqual(DEFAULT_RARE_OPERATIONS);
-  });
-
   it('onRareOperationsChanged should update rareOperations and emit stateChanged', () => {
     const spy = spyOn(component.stateChanged, 'emit');
-    const newOps: RareOperationsModel = { ...DEFAULT_RARE_OPERATIONS, canBusLog: 'yes', suspReset: 'yes' };
+    const newOps: RareOperationsModel = { ...DEFAULT_RARE_OPERATIONS, busTempFail: 'force', masterResetFail: 'ignore' };
 
     component.onRareOperationsChanged(newOps);
 
@@ -144,19 +109,18 @@ describe('RareLeftPanelComponent', () => {
     expect(spy).toHaveBeenCalledTimes(1);
     const payload = spy.calls.mostRecent().args[0] as RareLeftPanelPayload;
     expect(payload.rareOperations).toEqual(newOps);
-    expect(payload.cmd).toEqual(DEFAULT_CMD_SELECTION);
   });
 
   it('onSave should emit saved with current payload', () => {
     const spy = spyOn(component.saved, 'emit');
-    const newCmd: CmdSelection = { sides: ['left'], wheels: ['3'] };
-    component.onCmdChanged(newCmd);
+    const newOps: RareOperationsModel = { ...DEFAULT_RARE_OPERATIONS, absCriticalFail: 'ignore' };
+    component.onRareOperationsChanged(newOps);
 
     component.onSave();
 
     expect(spy).toHaveBeenCalledTimes(1);
     const payload = spy.calls.mostRecent().args[0] as RareLeftPanelPayload;
-    expect(payload.cmd).toEqual(newCmd);
+    expect(payload.rareOperations).toEqual(newOps);
   });
 
   it('onCancel should emit cancelled', () => {

@@ -110,6 +110,16 @@ describe('TabStateService', () => {
     });
   });
 
+  it('getCurrentState returns the current state snapshot', () => {
+    const modified: TestState = { scenario: 'modified', value: 'changed' };
+    service.updateState(modified);
+
+    const current = service.getCurrentState();
+    expect(current).toEqual(modified);
+    current.value = 'mutated';
+    expect(service.getCurrentState().value).toBe('changed');
+  });
+
   it('resetToDefaults restores the configured default state and resets baseline', (done) => {
     service.saveConfig({ scenario: 'modified', value: 'changed' });
     httpMock.expectOne(TEST_API_URL).flush({ status: 'accepted' });

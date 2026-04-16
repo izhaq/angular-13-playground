@@ -8,13 +8,14 @@ $dropdown-h-padding: 0.625em;
 .app-dropdown-wrapper {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: $spacing-sm;
   width: 100%;
 }
 
 .app-dropdown-label {
-  flex-shrink: 0;
-  min-width: 7.5em;
+  flex: 1;
+  min-width: 0;
   font-family: $font-family-body;
   font-size: $dropdown-font-size;
   line-height: $dropdown-line-height;
@@ -22,9 +23,10 @@ $dropdown-h-padding: 0.625em;
   white-space: nowrap;
 }
 
+
 .app-dropdown-field {
-  flex: 1;
-  min-width: 0;
+  flex-shrink: 0;
+  width: 7rem;
 
   &.mat-form-field-appearance-fill .mat-form-field-flex {
     background-color: $surface-container;

@@ -9,7 +9,7 @@ import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from 
 export class PanelFooterComponent {
   @Input() disabled = false;
 
-  @Output() saved = new EventEmitter<void>();
-  @Output() cancelled = new EventEmitter<void>();
-  @Output() defaultClicked = new EventEmitter<void>();
+  @Output() readonly saved = new EventEmitter<void>();
+  @Output() readonly cancelled = new EventEmitter<void>();
+  @Output() readonly defaultClicked = new EventEmitter<void>();
 }

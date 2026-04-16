@@ -19,7 +19,7 @@ export class CmdTestPanelComponent {
   @Input() value: CmdTestModel = { ...DEFAULT_CMD_TEST };
   @Input() disabled = false;
 
-  @Output() changed = new EventEmitter<CmdTestModel>();
+  @Output() readonly changed = new EventEmitter<CmdTestModel>();
 
   trackByKey(_: number, field: { key: string }): string {
     return field.key;

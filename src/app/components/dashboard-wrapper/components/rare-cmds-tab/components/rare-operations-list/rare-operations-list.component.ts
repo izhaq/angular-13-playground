@@ -19,7 +19,7 @@ export class RareOperationsListComponent {
   @Input() value: RareOperationsModel = { ...DEFAULT_RARE_OPERATIONS };
   @Input() disabled = false;
 
-  @Output() changed = new EventEmitter<RareOperationsModel>();
+  @Output() readonly changed = new EventEmitter<RareOperationsModel>();
 
   trackByKey(_: number, field: { key: string }): string {
     return field.key;

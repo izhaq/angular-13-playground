@@ -19,7 +19,7 @@ export class FrequentOperationsListComponent {
   @Input() value: FrequentOperationsModel = { ...DEFAULT_OPERATIONS };
   @Input() disabled = false;
 
-  @Output() changed = new EventEmitter<FrequentOperationsModel>();
+  @Output() readonly changed = new EventEmitter<FrequentOperationsModel>();
 
   trackByKey(_: number, field: { key: string }): string {
     return field.key;

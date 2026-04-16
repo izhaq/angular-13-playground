@@ -17,5 +17,5 @@ import { DropdownOption } from '../../../app-dropdown/app-dropdown.models';
 export class TopBarComponent {
   @Input() selectedScenario = '';
   @Input() scenarioOptions: DropdownOption[] = [];
-  @Output() scenarioChanged = new EventEmitter<string>();
+  @Output() readonly scenarioChanged = new EventEmitter<string>();
 }

@@ -19,6 +19,7 @@
         <td
           class="status-grid__cell"
           *ngFor="let col of config.columns; trackBy: trackByColumnId"
+          [appTestId]="'cell-' + row.field + '-' + col.id"
           [class.status-grid__cell--hovered]="isColumnHovered(col.id)"
           [class.status-grid__cell--focused]="isCellFocused(row.field, col.id)"
           (mouseenter)="onColumnHover(col.id)"

@@ -20,7 +20,7 @@ export class CmdPanelComponent {
   @Input() value: CmdSelection = { ...DEFAULT_CMD_SELECTION };
   @Input() disabled = false;
 
-  @Output() changed = new EventEmitter<CmdSelection>();
+  @Output() readonly changed = new EventEmitter<CmdSelection>();
 
   onSidesChanged(sides: string[]): void {
     this.value = { ...this.value, sides };

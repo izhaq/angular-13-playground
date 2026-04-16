@@ -17,20 +17,20 @@ $focus-border-color: $primary;
     border-collapse: collapse;
     table-layout: fixed;
     font-family: $font-family-body;
-    font-size: 0.8125rem;
+    font-size: 0.75rem;
   }
 
   &__label-header {
-    width: 10rem;
-    min-width: 8rem;
-    padding: $spacing-xs $spacing-md $spacing-xs $spacing-sm;
+    width: 8rem;
+    min-width: 6rem;
+    padding: $spacing-xs $spacing-sm $spacing-xs $spacing-xs;
   }
 
   &__col-header {
-    padding: $spacing-xs 2px;
+    padding: $spacing-xs 1px;
     text-align: center;
     font-weight: 600;
-    font-size: 0.6875rem;
+    font-size: 0.625rem;
     color: $secondary-text;
     background-color: $header-bg;
     border: 1px solid $cell-border;
@@ -42,9 +42,9 @@ $focus-border-color: $primary;
   }
 
   &__label {
-    padding: $spacing-xs $spacing-md $spacing-xs $spacing-sm;
+    padding: $spacing-xs $spacing-sm $spacing-xs $spacing-xs;
     color: $secondary-text;
-    font-size: 0.875rem;
+    font-size: 0.75rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -52,10 +52,10 @@ $focus-border-color: $primary;
   }
 
   &__cell {
-    padding: $spacing-xs 2px;
+    padding: $spacing-xs 1px;
     text-align: center;
     font-weight: 600;
-    font-size: 0.6875rem;
+    font-size: 0.625rem;
     color: $primary-text;
     background-color: $cell-bg;
     border: 1px solid $cell-border;

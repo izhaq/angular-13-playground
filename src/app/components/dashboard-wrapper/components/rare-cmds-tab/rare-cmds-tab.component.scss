@@ -32,22 +32,35 @@ $separator-color: rgba($primary-text, 0.12);
   }
 
   &__left {
-    flex: 2;
+    flex: 2.5;
     min-width: 12rem;
     display: flex;
     flex-direction: column;
-    padding: 0 $spacing-lg 0 $spacing-sm;
+    padding: 0 $spacing-md 0 $spacing-sm;
     border-right: 1px solid $separator-color;
     overflow-y: auto;
+
+    &::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background-color: rgba($primary-text, 0.2);
+      border-radius: 2px;
+    }
   }
 
   &__right {
-    flex: 8;
+    flex: 7.5;
     min-width: 0;
     display: flex;
     flex-direction: column;
-    padding-top: $spacing-lg;
-    padding-left: $spacing-lg;
+    padding-top: $spacing-sm;
+    padding-left: $spacing-md;
     overflow: hidden;
   }
 }

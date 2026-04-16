@@ -14,13 +14,13 @@
     flex: 1;
     min-width: 0;
     font-family: $font-family-body;
-    font-size: 0.8125rem;
+    font-size: 0.75rem;
     color: $secondary-text;
     white-space: nowrap;
   }
 
   app-multi-dropdown {
-    width: 7rem;
+    width: 6rem;
     flex-shrink: 0;
   }
 }

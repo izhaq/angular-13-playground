@@ -4,21 +4,25 @@ $separator-color: rgba($primary-text, 0.12);
 
 :host {
   display: block;
-  height: 100vh;
+  width: 1120px;
+  height: 500px;
+  position: fixed;
+  bottom: 0;
+  left: 0;
 }
 
 .wrapper {
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: $spacing-lg;
+  padding: $spacing-sm;
   box-sizing: border-box;
 
   &__topbar {
     flex-shrink: 0;
-    padding-bottom: $spacing-md;
+    padding-bottom: $spacing-xs;
     border-bottom: 1px solid $separator-color;
-    margin-bottom: $spacing-md;
+    margin-bottom: $spacing-xs;
   }
 
   &__tabs {

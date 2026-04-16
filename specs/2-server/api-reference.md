@@ -98,6 +98,96 @@ Returns the full `DashboardState` object (same structure as the POST request bod
 
 ---
 
+### POST /api/rare-config
+
+Save a rare CMDs tab configuration. Triggers WebSocket updates to all connected clients.
+
+**Request Body** — `RareDashboardState`
+
+```typescript
+interface RareDashboardState {
+  scenario: string;
+  cmd: {
+    sides: string[];
+    wheels: string[];
+  };
+  rareOperations: {
+    absCriticalFail: string;     // "normal" | "force" | "ignore"
+    absWarningFail: string;      // "normal" | "force" | "ignore"
+    absFatalFail: string;        // "normal" | "force" | "ignore"
+    brakeCriticalFail: string;   // "normal" | "force" | "ignore"
+    masterResetFail: string;     // "normal" | "force" | "ignore"
+    flashCriticalFail: string;   // "normal" | "force" | "ignore"
+    busTempFail: string;         // "normal" | "force" | "ignore"
+    tireCommFail: string;        // "no" | "yes"
+    fuelMapTempFail: string;     // "normal" | "force" | "ignore"
+    coolantCriticalFail: string; // "normal" | "force" | "ignore"
+  };
+}
+```
+
+**Example Request**
+
+```json
+{
+  "scenario": "highway-cruise",
+  "cmd": {
+    "sides": ["left", "right"],
+    "wheels": ["1", "2"]
+  },
+  "rareOperations": {
+    "absCriticalFail": "normal",
+    "absWarningFail": "normal",
+    "absFatalFail": "force",
+    "brakeCriticalFail": "normal",
+    "masterResetFail": "normal",
+    "flashCriticalFail": "ignore",
+    "busTempFail": "normal",
+    "tireCommFail": "no",
+    "fuelMapTempFail": "normal",
+    "coolantCriticalFail": "normal"
+  }
+}
+```
+
+**Response** — `200 OK`
+
+```json
+{
+  "status": "accepted",
+  "updatesScheduled": 10,
+  "scenario": "highway-cruise"
+}
+```
+
+**Error Response** — `400 Bad Request`
+
+```json
+{
+  "error": "Invalid payload: rareOperations required"
+}
+```
+
+---
+
+### GET /api/rare-config
+
+Returns the last saved rare configuration, or 404 if none has been saved yet.
+
+**Response** — `200 OK`
+
+Returns the full `RareDashboardState` object (same structure as the POST request body).
+
+**Error Response** — `404 Not Found`
+
+```json
+{
+  "error": "No rare config saved yet"
+}
+```
+
+---
+
 ### GET /api/health
 
 Health check endpoint.
@@ -118,14 +208,19 @@ Health check endpoint.
 
 Endpoint: `ws://localhost:3000/api/ws`
 
-The client connects on page load. After a successful `POST /api/config`, the server broadcasts a series of `FieldUpdate` messages to all connected clients. Each message corresponds to one of the 11 operations fields.
+The client connects on page load via `WsService` (single shared connection). After a successful `POST /api/config` or `POST /api/rare-config`, the server broadcasts a series of `FieldUpdate` messages to all connected clients. Each message corresponds to one operation field. The client-side `StatusGridService` instances filter by their configured row definitions — unknown fields are silently ignored.
 
 ### Message Format — `FieldUpdate`
 
 ```typescript
+interface CellValue {
+  value: string;  // raw value (e.g. "captive", "normal")
+  abbr: string;   // abbreviation resolved server-side (e.g. "CAP", "NRM")
+}
+
 interface FieldUpdate {
-  field: string;                  // operations key (e.g. "ttm", "force", "videoType")
-  cells: Record<string, string>;  // columnId -> raw value key
+  field: string;                     // operations key (e.g. "ttm", "force", "videoType")
+  cells: Record<string, CellValue>;  // columnId -> CellValue
 }
 ```
 
@@ -145,13 +240,13 @@ Only columns matching the selected sides and wheels are included in the update.
 **Single-select field** — user selected Left side, Wheels 1+2, TTM = "captive":
 
 ```json
-{ "field": "ttm", "cells": { "L1": "captive", "L2": "captive" } }
+{ "field": "ttm", "cells": { "L1": { "value": "captive", "abbr": "CAP" }, "L2": { "value": "captive", "abbr": "CAP" } } }
 ```
 
 **Multi-select field** — user selected Left side, Wheel 1, Video Type = ["hd", "4k"]:
 
 ```json
-{ "field": "videoType", "cells": { "L1": "hd,4k" } }
+{ "field": "videoType", "cells": { "L1": { "value": "hd,4k", "abbr": "HD,4K" } } }
 ```
 
 **All wheels, both sides** — Force = "normal":
@@ -160,15 +255,17 @@ Only columns matching the selected sides and wheels are included in the update.
 {
   "field": "force",
   "cells": {
-    "L1": "normal", "L2": "normal", "L3": "normal", "L4": "normal",
-    "R1": "normal", "R2": "normal", "R3": "normal", "R4": "normal"
+    "L1": { "value": "normal", "abbr": "NRM" }, "L2": { "value": "normal", "abbr": "NRM" },
+    "L3": { "value": "normal", "abbr": "NRM" }, "L4": { "value": "normal", "abbr": "NRM" },
+    "R1": { "value": "normal", "abbr": "NRM" }, "R2": { "value": "normal", "abbr": "NRM" },
+    "R3": { "value": "normal", "abbr": "NRM" }, "R4": { "value": "normal", "abbr": "NRM" }
   }
 }
 ```
 
-### Client-Side Abbreviation Mapping
+### Server-Side Abbreviation Mapping
 
-The server returns raw value keys (e.g. `"captive"`, `"hd,4k"`). The client maps these to display abbreviations before rendering in the grid. The mapping is defined in `OPERATIONS_FIELDS` on the client:
+Abbreviation resolution is performed server-side in `simulation-engine.ts` via the `resolveAbbr` function. The server sends both the raw value and the resolved abbreviation as `CellValue { value, abbr }`. The client renders `abbr` in grid cells and shows `value` in cell hover popouts.
 
 | Field      | Value       | Abbreviation |
 |------------|-------------|--------------|
@@ -200,6 +297,44 @@ The server returns raw value keys (e.g. `"captive"`, `"hd,4k"`). The client maps
 | aux        | yes         | YES          |
 
 For multi-select fields, comma-separated values are mapped individually: `"hd,4k"` becomes `"HD,4K"`.
+
+### Rare Operations Abbreviation Mapping (Tab 2)
+
+9 fields use Normal/Force/Ignore options; 1 field (tireCommFail) uses Yes/No.
+
+| Field               | Value   | Abbreviation |
+|---------------------|---------|--------------|
+| absCriticalFail     | normal  | NRM          |
+| absCriticalFail     | force   | FRC          |
+| absCriticalFail     | ignore  | IGN          |
+| absWarningFail      | normal  | NRM          |
+| absWarningFail      | force   | FRC          |
+| absWarningFail      | ignore  | IGN          |
+| absFatalFail        | normal  | NRM          |
+| absFatalFail        | force   | FRC          |
+| absFatalFail        | ignore  | IGN          |
+| brakeCriticalFail   | normal  | NRM          |
+| brakeCriticalFail   | force   | FRC          |
+| brakeCriticalFail   | ignore  | IGN          |
+| masterResetFail     | normal  | NRM          |
+| masterResetFail     | force   | FRC          |
+| masterResetFail     | ignore  | IGN          |
+| flashCriticalFail   | normal  | NRM          |
+| flashCriticalFail   | force   | FRC          |
+| flashCriticalFail   | ignore  | IGN          |
+| busTempFail         | normal  | NRM          |
+| busTempFail         | force   | FRC          |
+| busTempFail         | ignore  | IGN          |
+| tireCommFail        | no      | NO           |
+| tireCommFail        | yes     | YES          |
+| fuelMapTempFail     | normal  | NRM          |
+| fuelMapTempFail     | force   | FRC          |
+| fuelMapTempFail     | ignore  | IGN          |
+| coolantCriticalFail | normal  | NRM          |
+| coolantCriticalFail | force   | FRC          |
+| coolantCriticalFail | ignore  | IGN          |
+
+**Extra columns for Rare CMDs grid**: TTL, TTR, SSL — populated server-side based on field rules (see spec).
 
 ### Timing
 

@@ -1,0 +1,211 @@
+{
+  "meta": {
+    "description": "Domain naming map for dashboard-wrapper. Replace '___' values with your target names, then run tools/rename.sh",
+    "version": "1.0",
+    "generated": "2026-04-16"
+  },
+
+  "labels": {
+    "Scenario": "___",
+    "CMD": "___",
+    "CMD to test": "___",
+    "Frequent CMDs": "___",
+    "Rare CMDs": "___",
+    "Default": "___",
+    "Cancel": "___",
+    "Save": "___"
+  },
+
+  "operationLabels": {
+    "TTM": "___",
+    "Weather": "___",
+    "Video rec": "___",
+    "Video Type": "___",
+    "Headlights": "___",
+    "PWR On/Off": "___",
+    "Force": "___",
+    "Stability": "___",
+    "Cruise Ctrl": "___",
+    "PLR": "___",
+    "AUX": "___",
+    "Nta": "___",
+    "Tis Mtr Rec": "___",
+    "Ride Mtr Rec": "___"
+  },
+
+  "rareOperationLabels": {
+    "ABS Critical Fail": "___",
+    "ABS Warning Fail": "___",
+    "ABS Fatal Fail": "___",
+    "Brake Critical Fail": "___",
+    "Master Reset Fail": "___",
+    "Flash Critical Fail": "___",
+    "Bus Temp Fail": "___",
+    "Tire Comm Fail": "___",
+    "Fuel Map Temp Fail": "___",
+    "Coolant Critical Fail": "___"
+  },
+
+  "optionLabels": {
+    "Not Active": "___",
+    "Real": "___",
+    "Captive": "___",
+    "Internal": "___",
+    "External": "___",
+    "Normal": "___",
+    "Force F": "___",
+    "Force No": "___",
+    "Ignore": "___",
+    "Left": "___",
+    "Right": "___"
+  },
+
+  "optionValues": {
+    "not-active": "___",
+    "real": "___",
+    "captive": "___",
+    "internal": "___",
+    "external": "___",
+    "force-f": "___",
+    "force-no": "___"
+  },
+
+  "abbreviations": {
+    "N/A": "___",
+    "REA": "___",
+    "CAP": "___",
+    "INT": "___",
+    "EXT": "___",
+    "NRM": "___",
+    "FRC": "___",
+    "FNO": "___",
+    "IGN": "___"
+  },
+
+  "scenarioLabels": {
+    "Highway Cruise": "___",
+    "City Traffic": "___",
+    "Off-Road Trail": "___",
+    "Realtime": "___"
+  },
+
+  "scenarioValues": {
+    "highway-cruise": "___",
+    "city-traffic": "___",
+    "off-road-trail": "___",
+    "realtime": "___"
+  },
+
+  "propertyNames": {
+    "ttm": "___",
+    "weather": "___",
+    "videoRec": "___",
+    "videoType": "___",
+    "headlights": "___",
+    "pwrOnOff": "___",
+    "force": "___",
+    "stability": "___",
+    "cruiseCtrl": "___",
+    "plr": "___",
+    "aux": "___",
+    "nta": "___",
+    "tisMtrRec": "___",
+    "rideMtrRec": "___",
+    "absCriticalFail": "___",
+    "absWarningFail": "___",
+    "absFatalFail": "___",
+    "brakeCriticalFail": "___",
+    "masterResetFail": "___",
+    "flashCriticalFail": "___",
+    "busTempFail": "___",
+    "tireCommFail": "___",
+    "fuelMapTempFail": "___",
+    "coolantCriticalFail": "___",
+    "scenario": "___",
+    "sides": "___",
+    "wheels": "___",
+    "operations": "___",
+    "rareOperations": "___",
+    "cmdTest": "___"
+  },
+
+  "typeNames": {
+    "FrequentOperationsModel": "___",
+    "FrequentOperationsKey": "___",
+    "FrequentOperationsFieldConfig": "___",
+    "RareOperationsModel": "___",
+    "RareOperationsKey": "___",
+    "RareOperationsFieldConfig": "___",
+    "CmdTestModel": "___",
+    "CmdTestKey": "___",
+    "CmdTestFieldConfig": "___",
+    "CmdSelection": "___",
+    "DashboardState": "___",
+    "RareDashboardState": "___",
+    "LeftPanelPayload": "___",
+    "RareLeftPanelPayload": "___"
+  },
+
+  "componentNames": {
+    "DashboardWrapper": "___",
+    "FrequentCmdsTab": "___",
+    "RareCmdsTab": "___",
+    "CmdPanel": "___",
+    "StatusGrid": "___",
+    "LeftPanel": "___",
+    "RareLeftPanel": "___",
+    "FrequentOperationsList": "___",
+    "RareOperationsList": "___",
+    "CmdTestPanel": "___",
+    "PanelFooter": "___",
+    "TopBar": "___"
+  },
+
+  "folderNames": {
+    "dashboard-wrapper": "___",
+    "frequent-cmds-tab": "___",
+    "rare-cmds-tab": "___",
+    "cmd-panel": "___",
+    "status-grid": "___",
+    "left-panel": "___",
+    "rare-left-panel": "___",
+    "frequent-operations-list": "___",
+    "rare-operations-list": "___",
+    "cmd-test-panel": "___",
+    "panel-footer": "___",
+    "top-bar": "___"
+  },
+
+  "apiPaths": {
+    "/api/config": "___",
+    "/api/rare-config": "___",
+    "/api/ws": "___",
+    "/api/health": "___"
+  },
+
+  "testIds": {
+    "topbar-scenario": "___",
+    "cmd-sides": "___",
+    "cmd-wheels": "___",
+    "frequent": "___",
+    "rare": "___"
+  },
+
+  "constants": {
+    "OPERATIONS_FIELDS": "___",
+    "OPERATIONS_KEYS": "___",
+    "DEFAULT_OPERATIONS": "___",
+    "RARE_OPERATIONS_FIELDS": "___",
+    "RARE_OPERATIONS_KEYS": "___",
+    "DEFAULT_RARE_OPERATIONS": "___",
+    "CMD_TEST_FIELDS": "___",
+    "CMD_TEST_KEYS": "___",
+    "DEFAULT_CMD_TEST": "___",
+    "GRID_COLUMNS": "___",
+    "SCENARIOS": "___",
+    "FREQUENT_GRID_CONFIG": "___",
+    "RARE_GRID_CONFIG": "___",
+    "DEFAULT_DASHBOARD_STATE": "___",
+    "DEFAULT_RARE_DASHBOARD_STATE": "___"
+  }
+}

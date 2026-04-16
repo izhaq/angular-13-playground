@@ -31,16 +31,16 @@ export interface DashboardState {
 }
 
 export interface RareOperationsValue {
-  absCalibration: string;
-  tractionDiag: string;
-  steeringAlign: string;
-  brakeBleed: string;
-  suspReset: string;
-  eepromFlash: string;
-  canBusLog: string;
-  tirePressInit: string;
-  fuelMapSwitch: string;
-  coolantPurge: string;
+  absCriticalFail: string;
+  absWarningFail: string;
+  absFatalFail: string;
+  brakeCriticalFail: string;
+  masterResetFail: string;
+  flashCriticalFail: string;
+  busTempFail: string;
+  tireCommFail: string;
+  fuelMapTempFail: string;
+  coolantCriticalFail: string;
 }
 
 export interface RareDashboardState {

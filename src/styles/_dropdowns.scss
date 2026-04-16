@@ -22,6 +22,10 @@ $dropdown-h-padding: 0.625em;
   white-space: nowrap;
 }
 
+app-rare-operations-list .app-dropdown-label {
+  min-width: 9.5em;
+}
+
 .app-dropdown-field {
   flex: 1;
   min-width: 0;

@@ -36,8 +36,8 @@ function buildTestState(): RareDashboardState {
     cmd: { sides: ['left', 'right'], wheels: ['1', '2'] },
     rareOperations: {
       ...DEFAULT_RARE_OPERATIONS,
-      absCalibration: 'yes',
-      brakeBleed: 'yes',
+      absCriticalFail: 'force',
+      brakeCriticalFail: 'force',
     },
   };
 }
@@ -136,7 +136,7 @@ describe('RareLeftPanelComponent', () => {
 
   it('onRareOperationsChanged should update rareOperations and emit stateChanged', () => {
     const spy = spyOn(component.stateChanged, 'emit');
-    const newOps: RareOperationsModel = { ...DEFAULT_RARE_OPERATIONS, canBusLog: 'yes', suspReset: 'yes' };
+    const newOps: RareOperationsModel = { ...DEFAULT_RARE_OPERATIONS, busTempFail: 'force', masterResetFail: 'ignore' };
 
     component.onRareOperationsChanged(newOps);
 

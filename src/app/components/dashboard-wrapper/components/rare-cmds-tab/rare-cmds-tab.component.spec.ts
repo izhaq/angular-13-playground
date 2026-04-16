@@ -95,14 +95,14 @@ describe('RareCmdsTabComponent', () => {
   });
 
   it('should forward WsService messages to gridService.applyUpdate', () => {
-    const update: FieldUpdate = { field: 'absCalibration', cells: { L1: { value: 'yes', abbr: 'YES' } } };
+    const update: FieldUpdate = { field: 'absCriticalFail', cells: { L1: { value: 'force', abbr: 'FRC' } } };
     wsMessageSubject.next(update);
 
     expect(gridService.applyUpdate).toHaveBeenCalledWith(update);
   });
 
   it('should unsubscribe from WsService on destroy', () => {
-    const update: FieldUpdate = { field: 'absCalibration', cells: { L1: { value: 'yes', abbr: 'YES' } } };
+    const update: FieldUpdate = { field: 'absCriticalFail', cells: { L1: { value: 'force', abbr: 'FRC' } } };
     fixture.destroy();
     wsMessageSubject.next(update);
 
@@ -136,7 +136,7 @@ describe('RareCmdsTabComponent', () => {
     component.scenario = 'off-road-trail';
     const partial: RareLeftPanelPayload = {
       cmd: DEFAULT_CMD_SELECTION,
-      rareOperations: { ...DEFAULT_RARE_OPERATIONS, brakeBleed: 'yes' },
+      rareOperations: { ...DEFAULT_RARE_OPERATIONS, brakeCriticalFail: 'force' },
     };
 
     component.onSaved(partial);

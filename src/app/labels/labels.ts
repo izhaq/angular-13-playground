@@ -35,16 +35,16 @@ export const LABELS: Record<string, string> = {
   'field.rideMtrRec': 'Ride Mtr Rec',
 
   // Rare CMDs Labels
-  'field.absCalibration': 'ABS Calibration',
-  'field.tractionDiag': 'Traction Diag',
-  'field.steeringAlign': 'Steering Align',
-  'field.brakeBleed': 'Brake Bleed',
-  'field.suspReset': 'Susp Reset',
-  'field.eepromFlash': 'EEPROM Flash',
-  'field.canBusLog': 'CAN Bus Log',
-  'field.tirePressInit': 'Tire Press Init',
-  'field.fuelMapSwitch': 'Fuel Map Switch',
-  'field.coolantPurge': 'Coolant Purge',
+  'field.absCriticalFail': 'ABS Critical Fail',
+  'field.absWarningFail': 'ABS Warning Fail',
+  'field.absFatalFail': 'ABS Fatal Fail',
+  'field.brakeCriticalFail': 'Brake Critical Fail',
+  'field.masterResetFail': 'Master Reset Fail',
+  'field.flashCriticalFail': 'Flash Critical Fail',
+  'field.busTempFail': 'Bus Temp Fail',
+  'field.tireCommFail': 'Tire Comm Fail',
+  'field.fuelMapTempFail': 'Fuel Map Temp Fail',
+  'field.coolantCriticalFail': 'Coolant Critical Fail',
 
   // Layout / Wrapper Labels
   'tab.frequent': 'Frequent CMDs',

@@ -36,10 +36,10 @@ describe('RareOperationsListComponent', () => {
 
   it('setting value input should update the component', () => {
     const incoming: RareOperationsModel = {
-      absCalibration: 'yes', tractionDiag: 'yes', steeringAlign: 'yes',
-      brakeBleed: 'yes', suspReset: 'yes', eepromFlash: 'yes',
-      canBusLog: 'yes', tirePressInit: 'yes', fuelMapSwitch: 'yes',
-      coolantPurge: 'yes',
+      absCriticalFail: 'force', absWarningFail: 'force', absFatalFail: 'force',
+      brakeCriticalFail: 'force', masterResetFail: 'force', flashCriticalFail: 'force',
+      busTempFail: 'force', tireCommFail: 'yes', fuelMapTempFail: 'force',
+      coolantCriticalFail: 'force',
     };
     component.value = incoming;
     expect(component.value).toEqual(incoming);
@@ -49,12 +49,12 @@ describe('RareOperationsListComponent', () => {
     const spy = spyOn(component.changed, 'emit');
     component.value = { ...DEFAULT_RARE_OPERATIONS };
 
-    component.onControlChanged('brakeBleed', 'yes');
+    component.onControlChanged('brakeCriticalFail', 'force');
 
-    expect(component.value.brakeBleed).toBe('yes');
+    expect(component.value.brakeCriticalFail).toBe('force');
     expect(spy).toHaveBeenCalledTimes(1);
     const emitted = spy.calls.mostRecent().args[0] as RareOperationsModel;
-    expect(emitted.brakeBleed).toBe('yes');
+    expect(emitted.brakeCriticalFail).toBe('force');
   });
 
   it('disabled input should propagate to all 10 dropdowns', () => {

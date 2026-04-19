@@ -4,13 +4,13 @@
   display: block;
 }
 
+// The top bar used to be a full-width strip with its own surface fill. Now that
+// it lives as a single chip on the right of the wrapper's shared header row, we
+// drop the background, padding, and width so it sits flush next to the CMD
+// panel — the wrapper's header provides the layout/spacing.
 .top-bar {
   display: flex;
   align-items: center;
-  width: 100%;
-  box-sizing: border-box;
-  padding: $spacing-xs $spacing-md;
-  background-color: $surface-container-high;
   color: $primary-text;
   font-family: $font-family-body;
   gap: $spacing-md;

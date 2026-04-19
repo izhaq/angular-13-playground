@@ -5,7 +5,7 @@
  * Reads naming-map.json and applies bulk find-and-replace across the project.
  *
  * Usage:
- *   node tools/rename.js [--dry-run] [--skip-verify] [--scope <dir>] [--map <file>]
+ *   node tools/rename.js [--dry-run] [--skip-verify] [--reverse] [--scope <dir>] [--map <file>]
  */
 
 const fs = require('fs');
@@ -21,6 +21,13 @@ const IGNORE_DIRS = new Set(['node_modules', 'dist', '.git', '.cursor']);
 const args = process.argv.slice(2);
 const DRY_RUN = args.includes('--dry-run');
 const SKIP_VERIFY = args.includes('--skip-verify');
+// --reverse undoes a forward rename: each `from -> to` mapping is flipped
+// to `to -> from` before pairs are sorted/applied. Pairs whose original
+// target is '___' (unmapped) or equal to the source (no-op) are still
+// filtered out using the original semantics — we filter first, then flip,
+// so we don't try to "undo" mappings that were never applied in the first
+// place.
+const REVERSE = args.includes('--reverse');
 
 const scopeIndex = args.indexOf('--scope');
 const SCOPE_DIR = scopeIndex !== -1 && args[scopeIndex + 1]
@@ -33,9 +40,11 @@ const MAP_FILE = mapIndex !== -1 && args[mapIndex + 1]
   : path.join(SCRIPT_DIR, 'naming-map.json');
 
 if (args.includes('--help')) {
-  console.log('Usage: node tools/rename.js [--dry-run] [--skip-verify] [--scope <dir>] [--map <file>]');
+  console.log('Usage: node tools/rename.js [--dry-run] [--skip-verify] [--reverse] [--scope <dir>] [--map <file>]');
   console.log('  --dry-run       Print what would be done without making changes');
   console.log('  --skip-verify   Skip build and test verification after rename');
+  console.log('  --reverse       Apply the map in reverse (undo a previous rename:');
+  console.log('                  each "from -> to" pair is flipped to "to -> from")');
   console.log('  --scope <dir>   Limit scan to a specific folder and its children');
   console.log('                  (default: src/ + server/)');
   console.log('  --map <file>    Path to a naming-map JSON file');
@@ -67,6 +76,16 @@ for (const [category, entries] of Object.entries(map)) {
   }
 }
 
+if (REVERSE) {
+  for (const p of pairs) {
+    const original = p.from;
+    p.from = p.to;
+    p.to = original;
+  }
+}
+
+// Re-sort longest-first AFTER any reversal so that, in reverse mode, longer
+// "to" values (now the "from" side) match before their shorter substrings.
 pairs.sort((a, b) => b.from.length - a.from.length);
 
 if (pairs.length === 0) {
@@ -74,6 +93,9 @@ if (pairs.length === 0) {
   process.exit(0);
 }
 
+if (REVERSE) {
+  console.log('REVERSE MODE: each pair is being applied as "to -> from" (undoing a previous rename).');
+}
 console.log(`Found ${pairs.length} replacement(s) to apply.`);
 
 if (DRY_RUN) {
@@ -196,6 +218,13 @@ if (map.folderNames) {
   for (const [from, to] of Object.entries(map.folderNames)) {
     if (to === '___' || to === from) continue;
     folderRenames.push({ from, to });
+  }
+}
+if (REVERSE) {
+  for (const r of folderRenames) {
+    const original = r.from;
+    r.from = r.to;
+    r.to = original;
   }
 }
 folderRenames.sort((a, b) => b.from.length - a.from.length);

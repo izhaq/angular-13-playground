@@ -7,11 +7,17 @@ MAP_FILE="$SCRIPT_DIR/naming-map.json"
 
 SKIP_VERIFY=false
 DRY_RUN=false
+# --reverse undoes a forward rename: each `from -> to` mapping is flipped to
+# `to -> from` before pairs are sorted/applied. Pairs whose original target
+# is '___' (unmapped) or equal to the source (no-op) are still filtered out
+# using the original semantics — we filter first, then flip.
+REVERSE=false
 SCOPE_DIR=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --skip-verify) SKIP_VERIFY=true; shift ;;
     --dry-run)     DRY_RUN=true; shift ;;
+    --reverse)     REVERSE=true; shift ;;
     --scope)
       if [[ -z "${2:-}" ]]; then
         echo "ERROR: --scope requires a directory argument"
@@ -29,9 +35,11 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     --help)
-      echo "Usage: $0 [--dry-run] [--skip-verify] [--scope <dir>] [--map <file>]"
+      echo "Usage: $0 [--dry-run] [--skip-verify] [--reverse] [--scope <dir>] [--map <file>]"
       echo "  --dry-run       Print what would be done without making changes"
       echo "  --skip-verify   Skip build and test verification after rename"
+      echo "  --reverse       Apply the map in reverse (undo a previous rename:"
+      echo "                  each 'from -> to' pair is flipped to 'to -> from')"
       echo "  --scope <dir>   Limit scan to a specific folder and its children"
       echo "                  (default: src/ + server/)"
       echo "  --map <file>    Path to a naming-map JSON file"
@@ -48,9 +56,12 @@ if [[ ! -f "$MAP_FILE" ]]; then
 fi
 
 # Phase 0: Extract replacements from naming-map.json using Node.js
-# Produces tab-separated lines: FROM\tTO, sorted longest-first
-REPLACEMENTS=$(node -e "
+# Produces tab-separated lines: FROM\tTO, sorted longest-first.
+# REVERSE_MODE is read from the env so quoting stays sane and we don't have
+# to template a bash variable into the JS string body.
+REPLACEMENTS=$(REVERSE_MODE="$REVERSE" node -e "
   const fs = require('fs');
+  const reverse = process.env.REVERSE_MODE === 'true';
   const map = JSON.parse(fs.readFileSync('$MAP_FILE', 'utf8'));
   const pairs = [];
 
@@ -59,11 +70,12 @@ REPLACEMENTS=$(node -e "
     if (typeof entries !== 'object') continue;
     for (const [from, to] of Object.entries(entries)) {
       if (to === '___' || to === from) continue;
-      pairs.push([from, to]);
+      pairs.push(reverse ? [to, from] : [from, to]);
     }
   }
 
-  // Sort longest-first to prevent partial matches
+  // Sort longest-first AFTER any reversal so the new 'from' side is the
+  // one whose length governs match precedence.
   pairs.sort((a, b) => b[0].length - a[0].length);
   pairs.forEach(([from, to]) => console.log(from + '\t' + to));
 ")
@@ -74,6 +86,9 @@ if [[ -z "$REPLACEMENTS" ]]; then
 fi
 
 PAIR_COUNT=$(echo "$REPLACEMENTS" | wc -l | tr -d ' ')
+if $REVERSE; then
+  echo "REVERSE MODE: each pair is being applied as 'to -> from' (undoing a previous rename)."
+fi
 echo "Found $PAIR_COUNT replacement(s) to apply."
 
 if $DRY_RUN; then
@@ -158,15 +173,16 @@ echo "Content replacement complete."
 echo ""
 echo "=== Phase 2: File and folder renaming ==="
 
-FOLDER_RENAMES=$(node -e "
+FOLDER_RENAMES=$(REVERSE_MODE="$REVERSE" node -e "
   const fs = require('fs');
+  const reverse = process.env.REVERSE_MODE === 'true';
   const map = JSON.parse(fs.readFileSync('$MAP_FILE', 'utf8'));
   const renames = [];
 
   if (map.folderNames) {
     for (const [from, to] of Object.entries(map.folderNames)) {
       if (to === '___' || to === from) continue;
-      renames.push([from, to]);
+      renames.push(reverse ? [to, from] : [from, to]);
     }
   }
 

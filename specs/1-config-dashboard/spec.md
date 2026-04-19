@@ -2,8 +2,9 @@
 
 **Feature ID**: 1-config-dashboard
 **Created**: 2026-04-02
-**Status**: Draft
-**Branch**: `1-config-dashboard`
+**Last Updated**: 2026-04-16
+**Status**: Implemented
+**Branch**: `main` (merged via `8-rare-cmds-tab`)
 
 ---
 
@@ -11,11 +12,18 @@
 
 ### Summary
 
-A configuration dashboard for a driving simulation system that allows users to control vehicle parameters through a two-panel interface. The left panel provides wheel selection (CMD panel) and vehicle control configuration (11 dropdowns) via dropdowns. The right panel displays a status grid where each column represents a specific wheel (derived from CMD panel selections: Left/Right × Wheels 1–4 = 8 columns), and each cell shows a 3-letter abbreviation of the selected value for that wheel+control combination. The grid supports additional custom columns for reuse across different dashboard screens.
+A **tabbed configuration dashboard** for a driving simulation system, wrapped in a `DashboardWrapperComponent` that hosts a shared top bar and two tabs:
+
+- **Tab 1 — Frequent CMDs**: 11 operations dropdowns (various options) + 3 CMD-to-test YES/NO dropdowns, with a status grid showing 3-letter abbreviations per wheel column.
+- **Tab 2 — Rare CMDs**: 10 dropdowns (9 with Normal/Force/Ignore options, 1 with Yes/No) for infrequent operations, with its own status grid and independent state/API.
+
+Both tabs share the same layout: each tab renders a **CMD panel at the tab level** (above the split), then a two-panel row — a **left panel** for operation dropdowns + footer and a **right panel** for the status grid. A single WebSocket connection broadcasts `FieldUpdate` messages to all tabs; each tab's `StatusGridService` instance filters by its own row definitions, ignoring unknown fields.
+
+The dashboard supports additional custom grid columns for reuse across different screens.
 
 ### Problem Statement
 
-Users need a centralized interface to configure vehicle simulation parameters per wheel and immediately see the applied configuration across all wheels in a status grid. Currently, there is no visual tool to manage these configurations in one place.
+Users need a centralized interface to configure vehicle simulation parameters per wheel and immediately see the applied configuration across all wheels in a status grid. Frequent and rare operations need to be separated into distinct tabs so engineers can focus on the relevant command set.
 
 ### Target Users
 
@@ -27,6 +35,7 @@ Users need a centralized interface to configure vehicle simulation parameters pe
 - Reduces configuration time by consolidating wheel selection, vehicle control assignment, and per-wheel status visibility into a single screen
 - Provides immediate visual feedback on per-wheel configuration through a text-based status grid
 - Minimizes errors by offering constrained dropdown selections rather than free-form input
+- Separates frequent and rare commands into dedicated tabs, reducing cognitive load
 
 ---
 
@@ -60,7 +69,7 @@ Users need a centralized interface to configure vehicle simulation parameters pe
 - Q: How many status columns should the grid have? → A: Computed dynamically from CMD panel dropdown combinations (side × wheel = 8 base columns). Grid also supports additional custom columns injected by the consumer for reuse across dashboard screens.
 - Q: How should the grid receive its configuration and data? → A: Two `@Input()`s on the grid component: `config` (GridConfig with row defs + column defs, renders the empty shell) and `rows` (RowViewModel[], starts empty, updated by WS via service). The parent dashboard owns both. Grid stays a pure presentational component.
 - Q: How should grid column headers be labeled? → A: L1, L2, L3, L4, R1, R2, R3, R4 — representing Left wheels 1–4 and Right wheels 1–4.
-- Q: What do grid cells display? → A: **No coloring.** Each cell shows a 3-letter abbreviation of the selected dropdown value for that wheel+row combination. Empty cells remain blank.
+- Q: What do grid cells display? → A: **No coloring.** Each cell shows a **3-letter abbreviation** (from `CellValue.abbr`) of the selected value for that wheel+row combination; the server resolves abbreviations (`resolveAbbr`) and sends both full text and abbreviation in `CellValue`. Empty cells remain blank.
 - Q: Should grid use `<table>` element? → A: Yes, a native `<table>` element for semantic correctness and simpler column hover behavior.
 
 **Right Panel:**
@@ -72,7 +81,7 @@ Users need a centralized interface to configure vehicle simulation parameters pe
 - Q: Does Default affect the right panel? → A: **No** — Default only resets the left panel to defaults. Right panel is unchanged.
 
 **General:**
-- Q: Should we add `data-testid` attributes? → A: Yes, for each dropdown and dropdown option — needed for Playwright tests in a later phase.
+- Q: Should we add `data-testid` attributes? → A: Yes — coverage as specified in **FR-8.1** (dropdowns, options, tab labels, footer buttons, CMD panel, grid cells).
 - Q: How should the POST payload represent CMD multi-select? → A: Payload includes `cmd: { sides: string[], wheels: string[] }` plus `operations: OperationsValue`. Server uses `sides × wheels` to determine affected grid columns.
 - Q: How to handle confidential naming? → A: Feature uses temporary naming conventions. Code should support easy swap — consider a translation-like key-value dictionary for labels/text, switchable by config. For code identifiers (functions, variables, classes), document as a future consideration.
 
@@ -117,9 +126,9 @@ Before building the dashboard component, the project must be initialized as an A
 - **FR-1.2**: The top bar contains the Scenario dropdown only; the Default button has been moved to the footer (see FR-5)
 - **FR-1.3**: When the "Realtime" scenario is selected, the entire left panel becomes disabled (visually dimmed)
 
-### FR-2: Command Selection Panel (Left Panel - CMD Section)
+### FR-2: Command Selection Panel (CMD — Tab Level)
 
-- **FR-2.1**: A "CMD" label is displayed to the **left** of the command dropdowns (inline, not above)
+- **FR-2.1**: A "CMD" label is displayed to the **left** of the command dropdowns (inline, not above). The CMD block is rendered **at the tab level** (above the left/right split), not inside the left-panel card.
 - **FR-2.2**: Two **multi-select** command dropdowns are displayed to the right of the CMD label:
   - First dropdown ("Side"): options — Left, Right. Default: first item selected
   - Second dropdown ("Wheel"): options — 1, 2, 3, 4. Default: first item selected
@@ -148,7 +157,7 @@ Before building the dashboard component, the project must be initialized as an A
 - **FR-3.3**: Each action row has a label on the left and a dropdown on the right
 - **FR-3.4**: Each dropdown option carries a `value`, `label`, and `abbr` (3-letter abbreviation displayed in grid cells)
 - **FR-3.5**: All dropdowns default to their first option on initial load
-- **FR-3.6**: CMD and OPERATIONS share a single visual card, separated by a horizontal line
+- **FR-3.6**: OPERATIONS and the CMD test section (Tab 1) share a single visual card in the left panel, separated by horizontal lines. The CMD wheel-targeting panel is **not** inside that card — it is rendered at the **tab level** above the left/right split (see FR-7.6).
 
 ### FR-4: Right Panel — Labels + Status Grid
 
@@ -160,18 +169,19 @@ The right panel shows the **confirmed server state**, not the live form state fr
 - **FR-4.2**: Each label is **horizontally aligned** with its corresponding grid row, so they read as one logical line
 - **FR-4.3**: The status grid is a native **`<table>`** element (visible cell borders, aligned columns across all rows) with column headers (L1, L2, L3, L4, R1, R2, R3, R4) derived from CMD panel combinations
 - **FR-4.4**: Grid columns are computed from CMD panel dropdown combinations (Side × Wheel). The grid also supports additional custom columns injected by the consumer, for reuse across different dashboard screens
-- **FR-4.5**: Each status cell displays a **3-letter abbreviation** of the selected dropdown value for that wheel+row combination. Empty/unset cells remain blank — **no coloring**
+- **FR-4.5**: Each status cell holds a **`CellValue`** object: `value` (full text) and `abbr` (abbreviation shown in the grid, typically 3 letters) for that wheel+row combination. Empty/unset cells remain blank — **no coloring**
 - **FR-4.6**: Column hover highlights the entire column with a light background tint. Cell click applies a distinct border + stronger background on the focused cell
+- **FR-4.6b**: On cell hover, a pop-out overlay animates above the cell, displaying the full value text (e.g., "Normal" instead of "NRM"). The popout scales up with a smooth animation and elevated shadow. The abbreviation is hidden while the popout is visible.
 
 #### Data Flow
 
 - **FR-4.7**: On initial load, the right panel shows the labels with an empty grid (all cells blank)
 - **FR-4.8**: When the user changes a value on the left panel, the right panel does **not** update immediately
 - **FR-4.9**: When the user clicks "Save", a POST API call is made. The right panel still does not update from the save response
-- **FR-4.10**: A WebSocket connection runs in parallel. When the server confirms a change, it sends a message that updates the right panel — setting the cell abbreviations for the affected row(s) and column(s)
+- **FR-4.10**: A WebSocket connection runs in parallel. When the server confirms a change, it sends a message that updates the right panel — setting **`CellValue`** objects (`value` + `abbr`) for the affected row(s) and column(s)
 - **FR-4.11**: WebSocket messages support flexible update shapes:
-  - **Full row update**: field + abbreviation values for all columns
-  - **Partial update**: field + abbreviation values for specific columns only
+  - **Full row update**: field + `CellValue` entries for all columns
+  - **Partial update**: field + `CellValue` entries for specific columns only
 
 ### FR-5: Footer Actions (Save, Cancel, Default)
 
@@ -183,22 +193,57 @@ The right panel shows the **confirmed server state**, not the live form state fr
 - **FR-5.6**: Clicking "Default" resets the **left panel only** to default values. The right panel (grid) is **not** affected
 - **FR-5.7**: The "Save" button is visually prominent (filled/primary style). "Cancel" and "Default" are secondary style (outlined)
 
-### FR-6: Layout and Responsiveness
+### FR-6: Tabbed Dashboard Architecture
 
-- **FR-6.1**: The dashboard uses a two-panel side-by-side layout on desktop viewports
-- **FR-6.2**: The left and right panels resize proportionally with the viewport — no fixed widths
-- **FR-6.3**: The entire screen uses a dark theme with dark backgrounds and light text
-- **FR-6.4**: A horizontal separator line sits below the top bar, separating it from the content panels
-- **FR-6.5**: A vertical separator line sits between the left and right panels
-- **FR-6.6**: CMD and OPERATIONS share a single visual section in the left panel, separated by a horizontal line
-- **FR-6.7**: All elements (panels, text, inputs, buttons) scale fluidly — no fixed widths, heights, or font sizes that would prevent resizing
-- **FR-6.8**: No layout shift at any reasonable desktop viewport size
+- **FR-6.1**: The dashboard is wrapped in a `DashboardWrapperComponent` that contains the `TopBarComponent` above a `<mat-tab-group>`
+- **FR-6.2**: Two tabs are rendered: "Frequent CMDs" (Tab 1) and "Rare CMDs" (Tab 2)
+- **FR-6.3**: The `TopBarComponent` remains above the tab strip and is shared across both tabs
+- **FR-6.4**: Selecting "Realtime" from the Scenario dropdown disables the left panel of **both** tabs
+- **FR-6.5**: Each tab has its own footer (via `PanelFooterComponent`); "Save" only saves the active tab's left panel state
+- **FR-6.6**: Each tab has its own status grid with different row definitions. Tab 1 uses the eight wheel columns (L1–R4) as a baseline and may add consumer-injected columns (FR-4.4). Tab 2's rare grid uses L1–R4 plus TTL, TTR, and SSL (FR-6b.4–FR-6b.5).
+- **FR-6.7**: A single WebSocket connection is shared; each tab's `StatusGridService` ignores fields not in its row definitions
+- **FR-6.8**: Tabs maintain their state when switching (Angular Material's default `mat-tab-group` behavior)
 
-### FR-7: Testing & Naming Infrastructure
+### FR-6b: Rare CMDs Tab (Tab 2)
 
-- **FR-7.1**: Every dropdown and dropdown option element must have a `data-testid` attribute for Playwright e2e testing (to be implemented in a later phase)
-- **FR-7.2**: All user-facing text (labels, dropdown option labels, section headings) should be sourced from a centralized key-value dictionary (translation-like approach), making it easy to swap naming conventions between environments (e.g., open demo vs. confidential deployment)
-- **FR-7.3**: For code identifiers (function names, variable names, class names), use clear, domain-appropriate names that are easy to find-and-replace when adapting for a different naming convention. Document this as a future consideration.
+- **FR-6b.1**: The Rare CMDs tab contains 10 dropdowns (9 with Normal/Force/Ignore options, 1 with Yes/No) for infrequent operations:
+
+| # | Key | Label | Options (abbr) | Default |
+|---|-----|-------|----------------|---------|
+| 1 | absCriticalFail | ABS Critical Fail | Normal (NRM), Force (FRC), Ignore (IGN) | Normal |
+| 2 | absWarningFail | ABS Warning Fail | Normal (NRM), Force (FRC), Ignore (IGN) | Normal |
+| 3 | absFatalFail | ABS Fatal Fail | Normal (NRM), Force (FRC), Ignore (IGN) | Normal |
+| 4 | brakeCriticalFail | Brake Critical Fail | Normal (NRM), Force (FRC), Ignore (IGN) | Normal |
+| 5 | masterResetFail | Master Reset Fail | Normal (NRM), Force (FRC), Ignore (IGN) | Normal |
+| 6 | flashCriticalFail | Flash Critical Fail | Normal (NRM), Force (FRC), Ignore (IGN) | Normal |
+| 7 | busTempFail | Bus Temp Fail | Normal (NRM), Force (FRC), Ignore (IGN) | Normal |
+| 8 | tireCommFail | Tire Comm Fail | No (NO), Yes (YES) | No |
+| 9 | fuelMapTempFail | Fuel Map Temp Fail | Normal (NRM), Force (FRC), Ignore (IGN) | Normal |
+| 10 | coolantCriticalFail | Coolant Critical Fail | Normal (NRM), Force (FRC), Ignore (IGN) | Normal |
+
+- **FR-6b.2**: The tab component (`RareCmdsTabComponent`) renders the shared `CmdPanelComponent` **at the tab level**, directly **above** the left panel content — the CMD panel is **not** inside `RareLeftPanelComponent`. The left panel contains `RareOperationsListComponent` and `PanelFooterComponent` only.
+- **FR-6b.3**: Save sends a POST to `/api/rare-config` with `RareDashboardState` payload
+- **FR-6b.4**: The status grid has 10 rows (one per rare operation) × 11 columns (L1–R4 + TTL, TTR, SSL)
+- **FR-6b.5**: The Rare CMDs grid has 3 extra columns (TTL, TTR, SSL) driven by server-side logic. TTL updates when the left side is selected for fields: `absFatalFail`, `brakeCriticalFail`, `busTempFail`, `tireCommFail`. TTR updates when the right side is selected for the same fields. SSL always updates for fields: `fuelMapTempFail`, `coolantCriticalFail`. Wheel selection is ignored for these extra columns.
+
+### FR-7: Layout and Responsiveness
+
+- **FR-7.1**: The dashboard uses a two-panel side-by-side layout on desktop viewports within each tab
+- **FR-7.2**: Inside the **FR-7.10** shell, the left and right panels resize proportionally — no fixed widths for those inner regions (the outer dashboard footprint is fixed per FR-7.10)
+- **FR-7.3**: The entire screen uses a dark theme with dark backgrounds and light text
+- **FR-7.4**: A horizontal separator line sits below the top bar, separating it from the tab strip
+- **FR-7.5**: A vertical separator line sits between the left and right panels in each tab
+- **FR-7.6**: The CMD panel sits **at the tab level** above the left/right split. Tab 1: OPERATIONS + CMD test share the left-panel card; Tab 2: rare operations share the left-panel card.
+- **FR-7.7**: All elements (panels, text, inputs, buttons) scale fluidly — no fixed widths, heights, or font sizes that would prevent resizing
+- **FR-7.8**: No layout shift at any reasonable desktop viewport size
+- **FR-7.9**: The CMD panel (top) is sticky **at the tab level** (not inside each left panel). The footer (bottom) of each left panel remains sticky; the operations list scrolls if needed
+- **FR-7.10**: The dashboard is constrained to a fixed container of **1120px width × 500px height**, positioned at the **bottom-left** corner of the viewport. All spacing is tightened for compact display.
+
+### FR-8: Testing & Naming Infrastructure
+
+- **FR-8.1**: `data-testid` attributes are implemented on all dropdowns, tab labels, footer buttons, CMD panel dropdowns, and grid cells (cell format: `cell-{field}-{columnId}`), including dropdown options where applicable, for Playwright e2e testing
+- **FR-8.2**: All user-facing text (labels, dropdown option labels, section headings) should be sourced from a centralized key-value dictionary (translation-like approach), making it easy to swap naming conventions between environments (e.g., open demo vs. confidential deployment)
+- **FR-8.3**: For code identifiers (function names, variable names, class names), use clear, domain-appropriate names that are easy to find-and-replace when adapting for a different naming convention. Document this as a future consideration.
 
 ---
 
@@ -290,124 +335,164 @@ AppModule
 │
 └── AppComponent (root)
     │
-    └── ConfigDashboardComponent (layout orchestrator)
+    └── DashboardWrapperComponent (layout orchestrator, owns TopBar + tabs)
+        │  Provides: WsService (single WebSocket for all tabs)
         │
-        ├── TopBarComponent (dumb)
+        ├── TopBarComponent (dumb — above tab strip)
         │   │  @Input:  selectedScenario, scenarioOptions
         │   │  @Output: scenarioChanged
         │   │
         │   └── AppDropdownComponent ← scenario selector
         │
-        ├── LeftPanelComponent (container — passes values down, emits changes up)
-        │   │  @Input:  disabled (from Realtime scenario)
-        │   │  @Output: changed, saved, cancelled, defaultClicked
-        │   │
-        │   ├── CmdPanelComponent (dumb — emits side/wheel selections)
-        │   │   │  @Input:  value, disabled
-        │   │   │  @Output: changed
-        │   │   │
-        │   │   ├── AppMultiDropdownComponent ← Side (Left, Right)
-        │   │   └── AppMultiDropdownComponent ← Wheel (1, 2, 3, 4)
-        │   │
-        │   ├── OperationsListComponent (dumb — emits dropdown changes)
-        │   │   │  @Input:  value, disabled
-        │   │   │  @Output: changed
-        │   │   │
-        │   │   ├── AppDropdownComponent ← row 1 (Not Active/Real/Captive)
-        │   │   ├── AppDropdownComponent ← row 2 (No/Yes)
-        │   │   ├── AppDropdownComponent ← row 3 "Video rec" (Internal/External)
-        │   │   ├── AppMultiDropdownComponent ← row 4 "Video Type" (No/...)
-        │   │   ├── AppDropdownComponent ← row 5 (No/Yes)
-        │   │   ├── AppDropdownComponent ← row 6 "PWR On/Off" (On/Off)
-        │   │   ├── AppDropdownComponent ← row 7 "Force" (Normal/Force F/Force No)
-        │   │   ├── AppDropdownComponent ← row 8 (No/Yes)
-        │   │   ├── AppDropdownComponent ← row 9 (No/Yes)
-        │   │   ├── AppDropdownComponent ← row 10 (No/Yes)
-        │   │   └── AppDropdownComponent ← row 11 (No/Yes)
-        │   │
-        │   └── [Footer buttons]
-        │       ├── Default → emits defaultClicked (resets left panel only)
-        │       ├── Cancel  → emits cancelled (reverts to saved baseline)
-        │       └── Save    → emits saved (dashboard POST → WS updates grid)
-        │
-        └── StatusGridComponent (dumb — display only, right panel)
-            │  @Input: config  (GridConfig — row defs + column defs)
-            │  @Input: rows    (RowViewModel[] — data, starts empty, updated by WS)
+        └── <mat-tab-group>
             │
-            ├── Labels column: field labels only (no values), aligned per row
-            └── <table> grid: 8 columns (L1–L4, R1–R4) + optional custom columns
-                Each cell: 3-letter abbreviation or blank
-                Column hover: light background tint
-                Cell click: border + stronger background focus
+            ├── Tab 1: "Frequent CMDs" → FrequentCmdsTabComponent
+            │   │  @Input: scenario, isRealtime
+            │   │  Provides: StatusGridService (own instance)
+            │   │  Service:  TabStateService<DashboardState> (provided on tab + TAB_STATE_CONFIG)
+            │   │
+            │   ├── CmdPanelComponent (TAB LEVEL — shared, dumb; not inside LeftPanel)
+            │   │   │  @Input:  value, disabled
+            │   │   │  @Output: changed
+            │   │   ├── AppMultiDropdownComponent ← Side (Left, Right)
+            │   │   └── AppMultiDropdownComponent ← Wheel (1, 2, 3, 4)
+            │   │
+            │   ├── LeftPanelComponent (container)
+            │   │   │  @Input:  dashboardState, disabled
+            │   │   │  @Output: stateChanged, saved, cancelled, defaultClicked
+            │   │   │
+            │   │   ├── OperationsListComponent (dumb — 11 dropdowns)
+            │   │   │   │  @Input:  value, disabled
+            │   │   │   │  @Output: changed
+            │   │   │   └── 11× AppDropdownComponent / AppMultiDropdownComponent
+            │   │   │
+            │   │   ├── CmdTestPanelComponent (dumb — 3 YES/NO dropdowns)
+            │   │   │   │  @Input:  value, disabled
+            │   │   │   │  @Output: changed
+            │   │   │   └── 3× AppDropdownComponent
+            │   │   │
+            │   │   └── PanelFooterComponent (shared, dumb)
+            │   │       │  @Input:  disabled
+            │   │       │  @Output: defaultClicked, cancelled, saved
+            │   │
+            │   └── StatusGridComponent (shared, dumb — right panel)
+            │       │  @Input: config (GridConfig), rows (RowViewModel[])
+            │       └── <table> with 14 rows × 8 columns (L1–R4)
+            │
+            └── Tab 2: "Rare CMDs" → RareCmdsTabComponent
+                │  @Input: scenario, isRealtime
+                │  Provides: StatusGridService (own instance)
+                │  Service:  TabStateService<RareDashboardState> (provided on tab + TAB_STATE_CONFIG)
+                │
+                ├── CmdPanelComponent (TAB LEVEL — shared, reused; not inside RareLeftPanel)
+                │   │  @Input:  value, disabled
+                │   │  @Output: changed
+                │   ├── AppMultiDropdownComponent ← Side (Left, Right)
+                │   └── AppMultiDropdownComponent ← Wheel (1, 2, 3, 4)
+                │
+                ├── RareLeftPanelComponent (container)
+                │   │  @Input:  dashboardState, disabled
+                │   │  @Output: stateChanged, saved, cancelled, defaultClicked
+                │   │
+                │   ├── RareOperationsListComponent (dumb — 10 dropdowns per FR-6b.1)
+                │   │   │  @Input:  value, disabled
+                │   │   │  @Output: changed
+                │   │   └── 10× AppDropdownComponent
+                │   │
+                │   └── PanelFooterComponent (shared, reused)
+                │
+                └── StatusGridComponent (shared, reused — right panel)
+                    │  @Input: config (GridConfig), rows (RowViewModel[])
+                    └── <table> with 10 rows × 11 columns (L1–R4 + TTL, TTR, SSL)
 ```
 
 ### Data Flow
 
-The left and right panels are **independently driven**. The left panel is user-input-driven; the right panel is WebSocket-driven.
+Each tab has **independent left and right panels**. The left panel is user-input-driven; the right panel is WebSocket-driven. A single WebSocket connection is shared across all tabs.
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│              ConfigDashboardComponent                            │
-│                                                                  │
-│  LEFT PANEL (live user input)          RIGHT PANEL (confirmed)   │
-│  ┌────────────────────────┐            ┌──────────────────────┐  │
-│  │ LeftPanelComponent     │            │ StatusGridComponent   │  │
-│  │  CmdPanel:             │            │   @Input: config      │  │
-│  │    side: string[]      │            │   @Input: rows        │  │
-│  │    wheel: string[]     │            │                       │  │
-│  │  Operations:           │            │ Each row shows:       │  │
-│  │    11 dropdown values  │            │  label | L1 L2..R4   │  │
-│  └────────┬───────────────┘            │  (3-letter abbrs)    │  │
-│           │ saved output               └──────────▲───────────┘  │
-│           ▼                                       │              │
-│  ┌─────────────────────┐                          │              │
-│  │ POST /api/config    │   server processes       │              │
-│  │ payload: {          │ ─────────────────────►   │              │
-│  │   wheels: [...],    │   WebSocket push         │              │
-│  │   controls: {...}   │   ┌──────────────────┐   │              │
-│  │ }                   │   │ FieldUpdate msg  │───┘              │
-│  └─────────────────────┘   │ { field, cells } │                  │
-│                            └──────────────────┘                  │
-│                                                                  │
-│  DashboardStateService (left panel)                              │
-│  ┌──────────────────────────────────────────────┐                │
-│  │ state$             ◄── BehaviorSubject        │                │
-│  │ savedBaseline      ◄── last saved snapshot    │                │
-│  │                                               │                │
-│  │ saveConfig(state) ──► POST /api/config         │                │
-│  │ cancelChanges()   ──► restore savedBaseline    │                │
-│  │ resetToDefaults() ──► reset left panel only    │                │
-│  └──────────────────────────────────────────────┘                │
-│                                                                  │
-│  StatusGridService (right panel)                                 │
-│  ┌──────────────────────────────────────────────┐                │
-│  │ rows$              ◄── BehaviorSubject        │                │
-│  │                                               │                │
-│  │ applyUpdate(msg) ──► merge into rows$          │                │
-│  │ connect() ─────────► WebSocket subscribe       │                │
-│  │ disconnect() ──────► cleanup                   │                │
-│  └──────────────────────────────────────────────┘                │
-│                                                                  │
-│  On initial load: rows$ seeded with empty grid                   │
-│  (each row has labels, all cells blank)                          │
-│                                                                  │
-│  Grid config (column defs) computed by dashboard from            │
-│  CMD panel options (Side × Wheel) + any custom columns           │
-└──────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│              DashboardWrapperComponent                               │
+│  ┌─────────────────────────────────────────────────────────────┐    │
+│  │  TopBarComponent (scenario dropdown)                         │    │
+│  └──────────────────────────┬──────────────────────────────────┘    │
+│                              │ scenario, isRealtime                  │
+│  ┌───────────────────────────▼──────────────────────────────────┐   │
+│  │  <mat-tab-group>                                              │   │
+│  │  ┌─────────────────────────────────────────────────────────┐  │   │
+│  │  │  Tab 1: FrequentCmdsTabComponent                         │  │   │
+│  │  │  CmdPanel (tab level) │  RIGHT PANEL (StatusGrid)        │  │   │
+│  │  │  LEFT PANEL           │  config: 14 rows × 8 cols        │  │   │
+│  │  │  LeftPanelComponent   │  rows ◄── StatusGridService[1]   │  │   │
+│  │  │   OperationsList (11) │                                   │  │   │
+│  │  │   CmdTestPanel (3)    │  WsService.message$              │  │   │
+│  │  │   PanelFooter         │    ──► applyUpdate()              │  │   │
+│  │  │         │             │                                   │  │   │
+│  │  │    Save ▼             │                                   │  │   │
+│  │  │  POST /api/config ────┼──► server ──► WS broadcast       │  │   │
+│  │  └───────────────────────┴───────────────────────────────────┘  │   │
+│  │  ┌─────────────────────────────────────────────────────────┐  │   │
+│  │  │  Tab 2: RareCmdsTabComponent                             │  │   │
+│  │  │  CmdPanel (tab level)      │  RIGHT PANEL (StatusGrid)   │  │   │
+│  │  │  LEFT PANEL                │  config: 10 rows × 11 cols  │  │   │
+│  │  │  RareLeftPanelComponent    │  rows ◄── StatusGridService[2]│ │   │
+│  │  │   RareOperationsList (10)  │                              │  │   │
+│  │  │   PanelFooter (shared)     │  WsService.message$          │  │   │
+│  │  │         │                  │    ──► applyUpdate()          │  │   │
+│  │  │    Save ▼                  │                              │  │   │
+│  │  │  POST /api/rare-config ────┼──► server ──► WS broadcast  │  │   │
+│  │  └────────────────────────────┴──────────────────────────────┘  │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                     │
+│  WsService (shared, provided at DashboardWrapper level)             │
+│  ┌───────────────────────────────────────────────────────────────┐  │
+│  │  message$ ◄── Subject<FieldUpdate>                             │  │
+│  │  Manages single WsConnection to /api/ws                        │  │
+│  │  Broadcasts all messages to all subscribers                    │  │
+│  └───────────────────────────────────────────────────────────────┘  │
+│                                                                     │
+│  TabStateService<T> + TabStateConfig (InjectionToken TAB_STATE_CONFIG) │
+│  ┌───────────────────────────────────────────────────────────────┐  │
+│  │  Tab 1: TabStateService<DashboardState> — POST /api/config      │  │
+│  │  Tab 2: TabStateService<RareDashboardState> — POST /api/rare-config │
+│  │  state$ ◄── BehaviorSubject | savedBaseline                    │  │
+│  │  saveConfig(state) / cancelChanges() / resetToDefaults()        │  │
+│  └───────────────────────────────────────────────────────────────┘  │
+│                                                                     │
+│  StatusGridService (component-level, one instance per tab)          │
+│  ┌───────────────────────────────────────────────────────────────┐  │
+│  │  gridRows$ ◄── BehaviorSubject<RowViewModel[]>                 │  │
+│  │  configure(columns, rowDefs) ──► seeds empty grid (CellValue)  │  │
+│  │  applyUpdate(msg) ──► merge CellValue data (ignores unknown)   │  │
+│  └───────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────┘
 ```
+
+### Tab-level state services
+
+Implementation files: `dashboard-wrapper/services/tab-state.service.ts`, `dashboard-wrapper/services/tab-state.config.ts`.
+
+- **`TabStateService<T>`**: Single generic tab state service (BehaviorSubject-backed state, saved baseline, save / cancel / default). Provide **one instance per tab** on `FrequentCmdsTabComponent` / `RareCmdsTabComponent` (not `providedIn: 'root'`), each with a **distinct** `T` (`DashboardState` vs `RareDashboardState`) and a matching **`TabStateConfig`** bound through **`TAB_STATE_CONFIG`** (endpoints, defaults, tab-specific wiring).
+- **`TabStateConfig`**: Plain configuration object (or factory result) consumed by `TabStateService<T>` so one implementation serves both tabs without duplicate service classes.
 
 ### Component Responsibilities
 
-| Component | Type | Module | Description |
-|-----------|------|--------|-------------|
-| `ConfigDashboardComponent` | Layout orchestrator | `ConfigDashboardModule` | Two-panel shell + top bar wiring. Binds `TopBarComponent`, `LeftPanelComponent`, `StatusGridComponent`. Injects `DashboardStateService` and `StatusGridService`; handles `saved` / `cancelled` / `changed` / `defaultClicked` from the left panel. Computes grid config from CMD selections. |
-| `LeftPanelComponent` | Container | `LeftPanelModule` | Container for CMD + Operations panels. `@Input`: `disabled`. `@Output`: `changed`, `saved`, `cancelled`, `defaultClicked`. Composes `CmdPanelComponent`, `OperationsListComponent`, and footer buttons (Save/Cancel/Default). |
-| `TopBarComponent` | Dumb/Presentational | `TopBarModule` | Scenario dropdown only. Emits `scenarioChanged` upward. |
-| `CmdPanelComponent` | Dumb/Presentational | `CmdPanelModule` | Two multi-select dropdowns (Side, Wheel). `@Input`: `value`, `disabled`. `@Output`: `changed`. |
-| `OperationsListComponent` | Dumb/Presentational | `OperationsListModule` | 11 explicit dropdown rows (10 single + 1 multi). `@Input`: `value`, `disabled`. `@Output`: `changed`. Each dropdown has its own options defined in config. |
-| `StatusGridComponent` | Dumb/Presentational | `StatusGridModule` | Receives `config` (GridConfig) and `rows` (RowViewModel[]) via `@Input`. Renders a `<table>` with column headers (L1–R4), labels column, and 3-letter abbreviation cells. Supports column hover and cell focus. Read-only. |
-| `AppDropdownComponent` | Dumb/Presentational | `AppDropdownModule` | Generic single-select wrapper around `mat-select`. CVA provided by `AppDropdownCvaDirective`. |
-| `AppMultiDropdownComponent` | Dumb/Presentational | `AppMultiDropdownModule` | Generic multi-select wrapper around `mat-select[multiple]`. CVA provided by `AppDropdownCvaDirective`. |
+| Component | Type | Module | Location | Description |
+|-----------|------|--------|----------|-------------|
+| `DashboardWrapperComponent` | Layout orchestrator | `DashboardWrapperModule` | `dashboard-wrapper/` | Hosts TopBar + `<mat-tab-group>` with two tabs. Manages `scenario` state and `isRealtime` flag. Provides `WsService` at component level. |
+| `FrequentCmdsTabComponent` | Tab container | `FrequentCmdsTabModule` | `dashboard-wrapper/components/frequent-cmds-tab/` | Tab 1: owns `TabStateService<DashboardState>` (via `TAB_STATE_CONFIG`), per-tab `StatusGridService`. Renders `CmdPanelComponent` at tab level; wires left panel events to state service and grid. |
+| `RareCmdsTabComponent` | Tab container | `RareCmdsTabModule` | `dashboard-wrapper/components/rare-cmds-tab/` | Tab 2: owns `TabStateService<RareDashboardState>` (via `TAB_STATE_CONFIG`), per-tab `StatusGridService`. Renders `CmdPanelComponent` at tab level; same pattern as Tab 1 with different operations. |
+| `TopBarComponent` | Dumb | `TopBarModule` | `dashboard-wrapper/components/top-bar/` | Scenario dropdown only. Emits `scenarioChanged` upward. |
+| `LeftPanelComponent` | Container | `LeftPanelModule` | `frequent-cmds-tab/components/left-panel/` | Tab 1 left panel: OperationsList + CmdTestPanel + PanelFooter (`CmdPanelComponent` is sibling at tab level). |
+| `RareLeftPanelComponent` | Container | `RareLeftPanelModule` | `rare-cmds-tab/components/rare-left-panel/` | Tab 2 left panel: RareOperationsList + PanelFooter (`CmdPanelComponent` is sibling at tab level). |
+| `CmdPanelComponent` | Dumb (shared) | `CmdPanelModule` | `dashboard-wrapper/components/cmd-panel/` | Two multi-select dropdowns (Side, Wheel). Shared by both tabs. |
+| `PanelFooterComponent` | Dumb (shared) | `PanelFooterModule` | `dashboard-wrapper/components/panel-footer/` | Default + Cancel + Save buttons. Shared by both tabs. |
+| `StatusGridComponent` | Dumb (shared) | `StatusGridModule` | `dashboard-wrapper/components/status-grid/` | Renders `<table>` with column headers, labels, and **`CellValue`** cells (`abbr` in grid, `value` for hover). Shared by both tabs with per-tab `config` and `rows`. |
+| `OperationsListComponent` | Dumb | `OperationsListModule` | `frequent-cmds-tab/components/frequent-operations-list/` | 11 dropdown rows for frequent operations. |
+| `CmdTestPanelComponent` | Dumb | `CmdTestPanelModule` | `frequent-cmds-tab/components/cmd-test-panel/` | 3 YES/NO dropdowns for CMD-to-test section (Tab 1 only). |
+| `RareOperationsListComponent` | Dumb | `RareOperationsListModule` | `rare-cmds-tab/components/rare-operations-list/` | 10 dropdown rows for rare operations (per FR-6b.1). |
+| `AppDropdownComponent` | Dumb | `AppDropdownModule` | `app-dropdown/` | Generic single-select wrapper around `mat-select`. CVA via `AppDropdownCvaDirective`. |
+| `AppMultiDropdownComponent` | Dumb | `AppMultiDropdownModule` | `app-multi-dropdown/` | Generic multi-select wrapper around `mat-select[multiple]`. CVA via `AppDropdownCvaDirective`. |
 
 ### Module-Per-Component Strategy
 
@@ -443,21 +528,25 @@ Labels follow two distinct patterns depending on context:
 
 These rules apply to **all components** in this project:
 
-1. **No fixed dimensions**: No fixed `width`, `height`, or `font-size` in `px` that would prevent scaling. All layout elements must resize fluidly with the viewport. Use `flex`, `%`, `fr`, `auto`, `min-content`/`max-content` for layout sizing. Use relative units (`rem`, `em`) for font sizes and spacing where appropriate, or `px` from SCSS variables that can be changed in one place.
+1. **No fixed dimensions** (except the dashboard shell in **FR-7.10**): Aside from the intentional **1120×500** outer container, avoid fixed `width`, `height`, or `font-size` in `px` that would prevent inner regions from scaling. Use `flex`, `%`, `fr`, `auto`, `min-content`/`max-content` for inner layout sizing. Use relative units (`rem`, `em`) for font sizes and spacing where appropriate, or `px` from SCSS variables that can be changed in one place.
 2. **No layout shift**: Elements must not jump, overflow, or cause scrollbars at any reasonable desktop viewport size. Use `flex-shrink`, `min-width: 0`, `overflow` strategies to handle content gracefully.
 3. **SCSS nesting**: Use SCSS's nesting (`&`) to express parent-child relationships clearly. Avoid flat, disconnected class selectors. Structure SCSS to mirror the template's DOM hierarchy.
 4. **Minimum boilerplate**: Keep templates, styles, and component code as lean as possible. No redundant wrappers, no unnecessary classes, no verbose selectors. Every line of code must earn its place.
 5. **SCSS variables for theming**: All colors, spacing, typography, and border values must come from SCSS variables. Global tokens live in `src/styles/_variables.scss`. Component-specific values (e.g., separator opacity, panel proportions) are defined as local SCSS variables at the top of the component's `.scss` file. This makes the dashboard easy to re-theme when copied to another project.
 6. **Portability-first styling**: Styles must be structured so that changing `_variables.scss` is sufficient to adapt the dashboard to a different project's design system. No hardcoded hex colors, font names, or magic numbers scattered through component styles.
+7. **No `::ng-deep`**: Angular Material component styling overrides must use **global SCSS partials** (e.g., `src/styles/_dropdowns.scss`, `src/styles/_tabs.scss`) imported in `src/styles.scss`, scoped by the component's element selector (e.g., `app-dashboard-wrapper .mat-tab-body-wrapper`). Never use `::ng-deep`.
+8. **Sticky header/footer**: The CMD panel (top) is sticky at the **tab** level; PanelFooter (bottom) in each left panel is sticky. The middle content area (operations lists) scrolls if needed. Achieved via flexbox with `flex-shrink: 0` on header/footer and `flex: 1; overflow-y: auto` on the content area.
+9. **Read-only outputs**: Declare `readonly` on all `@Output()` `EventEmitter` properties so consumers cannot reassign the emitter reference.
 
 ### Co-Location & Portability Rules
 
 Models, services, and related code follow these placement rules:
 
-1. **Co-locate with component**: Models and services that serve a single component live in that component's folder (e.g., `cmd-form-panel/cmd-form-panel.models.ts`)
-2. **Closest common parent**: Shared models/services bubble up only to the nearest ancestor that needs them (e.g., `DashboardFormService` and `StatusGridService` live under `config-dashboard/services/` because they're shared by all dashboard children)
-3. **App-level = mocks/APIs only**: `src/app/mocks/` holds project-wide mock data. Future `src/app/services/` holds project-wide API clients. These are NOT dashboard-specific
-4. **Dashboard is portable**: All dashboard-related code (models, services, child components) lives under `components/config-dashboard/` so the entire folder can be relocated to a different project
+1. **Co-locate with component**: Models and services that serve a single component live in that component's folder, inside `models/` and `services/` subdirectories respectively
+2. **Closest common parent**: Shared components and services bubble up only to the nearest ancestor that needs them (e.g., `CmdPanelComponent` and `PanelFooterComponent` are in `dashboard-wrapper/components/` because they are shared by both tabs)
+3. **Services in folders**: Services always live in a `services/` subdirectory, never as loose files
+4. **App-level = mocks/APIs only**: `src/app/mocks/` holds project-wide mock data
+5. **Dashboard is portable**: All dashboard-related code lives under `components/dashboard-wrapper/` so the entire folder can be relocated
 
 Module structure per component:
 
@@ -468,66 +557,95 @@ src/app/components/<component-name>/
 ├── <component-name>.component.scss
 ├── <component-name>.component.spec.ts
 ├── <component-name>.module.ts
-└── <component-name>.models.ts              (if component has its own models)
+├── <component-name>.models.ts              (if component has its own models)
+├── models/                                  (if multiple model files needed)
+└── services/                                (if component has its own services)
 ```
 
-For container components with shared concerns (config-dashboard):
+Full folder structure:
 
 ```
-src/app/components/config-dashboard/
-├── models/
-│   ├── grid.models.ts                      (GridCell, GridRow, GridData, GridColumn, GridConfig, FieldUpdate)
-│   ├── dashboard-form.models.ts            (DashboardFormValue)
-│   └── dashboard-defaults.ts               (DEFAULT_FORM_VALUE)
-├── services/
-│   ├── dashboard-form.service.ts           (DashboardFormService — left panel)
-│   ├── dashboard-form.service.spec.ts
-│   ├── status-grid.service.ts              (StatusGridService — right panel)
-│   └── status-grid.service.spec.ts
-├── config-dashboard.module.ts
-├── config-dashboard.component.ts
-├── config-dashboard.component.html
-├── config-dashboard.component.scss
-└── config-dashboard.component.spec.ts
+src/app/components/
+├── app-dropdown/                               (generic single-select)
+├── app-dropdown-cva/                           (CVA directive)
+├── app-multi-dropdown/                         (generic multi-select)
+└── dashboard-wrapper/                          (main dashboard shell)
+    ├── dashboard-wrapper.component.*
+    ├── dashboard-wrapper.module.ts
+    ├── services/
+    │   ├── ws.service.ts                       (shared WebSocket service)
+    │   ├── ws.service.spec.ts
+    │   ├── ws-connection.ts                    (WebSocket connection utility)
+    │   ├── tab-state.config.ts                 (TabStateConfig + TAB_STATE_CONFIG)
+    │   └── tab-state.service.ts              (TabStateService<T>)
+    └── components/
+        ├── top-bar/                            (shared — above tab strip)
+        ├── cmd-panel/                          (shared — used by both tabs)
+        ├── panel-footer/                       (shared — used by both tabs)
+        ├── status-grid/                        (shared — used by both tabs)
+        │   ├── models/                         (grid.models.ts incl. CellValue, grid-defaults.ts; optional helpers for local form display — WS cells use server `CellValue`)
+        │   └── services/                       (status-grid.service.ts)
+        ├── frequent-cmds-tab/                  (Tab 1)
+        │   ├── models/                         (dashboard.models.ts, dashboard-defaults.ts, dashboard-view.model.ts, frequent-grid-config.ts)
+        │   └── components/
+        │       ├── left-panel/
+        │       ├── frequent-operations-list/
+        │       └── cmd-test-panel/
+        └── rare-cmds-tab/                      (Tab 2)
+            ├── models/                         (rare-dashboard.models.ts, rare-dashboard-defaults.ts, rare-grid-config.ts)
+            └── components/
+                ├── rare-left-panel/
+                └── rare-operations-list/
 ```
 
 Import chain:
 
 ```
 AppModule
-└── imports: ConfigDashboardModule
-    └── imports: TopBarModule, LeftPanelModule, StatusGridModule
-        └── LeftPanelModule imports: CmdFormPanelModule, OperationsFormListModule, ReactiveFormsModule
-            └── leaf modules import: AppDropdownModule (where needed)
-                └── imports: MatSelectModule, ReactiveFormsModule (as needed for CVA hosts)
+└── imports: DashboardWrapperModule
+    └── imports: TopBarModule, FrequentCmdsTabModule, RareCmdsTabModule, MatTabsModule
+        ├── FrequentCmdsTabModule imports: CmdPanelModule, LeftPanelModule, StatusGridModule
+        │   └── LeftPanelModule imports: OperationsListModule, CmdTestPanelModule, PanelFooterModule
+        └── RareCmdsTabModule imports: CmdPanelModule, RareLeftPanelModule, StatusGridModule
+            └── RareLeftPanelModule imports: RareOperationsListModule, PanelFooterModule
 ```
 
 ### Portability
 
-The dashboard is designed to be self-contained and relocatable. For the full 8-step export guide — covering component folders, npm dependencies, SCSS variables, `angular.json` config, Material theme overrides, fonts, module wiring, and data provisioning — see **[portability-guide.md](../../portability-guide.md)**.
+The dashboard is designed to be self-contained and relocatable:
+
+- **Migration guide**: [migration.md](./migration.md) — full file list, dependencies, configuration steps, and checklist for copying the dashboard to another project
+- **Naming swap**: [naming-swap.md](./naming-swap.md) — JSON-driven automated rename system (`tools/naming-map.json` + `tools/rename.sh`) for swapping all domain-specific identifiers (UI labels, code identifiers, file/folder names, CSS classes, API paths) in a single pass
 
 ### Inter-Component Communication
 
 - **Parent → Child**: `@Input` bindings for data (value objects, disabled state, grid config, grid rows)
-- **Child → Parent**: `@Output` EventEmitter for user actions (scenario changed, left panel `changed` / `saved` / `cancelled` / `defaultClicked`)
-- **No CVA on dashboard components**: `CmdPanelComponent` and `OperationsListComponent` use simple `@Input() value` / `@Output() changed` pattern (no FormGroup, no ControlValueAccessor). CVA remains available on `AppDropdownComponent` and `AppMultiDropdownComponent` via `AppDropdownCvaDirective` for future form use.
-- **Sibling Communication**: Two dedicated services, each managing one panel:
-  - `DashboardStateService`: left panel state, saved baseline, save/cancel/default logic, POST API
-  - `StatusGridService`: right panel grid rows, WebSocket subscription, `applyUpdate()` merge logic
-- **Grid Data Flow**: `StatusGridService.rows$` is a `BehaviorSubject<RowViewModel[]>` seeded with empty grid on initial load. Updates come exclusively from WebSocket `FieldUpdate` messages (after a save triggers the server). The left panel state and right panel confirmed state are **independent**
+- **Child → Parent**: `@Output` EventEmitter for user actions (scenario changed, left panel `stateChanged` / `saved` / `cancelled` / `defaultClicked`)
+- **No CVA on dashboard components**: All dashboard components use simple `@Input() value` / `@Output() changed` pattern. CVA remains available on `AppDropdownComponent` and `AppMultiDropdownComponent` via `AppDropdownCvaDirective` for future form use.
+- **Per-Tab State Services**: Each tab **component** provides its own **`TabStateService<T>`** instance alongside **`TAB_STATE_CONFIG`** → **`TabStateConfig`**: Tab 1 binds `T = DashboardState` and POST `/api/config`; Tab 2 binds `T = RareDashboardState` and POST `/api/rare-config`.
+- **Per-Tab Grid Service**: `StatusGridService` is provided at the component level (not `providedIn: root`), so each tab gets its own instance with its own row definitions. Grid cell text comes from server-delivered **`CellValue`** objects (not client-side abbreviation mapping for WebSocket updates).
+- **Shared WebSocket**: `WsService` (provided at `DashboardWrapperComponent` level) manages a single `WsConnection` and broadcasts all `FieldUpdate` messages via `message$` Subject. Each tab subscribes and calls its own `StatusGridService.applyUpdate()` — unknown fields are silently ignored (`findIndex === -1` → no-op)
+- **Grid Data Flow**: `StatusGridService.gridRows$` is a `BehaviorSubject<RowViewModel[]>` seeded with empty grid on `configure()`. Updates come from WebSocket `FieldUpdate` messages carrying **`CellValue`** data. Left panel state and right panel confirmed state are **independent**
 
 ### Form Architecture
 
 - **Strategy**: Simple `@Input() value` / `@Output() changed` pattern on all dashboard child components (no Reactive Forms, no FormGroup, no CVA on dashboard components)
-- **Top bar scenario**: Bound with `@Input` / `@Output` on `TopBarComponent` from `ConfigDashboardComponent`. "Realtime" selection disables the entire left panel.
-- **Save / Cancel / Default**: `LeftPanelComponent` emits `saved` / `cancelled` / `defaultClicked`; `ConfigDashboardComponent` coordinates `DashboardStateService`
+- **Top bar scenario**: Bound with `@Input` / `@Output` on `TopBarComponent` from `DashboardWrapperComponent`. "Realtime" selection disables the left panel of **both** tabs via `isRealtime` input.
+- **Save / Cancel / Default**: Each tab's left panel emits `saved` / `cancelled` / `defaultClicked`; the tab component coordinates its own **`TabStateService<T>`** instance. Save only saves the **active tab's** left panel state.
 - **Default**: Resets left panel to defaults only. Right panel (grid) is NOT affected.
+- **Tab state preservation**: Angular Material's `mat-tab-group` preserves tab content by default — switching tabs does not destroy/recreate components.
 
 ### Backend Integration
 
-- **REST endpoint**: `POST /api/config` — sends the current dashboard state (selected wheels + operation values) on save
-- **WebSocket**: `ws://…/api/ws` — receives `FieldUpdate` messages that update grid cells with 3-letter abbreviations
-- `DashboardStateService` handles the POST; `StatusGridService` handles the WebSocket connection with auto-reconnect
+- **REST endpoints**:
+  - `POST /api/config` — saves frequent CMDs state (Tab 1)
+  - `GET /api/config` — retrieves last saved frequent CMDs state
+  - `POST /api/rare-config` — saves rare CMDs state (Tab 2)
+  - `GET /api/rare-config` — retrieves last saved rare CMDs state
+  - `GET /api/health` — health check
+- **WebSocket**: `ws://…/api/ws` — receives `FieldUpdate` messages that update grid cells with **`CellValue`** payloads (`value`, `abbr`). Abbreviation resolution (**`resolveAbbr`**) runs **server-side**; the client displays `abbr` in cells and `value` on hover (FR-4.6b) — **no** client-side abbreviation mapping for WebSocket-driven grid data.
+- `WsService` manages the single WebSocket connection with auto-reconnect via `WsConnection`
+- Each tab's **`TabStateService<T>`** handles its own POST endpoint per `TabStateConfig`
 - The `FieldUpdate` message format supports full-row and partial-column updates
 
 ---
@@ -536,15 +654,20 @@ The dashboard is designed to be self-contained and relocatable. For the full 8-s
 
 | Entity | Description |
 |--------|-------------|
-| Scenario | A selectable scenario from the top bar dropdown (e.g., normal mode, "Realtime" disables left panel) |
-| CMD Selection | Multi-select wheel targeting: Side (Left/Right) × Wheel (1/2/3/4). Determines which grid columns are affected on save. |
-| Operation | One of 11 configurable vehicle controls, each assigned a value via dropdown |
-| Option | A selectable value for an operation. Each option carries a `value`, `label`, and `abbr` (3-letter abbreviation displayed in grid cells) |
-| Grid Cell | An individual cell in the grid table showing a 3-letter abbreviation for a specific wheel+operation combination |
-| Grid Column | A column in the grid, representing one wheel (L1, L2, L3, L4, R1, R2, R3, R4) or a custom column |
-| DashboardState | The combined state: selected scenario, CMD selections (sides + wheels), and 11 operation values |
-| RowViewModel | A single grid row: field key, label, and cell abbreviations per column |
+| Scenario | A selectable scenario from the top bar dropdown (e.g., normal mode, "Realtime" disables left panel of all tabs) |
+| CMD Selection | Multi-select wheel targeting: Side (Left/Right) × Wheel (1/2/3/4). Determines which grid columns are affected on save. Shared by both tabs. |
+| Frequent Operation | One of 11 configurable vehicle controls (Tab 1), each assigned a value via dropdown |
+| Rare Operation | One of 10 rare vehicle controls (Tab 2) per FR-6b.1, for infrequent calibration/diagnostic operations |
+| CMD Test | One of 3 YES/NO test toggles (Tab 1 only) |
+| Option | A selectable value for an operation. Each option carries a `value`, `label`, and `abbr` (used for labels and local UX; WebSocket-confirmed grid cells use `CellValue` from the server) |
+| CellValue | Server-driven cell payload: `value` (full text) and `abbr` (abbreviation shown in the grid) |
+| Grid Cell | An individual cell in the grid table holding a **`CellValue`** (abbreviation shown; full text on hover per FR-4.6b) for a wheel+operation combination |
+| Grid Column | A column in the grid: wheel columns (L1–R4), optional custom columns (Tab 1), or on Tab 2 the extra server-driven columns **TTL**, **TTR**, **SSL** (FR-6b.5) |
+| DashboardState | The combined state for Tab 1: scenario, CMD selections, 11 operations, 3 CMD tests |
+| RareDashboardState | The combined state for Tab 2: scenario, CMD selections, 10 rare operations |
+| RowViewModel | A single grid row: field key, label, and **`CellValue`** (or empty) per column |
 | GridConfig | Configuration object with row definitions and column definitions, passed as `@Input` to StatusGridComponent |
+| WsService | Shared WebSocket manager broadcasting `FieldUpdate` messages to all tab subscribers |
 
 ---
 
@@ -560,7 +683,7 @@ The dashboard is designed to be self-contained and relocatable. For the full 8-s
 | SC-6 | Default returns left panel to defaults without affecting right panel | Default behavior verification |
 | SC-7 | "Realtime" scenario disables the entire left panel | Disabled state verification |
 | SC-8 | Column hover and cell focus work correctly | Interaction verification |
-| SC-9 | All dropdowns and options have `data-testid` attributes | DOM inspection |
+| SC-9 | All interactive targets and grid cells expose `data-testid` per FR-8.1 | DOM inspection |
 
 ---
 
@@ -569,21 +692,26 @@ The dashboard is designed to be self-contained and relocatable. For the full 8-s
 ### In Scope
 
 - Angular 13 project setup with Angular Material 13
-- Dark-themed configuration dashboard component
-- Two-panel layout (configuration controls + status grid)
+- Dark-themed tabbed configuration dashboard
+- `DashboardWrapperComponent` with shared `TopBarComponent` above `<mat-tab-group>`
+- **Tab 1 — Frequent CMDs**: 11 operations + 3 CMD test dropdowns, `TabStateService<DashboardState>` with `TAB_STATE_CONFIG`, POST to `/api/config`
+- **Tab 2 — Rare CMDs**: 10 rare operations dropdowns (FR-6b.1), `TabStateService<RareDashboardState>` with `TAB_STATE_CONFIG`, POST to `/api/rare-config`
+- Two-panel layout per tab (configuration controls + status grid)
+- Shared components: `CmdPanelComponent`, `PanelFooterComponent`, `StatusGridComponent`
 - Dropdown-based command and operation selection via reusable `AppDropdownComponent` and `AppMultiDropdownComponent`
 - CMD panel with two multi-select dropdowns (Side: Left/Right, Wheel: 1/2/3/4)
-- Operations list with 11 explicit dropdowns, each with specific options and labels
 - Simple `@Input`/`@Output` architecture (no Reactive Forms on dashboard components)
 - Module-per-component pattern (each component in its own NgModule)
-- Two dedicated services: `DashboardStateService` (left panel state + POST API) and `StatusGridService` (right panel grid state via WebSocket)
-- Status grid as a native `<table>` with dynamic columns (L1–R4) computed from CMD selections, plus custom column support
-- Grid cells showing 3-letter abbreviations (no coloring)
+- Per-tab **`TabStateService<T>`** (`TAB_STATE_CONFIG` / `TabStateConfig`) + per-tab `StatusGridService` instances (component-level providers)
+- Single shared `WsService` with `WsConnection` for WebSocket; each tab filters by its row definitions
+- Status grid as a native `<table>` with dynamic columns (L1–R4; Tab 2 adds TTL/TTR/SSL per FR-6b.4–FR-6b.5), **`CellValue`** cells (`abbr` / `value`)
 - Column hover highlight and cell focus behavior
-- Save, Cancel, and Default functionality (Default only affects left panel)
-- Scenario dropdown with "Realtime" option that disables the left panel
-- `data-testid` attributes on dropdowns and options for Playwright
-- Naming abstraction via key-value dictionary for label/text swappability
+- Save, Cancel, and Default per tab (Default only affects left panel)
+- Scenario dropdown with "Realtime" option that disables left panel of **both** tabs
+- Tab state preservation on tab switch
+- Sticky CMD panel (top) at **tab** level and footer (bottom) in each left panel (FR-7.9)
+- Fixed dashboard shell **1120×500** bottom-left (FR-7.10)
+- Global SCSS partials for Material overrides (no `::ng-deep`)
 - Node.js backend (Express + WebSocket) for REST save and real-time grid updates
 - Desktop viewport layout
 
@@ -593,7 +721,7 @@ The dashboard is designed to be self-contained and relocatable. For the full 8-s
 - Mobile or tablet responsive layouts
 - Multi-user collaboration or concurrent editing
 - Full internationalization (i18n) — only a simple key-value dictionary for naming swap
-- Playwright e2e test implementation (testid infrastructure only)
+- Playwright e2e **flow** test suites beyond `data-testid` wiring (`data-testid` coverage per FR-8.1 is in scope)
 
 ---
 
@@ -612,7 +740,7 @@ The dashboard is designed to be self-contained and relocatable. For the full 8-s
 - Dropdown options are static and predefined, with each option carrying a 3-letter abbreviation
 - The status grid is read-only for the user (populated via WebSocket, not manually edited)
 - The dark theme follows the design from the Stitch project (obsidian/charcoal palette)
-- Grid cells display 3-letter text abbreviations — no color-coded indicators
+- Grid cells display **`CellValue.abbr`** (with **`CellValue.value`** on hover) — no color-coded indicators
 - Angular 13 does not support standalone components; the project uses NgModule-based architecture
 - The `AppDropdownComponent` and `AppMultiDropdownComponent` wrap Angular Material's `mat-select`. CVA is available via directive but dashboard components use simple `@Input`/`@Output`
 - Feature naming is temporary (driving simulation theme) and should be swappable via a centralized label dictionary
@@ -631,27 +759,29 @@ The dashboard is designed to be self-contained and relocatable. For the full 8-s
 
 ### Layout Description
 
-The screen is a **dark-themed desktop dashboard** with a full-width top bar and two content panels below:
+The screen is a **dark-themed desktop dashboard**. Per **FR-7.10**, the live dashboard chrome is constrained to a **1120×500** region anchored **bottom-left** with compact spacing (the Stitch reference remains a general visual guide).
 
-- **Top bar** spans the full width. On the left: a "Scenario" label and dropdown. A horizontal separator line sits below the top bar.
-- **Left panel** contains the configuration controls in a single visual card:
-  - "CMD" label on the left (inline), two multi-select dropdowns (Side, Wheel) to the right
-  - A horizontal separator line between CMD and OPERATIONS
-  - "OPR" label above the operations rows as a section heading
-  - 11 rows of labeled dropdowns with specific options per row
+- **Top bar** spans the dashboard width. On the left: a "Scenario" label and dropdown. A horizontal separator line sits below the top bar.
+- **Tab strip** (Frequent / Rare) sits below the top bar. Each tab renders **CMD** (Side × Wheel multi-selects) **above** the two-column split.
+- **Left panel** contains the configuration controls in a single visual card (operations only — CMD is not inside this card):
+  - A horizontal separator line between section headings and rows as needed
+  - Tab 1: "OPR" label above 11 operations rows + CMD test rows
+  - Tab 2: rare operations rows per FR-6b.1
   - Default + Cancel + Save buttons at the bottom-right of the left panel
 - **Right panel** shows the **confirmed server state**:
   - Each row has a **label only** (no confirmed value) as plain text on the left, horizontally aligned with the **status grid** on the right
   - The label text is **outside** the grid — not a table column
-  - The grid is a native `<table>` with column headers (L1, L2, L3, L4, R1, R2, R3, R4)
-  - Each cell shows a **3-letter abbreviation** of the applied value, or is blank
+  - The grid is a native `<table>` with column headers (L1–R4; Tab 2 also shows TTL, TTR, SSL per FR-6b.4)
+  - Each cell shows **`CellValue.abbr`** (full text on hover via FR-4.6b), or is blank
   - Column hover highlights the entire column; cell click shows focus
   - On initial load, all cells are blank
   - Updates arrive only via WebSocket after a save operation
 - A **vertical separator line** divides the left and right panels
-- All elements are **fully responsive** — no fixed widths, heights, or font sizes. Everything scales with the viewport.
+- Within the **FR-7.10** shell, inner regions use compact flex layout; the overall dashboard footprint is fixed (see FR-7.2 / FR-7.7 for inner scaling trade-offs).
 
 ### Wireframe
+
+Illustrative layout: per FR-2 / FR-7.6, **CMD spans the tab width above** the two-column split (not nested only inside the left column).
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐

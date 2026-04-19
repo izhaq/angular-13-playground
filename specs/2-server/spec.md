@@ -1,7 +1,7 @@
 # Server Spec: Configuration Dashboard Backend (Revised)
 
 **Feature**: 2-server
-**Date**: 2026-04-09 (original) | 2026-04-09 (revised for new requirements)
+**Date**: 2026-04-09 (original) | 2026-04-14 (revised for tabbed dashboard + rare CMDs) | 2026-04-16 (current)
 
 ---
 
@@ -9,58 +9,70 @@
 
 A lightweight Node.js/Express server that acts as the backend for the Configuration Dashboard. It provides:
 
-1. A **REST API** to receive and persist configuration changes from the Angular client.
-2. A **WebSocket server** to push real-time `FieldUpdate` messages back to the client's status grid after configuration is saved.
+1. A **REST API** to receive and persist configuration changes from both dashboard tabs (frequent and rare CMDs).
+2. A **WebSocket server** to push real-time `FieldUpdate` messages back to the client's status grids after configuration is saved.
 3. **Static file serving** for the production Angular build (`dist/`).
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                   Angular Client                     │
-│  ┌───────────────┐          ┌────────────────────┐  │
-│  │ DashboardState│ POST     │  StatusGridService  │  │
-│  │   Service     │──────┐   │  (WebSocket client) │  │
-│  └───────────────┘      │   └─────────┬──────────┘  │
-│                          │             │ onmessage    │
-└──────────────────────────│─────────────│─────────────┘
-                           │             │
-            ┌──────────────▼─────────────▼──────────┐
-            │          Node.js Server                │
-            │  ┌────────────────────────────────┐    │
-            │  │  Express (REST)                │    │
-            │  │  POST /api/config              │    │
-            │  │  GET  /api/config              │    │
-            │  │  GET  /api/health              │    │
-            │  └──────────────┬─────────────────┘    │
-            │                 │                      │
-            │  ┌──────────────▼─────────────────┐    │
-            │  │  Simulation Engine              │    │
-            │  │  processConfig(state) → updates │    │
-            │  └──────────────┬─────────────────┘    │
-            │                 │                      │
-            │  ┌──────────────▼─────────────────┐    │
-            │  │  WebSocket Server (ws)          │    │
-            │  │  Path: /api/ws                  │    │
-            │  │  Broadcasts FieldUpdate[]       │    │
-            │  └────────────────────────────────┘    │
-            └────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                   Angular Client                              │
+│  ┌──────────────────┐  ┌─────────────┐  ┌────────────────┐  │
+│  │TabStateService   │  │TabStateService│  │  WsService     │  │
+│  │  <DashboardState> │  │<RareDash…>   │  │  (shared WS)   │  │
+│  │  POST /api/config │  │ POST         │  │  → message$    │  │
+│  └────────┬──────────┘  │/api/rare-    │  └──────┬─────────┘  │
+│           │              │config        │         │ onmessage   │
+│           │              └──────┬───────┘         │             │
+└───────────│────────────────────│─────────────────│────────────┘
+            │                    │                 │
+            ┌────────────────────▼─────────────────▼──────────┐
+            │          Node.js Server                          │
+            │  ┌────────────────────────────────────────────┐  │
+            │  │  Express (REST)                            │  │
+            │  │  POST /api/config      (frequent CMDs)     │  │
+            │  │  GET  /api/config                          │  │
+            │  │  POST /api/rare-config (rare CMDs)         │  │
+            │  │  GET  /api/rare-config                     │  │
+            │  │  GET  /api/health                          │  │
+            │  └──────────────┬─────────────────────────────┘  │
+            │                 │                                │
+            │  ┌──────────────▼─────────────────────────────┐  │
+            │  │  Simulation Engine                          │  │
+            │  │  processConfig(state) → FieldUpdate[]       │  │
+            │  │  processRareConfig(state) → FieldUpdate[]   │  │
+            │  └──────────────┬─────────────────────────────┘  │
+            │                 │                                │
+            │  ┌──────────────▼─────────────────────────────┐  │
+            │  │  WebSocket Server (ws)                      │  │
+            │  │  Path: /api/ws                              │  │
+            │  │  Broadcasts FieldUpdate[] to all clients    │  │
+            │  └────────────────────────────────────────────┘  │
+            └──────────────────────────────────────────────────┘
 ```
 
 ## Data Flow
 
-### Save Configuration
+### Save Configuration (Frequent CMDs — Tab 1)
 
-1. User clicks **Save** in the Angular dashboard.
-2. `DashboardStateService.saveConfig()` sends `POST /api/config` with the `DashboardState` body (scenario, cmd selections, operations values).
+1. User clicks **Save** in the Frequent CMDs tab.
+2. `TabStateService<DashboardState>.saveConfig()` sends `POST /api/config` with the `DashboardState` body (scenario, cmd selections, 11 operations + 3 cmd tests).
 3. Server receives the payload, passes it to `processConfig()`.
-4. `processConfig()` uses `cmd.sides × cmd.wheels` to determine which grid columns are affected, then generates a `FieldUpdate[]` — one per operation — with abbreviation strings for the affected columns.
+4. `processConfig()` uses `cmd.sides × cmd.wheels` to determine which grid columns are affected, then generates a `FieldUpdate[]` — one per operation — with `CellValue` objects containing both raw value and abbreviation (resolved server-side via `resolveAbbr`).
 5. Server broadcasts each `FieldUpdate` over WebSocket to all connected clients, staggered by `WS_UPDATE_DELAY_MS` (default 300ms).
-6. Client's `StatusGridService` receives each message and calls `applyUpdate()` to merge abbreviations into the grid.
+6. Client's `StatusGridService` (Tab 1 instance) receives each message and calls `applyUpdate()` to merge `CellValue` objects into the grid.
+
+### Save Configuration (Rare CMDs — Tab 2)
+
+1. User clicks **Save** in the Rare CMDs tab.
+2. `TabStateService<RareDashboardState>.saveConfig()` sends `POST /api/rare-config` with the `RareDashboardState` body (scenario, cmd selections, 10 rare operations).
+3. Server receives the payload, passes it to `processRareConfig()`.
+4. Same broadcast flow as above. Tab 2's `StatusGridService` instance picks up the relevant fields; Tab 1's instance ignores them (and vice versa).
 
 ### WebSocket Reconnection
 
-`StatusGridService` implements auto-reconnect with a 3-second delay. `disconnect()` (called in `ngOnDestroy`) stops reconnection.
+`WsConnection` (used by `WsService`) implements auto-reconnect with a 3-second delay. `disconnect()` (called in `ngOnDestroy`) stops reconnection.
 
 ## REST API
 
@@ -119,6 +131,66 @@ Retrieve the last saved configuration.
 
 **Response** (`404 Not Found`): `{ "error": "No config saved yet" }`
 
+### `POST /api/rare-config`
+
+Save a new rare CMDs configuration and trigger WebSocket updates.
+
+**Request Body** (`RareDashboardState`):
+
+```json
+{
+  "scenario": "highway-cruise",
+  "cmd": {
+    "sides": ["left", "right"],
+    "wheels": ["1", "2"]
+  },
+  "rareOperations": {
+    "absCriticalFail": "normal",
+    "absWarningFail": "normal",
+    "absFatalFail": "normal",
+    "brakeCriticalFail": "normal",
+    "masterResetFail": "normal",
+    "flashCriticalFail": "normal",
+    "busTempFail": "normal",
+    "tireCommFail": "no",
+    "fuelMapTempFail": "normal",
+    "coolantCriticalFail": "normal"
+  }
+}
+```
+
+**Response** (`200 OK`):
+
+```json
+{
+  "status": "accepted",
+  "updatesScheduled": 10,
+  "scenario": "highway-cruise"
+}
+```
+
+**Error** (`400 Bad Request`):
+
+```json
+{
+  "error": "Invalid payload: rareOperations required"
+}
+```
+
+### `GET /api/rare-config`
+
+Returns the last saved rare configuration, or 404 if none has been saved yet.
+
+**Response** (`200 OK`): Returns the full `RareDashboardState` object.
+
+**Error Response** (`404 Not Found`):
+
+```json
+{
+  "error": "No rare config saved yet"
+}
+```
+
 ### `GET /api/health`
 
 Health check endpoint.
@@ -145,22 +217,24 @@ Each message is a JSON-serialized `FieldUpdate`:
 
 ```json
 {
-  "field": "row1",
+  "field": "ttm",
   "cells": {
-    "L1": "CAP",
-    "L2": "CAP",
-    "R1": "CAP",
-    "R2": "CAP"
+    "L1": { "value": "captive", "abbr": "CAP" },
+    "L2": { "value": "captive", "abbr": "CAP" },
+    "R1": { "value": "captive", "abbr": "CAP" },
+    "R2": { "value": "captive", "abbr": "CAP" }
   }
 }
 ```
 
 **Fields**:
 
-| Field    | Type                      | Description                                                 |
-| -------- | ------------------------- | ----------------------------------------------------------- |
-| `field`  | `string`                  | Operation key matching `OperationsValue` property           |
-| `cells`  | `Record<string, string>`  | Column ID → 3-letter abbreviation for affected columns only |
+| Field    | Type                           | Description                                                 |
+| -------- | ------------------------------ | ----------------------------------------------------------- |
+| `field`  | `string`                       | Operation key matching model property                       |
+| `cells`  | `Record<string, CellValue>`    | Column ID → `{ value, abbr }` for affected columns only    |
+
+**CellValue**: `{ value: string; abbr: string }` — abbreviation is resolved server-side via `resolveAbbr`.
 
 ### Message Timing
 
@@ -175,14 +249,26 @@ The server uses the `cmd.sides × cmd.wheels` from the POST payload to determine
 
 ## Simulation Engine
 
-`processConfig(state: DashboardState) → FieldUpdate[]`
+### `processConfig(state: DashboardState) → FieldUpdate[]`
 
-For each operation key in `state.operations`, the engine:
+For each operation key in `state.operations` (11 fields) and `state.cmdTest` (3 fields), the engine:
 
 1. Reads the raw value.
-2. Looks up the abbreviation from the option config (e.g., `'captive'` → `'CAP'`).
-3. For multi-select values (arrays), concatenates abbreviations (e.g., `['no']` → `'NO'`).
-4. Builds a `cells` record with the abbreviation for each affected column (determined by `cmd.sides × cmd.wheels`).
+2. Uses `cmd.sides × cmd.wheels` to determine affected columns.
+3. Resolves abbreviation via `resolveAbbr(rawValue, abbrMap)` using per-field abbreviation maps.
+4. Builds a `cells` record with `CellValue { value, abbr }` for each affected column.
+5. For multi-select values (arrays), joins them with commas (e.g., `['hd', '4k']` → `'hd,4k'`, abbr: `'HD,4K'`).
+
+### `processRareConfig(state: RareDashboardState) → FieldUpdate[]`
+
+For each of the 10 rare operation keys in `state.rareOperations`, the engine:
+
+1. Reads the raw value (Normal/Force/Ignore or Yes/No).
+2. Uses `cmd.sides × cmd.wheels` to determine affected columns (L1–R4).
+3. Resolves abbreviation via `resolveAbbr(rawValue, abbrMap)`.
+4. Builds a `cells` record with `CellValue { value, abbr }` for each affected column.
+5. For TTL/TTR fields (absFatalFail, brakeCriticalFail, busTempFail, tireCommFail): adds TTL cell when left side selected, TTR cell when right side selected.
+6. For SSL fields (fuelMapTempFail, coolantCriticalFail): always adds SSL cell.
 
 ## File Structure
 
@@ -191,8 +277,10 @@ server/
 ├── tsconfig.json             # TypeScript config (target: es2017, module: commonjs)
 └── src/
     ├── index.ts              # Express app + WebSocket server + static serving
-    ├── models.ts             # Shared types (DashboardState, FieldUpdate, CmdSelection, OperationsValue)
-    └── simulation-engine.ts  # processConfig() — abbreviation-based update generation
+    │                         # Handles /api/config, /api/rare-config, /api/health, /api/ws
+    ├── models.ts             # Shared types: DashboardState, RareDashboardState, FieldUpdate,
+    │                         # CmdSelection, OperationsValue, CmdTestValue, RareOperationsValue
+    └── simulation-engine.ts  # processConfig() + processRareConfig() — update generation
 ```
 
 ## Configuration

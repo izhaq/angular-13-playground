@@ -2,7 +2,7 @@
 
 **Feature**: 1-config-dashboard
 **Branch**: `main`
-**Generated**: 2026-04-02 (original) | 2026-04-09 (revised)
+**Generated**: 2026-04-02 (original) | 2026-04-09 (revised) | 2026-04-16 (current)
 **Spec**: [spec.md](./spec.md)
 **Plan**: [impl-plan.md](./impl-plan.md)
 **Data Model**: [data-model.md](./data-model.md)
@@ -32,7 +32,7 @@ All original phases (Phase 1–3, Phase 2.5, plus simplifications and server int
 
 ---
 
-## Completed Phases (Revised Plan — R1–R4, R6)
+## Completed Phases (Revised Plan — R1–R4, R6, R8)
 
 All core revised phases are **complete**:
 
@@ -42,29 +42,74 @@ All core revised phases are **complete**:
 - [x] Phase R4: Top Bar + Footer — Scenario only in top bar, Default+Cancel+Save in footer
 - [x] Phase R6: Backend Update — new payload format, client-side abbreviation lookup, WebSocket integration
 - [x] Code Review Fixes — saveConfig rollback, null setter reset, SCSS theme tokens, comma trim, Omit<> dedup
+- [x] Phase R8: Architecture & Code Quality Refactor — naming, file organization, service decoupling, template type safety
 
 ---
 
-## Phase R5: Testing & Naming Infrastructure
+## Completed Phases (Post-R8 — Tabbed Dashboard)
 
-**Status**: Pending
+- [x] CMD Test Panel — 3 YES/NO dropdowns for CMD testing section in Tab 1
+- [x] Sticky header/footer layout — CMD panel (top) and footer (bottom) are sticky
+- [x] PanelFooterComponent — Extracted shared footer (Default/Cancel/Save) to dedicated component
+- [x] Tabbed Dashboard Architecture — DashboardWrapperComponent with TopBar + mat-tab-group
+  - [x] DashboardWrapperComponent shell with TopBar above tab strip
+  - [x] FrequentCmdsTabComponent (Tab 1) — refactored from ConfigDashboardComponent
+  - [x] RareCmdsTabComponent (Tab 2) — placeholder, then full implementation
+  - [x] WsService — shared WebSocket service at wrapper level
+  - [x] Global SCSS partials for Material overrides (no ::ng-deep)
+  - [x] Folder restructure — config-dashboard → dashboard-wrapper, colocation of related code
+- [x] Rare CMDs Tab Implementation (branch: 8-rare-cmds-tab)
+  - [x] Backend: RareDashboardState models, processRareConfig(), POST/GET /api/rare-config
+  - [x] RareOperationsListComponent — 10 dropdowns (9 Normal/Force/Ignore, 1 Yes/No)
+  - [x] RareLeftPanelComponent — RareOperationsList + PanelFooter
+  - [x] Grid integration — buildRareGridRowDefs(), RARE_GRID_CONFIG with TTL/TTR/SSL columns
+  - [x] Both left panels use shared PanelFooterComponent
+  - [x] Unit tests: 178 tests passing
+- [x] State Service Consolidation
+  - [x] Generic TabStateService<T> with TAB_STATE_CONFIG InjectionToken
+  - [x] Removed separate DashboardStateService and RareStateService
+  - [x] TabStateConfig<T> interface with defaultState + apiUrl
+- [x] CMD Panel Lift to Tab Level
+  - [x] CmdPanelComponent rendered at tab component level (above left/right split)
+  - [x] Removed CmdPanel from LeftPanel and RareLeftPanel
+- [x] Fixed Container Layout
+  - [x] Dashboard constrained to 1120px × 500px, bottom-left fixed position
+  - [x] Compact spacing adjustments across all components
+  - [x] Left/right panel flex ratio 2.5/7.5
+  - [x] Custom thin scrollbar on left panels
+- [x] Grid Enhancements
+  - [x] CellValue interface with value + abbr (server-side abbreviation resolution)
+  - [x] Cell hover pop-out animation showing full value text
+  - [x] Column hover visual effect with background tint and border
+  - [x] Rare grid extra columns: TTL, TTR, SSL
+- [x] Code Quality
+  - [x] readonly on all @Output() EventEmitter properties
+  - [x] data-test-id on CMD panel dropdowns (cmd-sides, cmd-wheels)
+  - [x] data-test-id on grid cells (cell-{field}-{columnId})
+  - [x] Model/interface naming: FrequentOperationsModel, CmdTestModel, RareOperationsModel
+  - [x] File path: operations-list → frequent-operations-list
 
-**Goal**: Add `data-testid` attributes to all dropdowns/options. Create centralized label dictionary for naming swap.
+---
 
-**Completion gate**: All dropdowns and options have `data-testid`. Label dictionary exists and is used by components.
+## Phase R5: Testing & Naming Infrastructure ✅ COMPLETE
 
-- [ ] R5.1 Add `[attr.data-testid]` binding to `AppDropdownComponent` template (on the `mat-select` element)
-- [ ] R5.2 Add `[attr.data-testid]` binding to `AppMultiDropdownComponent` template
-- [ ] R5.3 Add `[attr.data-testid]` to each `mat-option` element in both dropdown components (e.g., `data-testid="option-{value}"`)
-- [ ] R5.4 Create centralized label dictionary (`src/app/labels/labels.ts` or similar) — a flat key-value map
-- [ ] R5.5 Update all components to source user-facing text from the dictionary
-- [ ] R5.6 Document the naming swap process (how to provide an alternate dictionary for confidential deployment)
+**Status**: Complete
+
+**Goal**: Add `data-testid` attributes to interactive elements. Create naming swap system for domain-specific identifiers.
+
+- [x] R5.1 `TestIdDirective` (`appTestId`) created in `src/app/shared/directives/`
+- [x] R5.2 `[testId]` on `AppDropdownComponent` and `AppMultiDropdownComponent` (bound to `data-test-id`)
+- [x] R5.3 CMD panel dropdowns: `cmd-sides`, `cmd-wheels`
+- [x] R5.4 Grid cells: `cell-{field}-{columnId}` via `[appTestId]`
+- [x] R5.5 `[appTestId]="option.value"` on `mat-option` elements in both dropdown components
+- [x] R5.6 Created `tools/naming-map.json` (domain identifier mapping) + `tools/rename.sh` (automated rename script)
+- [x] R5.7 Documented naming swap process in `specs/1-config-dashboard/naming-swap.md`
 
 ---
 
 ## Phase R7: Polish & Verify
 
-**Status**: Pending (depends on R5 + R8)
+**Status**: Pending (R5 + R8 are complete)
 
 **Goal**: End-to-end verification, visual QA, all tests pass.
 
@@ -80,63 +125,47 @@ All core revised phases are **complete**:
 
 ---
 
-## Phase R8: Architecture & Code Quality Refactor
+## Phase R8: Architecture & Code Quality Refactor ✅ COMPLETE
 
-**Status**: Pending
+**Status**: Complete
 
-**Goal**: Address code review findings — improve naming, file organization, service decoupling, and template type safety. Prepare the grid and operations components for reuse across multiple dashboards (frequent vs. less-frequent operations).
+All items addressed — naming, file organization, service decoupling, template type safety, WebSocket extraction.
 
-**Completion gate**: All items below are addressed, all tests pass, no regressions.
+- [x] R8.1 Rename for Domain Clarity (DashboardViewModel, dashboardView$)
+- [x] R8.2 Colocate Grid Files (grid.models.ts, status-grid.service.ts, grid-defaults.ts → status-grid/)
+- [x] R8.3 Decouple Grid Service (AbbrLookup, buildAbbrLookup(), configure() method)
+- [x] R8.4 Extract WebSocket Connection (ws-connection.ts, WsService)
+- [x] R8.5 Template Type Safety (typed helper methods replacing $any() casts)
 
-### R8.1 Rename for Domain Clarity
+---
 
-- [x] R8.1.1 Rename `OperationsValue` → `FrequentOperationsModel` (interface)
-- [x] R8.1.2 Rename `OperationsListComponent` → `FrequentOperationsListComponent` (class, selector: `app-frequent-operations-list`, folder: `frequent-operations-list/`)
-- [x] R8.1.3 Update all imports, references, spec files, and module declarations
-- [x] R8.1.4 Rename `DashboardViewModel` → move to `models/dashboard-view.model.ts`
-- [x] R8.1.5 Rename `vm$` → `dashboardView$` in `ConfigDashboardComponent`
+## Remaining Phases
 
-### R8.2 Colocate Grid Files
+### Phase R5: Testing & Naming Infrastructure ✅ COMPLETE
 
-- [x] R8.2.1 Move `models/grid.models.ts` → `components/status-grid/grid.models.ts`
-- [x] R8.2.2 Move `services/status-grid.service.ts` → `components/status-grid/status-grid.service.ts`
-- [x] R8.2.3 Move `services/status-grid.service.spec.ts` → `components/status-grid/status-grid.service.spec.ts`
-- [x] R8.2.4 Move grid-specific builders (`buildInitialGridRows`, `buildGridRowDefs`) from `dashboard-defaults.ts` → `components/status-grid/grid-defaults.ts`
-- [x] R8.2.5 Update all import paths
+- [x] R5.1–R5.5 `TestIdDirective`, dropdown testIds, grid cell testIds, mat-option testIds
+- [x] R5.6 `tools/naming-map.json` + `tools/rename.sh` — JSON-driven automated naming swap
+- [x] R5.7 `specs/1-config-dashboard/naming-swap.md` — usage guide, git workflow, troubleshooting
 
-### R8.3 Decouple Grid Service from Operations
+### Phase R7: Polish & Verify
 
-The grid service currently imports `OPERATIONS_FIELDS` directly to build abbreviation lookups. This prevents reuse with a different set of fields (e.g., less-frequent operations dashboard).
+**Status**: Pending (R5 complete, ready to start)
 
-- [x] R8.3.1 Extract `AbbrLookup` type and `buildAbbrLookup()` to `components/status-grid/abbr-lookup.ts`
-- [x] R8.3.2 Make `StatusGridService` accept the abbreviation lookup via a method (e.g., `configure(abbrLookup, columns)`) instead of importing `OPERATIONS_FIELDS` internally
-- [x] R8.3.3 Have `ConfigDashboardComponent` build and pass the lookup during initialization
-- [x] R8.3.4 Update tests
-
-### R8.4 Extract WebSocket Connection
-
-- [x] R8.4.1 Extract WebSocket connection/reconnect logic to `components/status-grid/ws-connection.ts` (pure utility, not a service)
-- [x] R8.4.2 `StatusGridService` uses the extracted connection utility
-- [x] R8.4.3 Move `RECONNECT_DELAY_MS` to the connection utility file
-- [x] R8.4.4 Update tests
-
-### R8.5 Template Type Safety
-
-- [x] R8.5.1 Replace `$any(value[field.key])` in `operations-list.component.html` with typed helper methods (`getStringValue(key)`, `getArrayValue(key)`)
-- [x] R8.5.2 Update component tests to cover the new methods
+- [ ] R7.1 Visual QA — verify grid, dropdowns, hover/popout, column highlight across both tabs
+- [ ] R7.2 Verify disabled state on "Realtime" scenario across both tabs
+- [ ] R7.3 Verify Default button resets left panel only per tab
+- [ ] R7.4 Verify all unit tests pass
+- [ ] R7.5 Verify production build
+- [ ] R7.6 End-to-end test: save → WS → grid update for both frequent and rare CMDs
+- [ ] R7.7 Verify `data-testid` attributes present on all interactive elements
 
 ---
 
 ## Dependency Graph
 
 ```
-Phase R5 (Testing & Naming) ──┐
-Phase R8 (Refactor)           ├──► Phase R7 (Polish & Verify)
-                              ┘
+Phase R5 (Testing & Naming) ──► Phase R7 (Polish & Verify)
 ```
-
-R5 and R8 are independent and can run in parallel.
-R7 depends on both R5 and R8.
 
 ---
 
@@ -144,8 +173,6 @@ R7 depends on both R5 and R8.
 
 | Metric | Value |
 |--------|-------|
-| Completed phases | R1, R2, R3, R4, R6, Code Review Fixes |
-| Remaining phases | R5, R7, R8 |
-| New tasks (R8) | 16 |
-| Critical path | R5 + R8 → R7 |
-| Previously completed tasks | All original phases (60+) + R1–R4, R6 |
+| Completed phases | R1, R2, R3, R4, R5, R6, R8, Code Review, Tabbed Dashboard, Rare CMDs, State Consolidation, CMD Lift, Fixed Layout, Grid Enhancements, Code Quality, Naming Swap |
+| Remaining phases | R7 (Polish & Verify) |
+| Critical path | R5 → R7 |

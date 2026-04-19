@@ -1,7 +1,7 @@
 # Data Model: Configuration Dashboard (Revised)
 
 **Feature**: 1-config-dashboard
-**Date**: 2026-04-02 (original) | 2026-04-09 (revised)
+**Date**: 2026-04-02 (original) | 2026-04-09 (revised) | 2026-04-14 (tabbed dashboard + rare CMDs) | 2026-04-16 (current)
 
 ---
 
@@ -9,9 +9,10 @@
 
 Models are co-located with their corresponding components following these rules:
 
-1. **Component-specific models** live next to their component (e.g., `app-dropdown/app-dropdown.models.ts`)
-2. **Shared dashboard models** live at the closest common parent: `config-dashboard/models/`
-3. **Project-level mock data** lives in `src/app/mocks/` — not dashboard-specific
+1. **Component-specific models** live next to their component (e.g., `app-dropdown/app-dropdown.models.ts`) or in a `models/` subdirectory
+2. **Tab-specific models** live in the tab's `models/` subdirectory (e.g., `frequent-cmds-tab/models/`, `rare-cmds-tab/models/`)
+3. **Shared dashboard models** live at the closest common parent (e.g., `status-grid/models/`)
+4. **Project-level mock data** lives in `src/app/mocks/` — not dashboard-specific
 
 ---
 
@@ -73,7 +74,7 @@ export const DROPDOWN_HOST = new InjectionToken<DropdownHost>('DropdownHost');
 
 ### CmdSelection
 
-**File**: `src/app/components/config-dashboard/components/cmd-panel/cmd-panel.models.ts`
+**File**: `src/app/components/dashboard-wrapper/components/cmd-panel/cmd-panel.models.ts`
 
 The combined value emitted by `CmdPanelComponent`.
 
@@ -84,14 +85,14 @@ export interface CmdSelection {
 }
 ```
 
-### OperationsValue
+### FrequentOperationsModel
 
-**File**: `src/app/components/config-dashboard/components/operations-list/operations-list.models.ts`
+**File**: `src/app/components/dashboard-wrapper/components/frequent-cmds-tab/components/frequent-operations-list/frequent-operations-list.models.ts`
 
-The combined value emitted by `OperationsListComponent`. Each key maps to a dropdown value.
+The combined value emitted by `FrequentOperationsListComponent`. Each key maps to a dropdown value.
 
 ```typescript
-export interface OperationsValue {
+export interface FrequentOperationsModel {
   ttm: string;          // Not Active / Real / Captive
   weather: string;      // No / Yes
   videoRec: string;     // Internal / External
@@ -106,23 +107,77 @@ export interface OperationsValue {
 }
 ```
 
+### CmdTestModel
+
+**File**: `src/app/components/dashboard-wrapper/components/frequent-cmds-tab/components/cmd-test-panel/cmd-test-panel.models.ts`
+
+The combined value emitted by `CmdTestPanelComponent`. Three YES/NO toggles for CMD testing (Tab 1 only).
+
+```typescript
+export interface CmdTestModel {
+  nta: string;         // 'no' / 'yes'
+  tisMtrRec: string;   // 'no' / 'yes'
+  rideMtrRec: string;  // 'no' / 'yes'
+}
+```
+
 ### DashboardState
 
-**File**: `src/app/components/config-dashboard/models/dashboard-state.models.ts`
+**File**: `src/app/components/dashboard-wrapper/components/frequent-cmds-tab/models/dashboard.models.ts`
 
-The complete dashboard state snapshot.
+The complete dashboard state snapshot for Tab 1 (Frequent CMDs).
 
 ```typescript
 export interface DashboardState {
   scenario: string;
   cmd: CmdSelection;
-  operations: OperationsValue;
+  operations: FrequentOperationsModel;
+  cmdTest: CmdTestModel;
 }
+
+export type LeftPanelPayload = Omit<DashboardState, 'scenario' | 'cmd'>;
+```
+
+### RareOperationsModel
+
+**File**: `src/app/components/dashboard-wrapper/components/rare-cmds-tab/components/rare-operations-list/rare-operations-list.models.ts`
+
+The combined value for rare operations. 9 fields use Normal/Force/Ignore options; 1 field (tireCommFail) uses Yes/No.
+
+```typescript
+export interface RareOperationsModel {
+  absCriticalFail: string;     // Normal / Force / Ignore
+  absWarningFail: string;      // Normal / Force / Ignore
+  absFatalFail: string;        // Normal / Force / Ignore
+  brakeCriticalFail: string;   // Normal / Force / Ignore
+  masterResetFail: string;     // Normal / Force / Ignore
+  flashCriticalFail: string;   // Normal / Force / Ignore
+  busTempFail: string;         // Normal / Force / Ignore
+  tireCommFail: string;        // No / Yes
+  fuelMapTempFail: string;     // Normal / Force / Ignore
+  coolantCriticalFail: string; // Normal / Force / Ignore
+}
+```
+
+### RareDashboardState
+
+**File**: `src/app/components/dashboard-wrapper/components/rare-cmds-tab/models/rare-dashboard.models.ts`
+
+The complete dashboard state snapshot for Tab 2 (Rare CMDs).
+
+```typescript
+export interface RareDashboardState {
+  scenario: string;
+  cmd: CmdSelection;
+  rareOperations: RareOperationsModel;
+}
+
+export type RareLeftPanelPayload = Omit<RareDashboardState, 'scenario' | 'cmd'>;
 ```
 
 ### GridConfig
 
-**File**: `src/app/components/config-dashboard/models/grid.models.ts`
+**File**: `src/app/components/dashboard-wrapper/components/status-grid/models/grid.models.ts`
 
 Configuration for the status grid. Defines structure (rows + columns). Passed as `@Input` to `StatusGridComponent`.
 
@@ -143,30 +198,43 @@ export interface GridColumnDef {
 }
 ```
 
+### CellValue
+
+**File**: `src/app/components/dashboard-wrapper/components/status-grid/models/grid.models.ts`
+
+Represents a single grid cell's display value. The server resolves abbreviations server-side using `resolveAbbr`.
+
+```typescript
+export interface CellValue {
+  value: string;  // full text (e.g., "Captive", "Normal")
+  abbr: string;   // abbreviation displayed in the grid (e.g., "CAP", "NRM")
+}
+```
+
 ### RowViewModel
 
-**File**: `src/app/components/config-dashboard/models/grid.models.ts`
+**File**: `src/app/components/dashboard-wrapper/components/status-grid/models/grid.models.ts`
 
-A single grid row as consumed by the template. Contains the field label and cell abbreviations.
+A single grid row as consumed by the template. Contains the field label and `CellValue` objects per column.
 
 ```typescript
 export interface RowViewModel {
-  field: string;                    // matches GridRowDef.field
-  label: string;                    // display label
-  cells: Record<string, string>;   // columnId → 3-letter abbreviation (empty string = blank)
+  field: string;                       // matches GridRowDef.field
+  label: string;                       // display label
+  cells: Record<string, CellValue>;   // columnId → CellValue (empty = { value: '', abbr: '' })
 }
 ```
 
 ### FieldUpdate (WebSocket Message)
 
-**File**: `src/app/components/config-dashboard/models/grid.models.ts`
+**File**: `src/app/components/dashboard-wrapper/components/status-grid/models/grid.models.ts`
 
-A single update pushed from the server via WebSocket.
+A single update pushed from the server via WebSocket. Cells contain `CellValue` objects with both full value and abbreviation (resolved server-side).
 
 ```typescript
 export interface FieldUpdate {
-  field: string;                    // matches GridRowDef.field (e.g., 'row1', 'videoRec')
-  cells: Record<string, string>;   // columnId → abbreviation (e.g., { 'L1': 'CAP', 'L2': 'CAP' })
+  field: string;                       // matches GridRowDef.field (e.g., 'ttm', 'videoRec')
+  cells: Record<string, CellValue>;   // columnId → CellValue
 }
 ```
 
@@ -174,16 +242,13 @@ export interface FieldUpdate {
 
 ```typescript
 // User selected Left side, Wheels 1+2, changed TTM to "Captive"
-{ field: "ttm", cells: { "L1": "CAP", "L2": "CAP" } }
+{ field: "ttm", cells: { "L1": { value: "captive", abbr: "CAP" }, "L2": { value: "captive", abbr: "CAP" } } }
 
 // User selected Right side, all wheels, changed PWR to "Off"
-{ field: "pwrOnOff", cells: { "R1": "OFF", "R2": "OFF", "R3": "OFF", "R4": "OFF" } }
+{ field: "pwrOnOff", cells: { "R1": { value: "off", abbr: "OFF" }, ... } }
 
-// Full update for all wheels — Force set to Normal
-{ field: "force", cells: { "L1": "NRM", "L2": "NRM", "L3": "NRM", "L4": "NRM", "R1": "NRM", "R2": "NRM", "R3": "NRM", "R4": "NRM" } }
-
-// Multi-select: Video Type set to HD + 4K — grid cell shows comma-separated abbreviations
-{ field: "videoType", cells: { "L1": "HD,4K", "L2": "HD,4K" } }
+// Multi-select: Video Type set to HD + 4K
+{ field: "videoType", cells: { "L1": { value: "hd,4k", abbr: "HD,4K" }, "L2": { value: "hd,4k", abbr: "HD,4K" } } }
 ```
 
 **Handler logic** in `StatusGridService`:
@@ -196,47 +261,56 @@ export interface FieldUpdate {
 ## Entity Relationships
 
 ```
-DashboardState (user input state)
-├── scenario: string ──────────► DropdownOption.value (from scenario options)
-│   └── "Realtime" disables entire left panel
-├── cmd: CmdSelection
+DashboardState (Tab 1 — Frequent CMDs)
+├── scenario: string ──────────► DropdownOption.value
+│   └── "Realtime" disables left panel of BOTH tabs
+├── cmd: CmdSelection (at tab level, NOT inside left panel)
 │   ├── sides: string[] ──────► ['left'] or ['right'] or ['left','right']
 │   └── wheels: string[] ─────► ['1','2','3','4'] (any combination)
 │   └── Side × Wheel → grid columns (L1, L2, ..., R4)
-└── operations: OperationsValue
-    ├── ttm: string ───────────► 'not-active' / 'real' / 'captive'
-    ├── weather: string ───────► 'no' / 'yes'
-    ├── videoRec: string ──────► 'internal' / 'external'
-    ├── videoType: string[] ───► multi-select: 'no' / 'hd' / '4k' / '8k'
-    ├── headlights: string ────► 'no' / 'yes'
-    ├── pwrOnOff: string ──────► 'on' / 'off'
-    ├── force: string ─────────► 'normal' / 'force-f' / 'force-no'
-    ├── stability: string ─────► 'no' / 'yes'
-    ├── cruiseCtrl: string ────► 'no' / 'yes'
-    ├── plr: string ───────────► 'no' / 'yes'
-    └── aux: string ───────────► 'no' / 'yes'
+├── operations: FrequentOperationsModel (11 fields)
+│   ├── ttm, weather, videoRec, videoType, headlights
+│   ├── pwrOnOff, force, stability, cruiseCtrl, plr, aux
+└── cmdTest: CmdTestModel (3 fields)
+    ├── nta, tisMtrRec, rideMtrRec
 
-GridConfig (static structure, @Input to grid)
-├── rows: GridRowDef[]  ← one per operation (11 rows)
-└── columns: GridColumnDef[]  ← computed from CMD (L1–R4) + custom
+RareDashboardState (Tab 2 — Rare CMDs)
+├── scenario: string
+├── cmd: CmdSelection (at tab level, NOT inside left panel)
+└── rareOperations: RareOperationsModel (10 fields)
+    ├── absCriticalFail, absWarningFail, absFatalFail, brakeCriticalFail
+    ├── masterResetFail, flashCriticalFail, busTempFail, tireCommFail
+    └── fuelMapTempFail, coolantCriticalFail
 
-RowViewModel[] (data, @Input to grid)
+GridConfig (static structure, @Input to grid — per tab)
+├── rows: GridRowDef[]  ← Tab 1: 14 rows, Tab 2: 10 rows
+└── columns: GridColumnDef[]  ← Tab 1: L1–R4 (8), Tab 2: L1–R4 + TTL, TTR, SSL (11)
+
+RowViewModel[] (data, @Input to grid — per tab)
 ├── field: string ─────────► matches GridRowDef.field
 ├── label: string ─────────► display label
-└── cells: Record<string, string>  ← columnId → abbreviation
+└── cells: Record<string, CellValue>  ← columnId → { value, abbr }
 
 FieldUpdate (WebSocket message) ──updates──► RowViewModel
-├── field ─────────► matches RowViewModel.field
-└── cells ─────────► merges into RowViewModel.cells (partial update)
+├── field ─────────► matches RowViewModel.field (unknown fields ignored)
+└── cells: Record<string, CellValue> → merges into RowViewModel.cells (partial update)
 
-Data Flow:
-  Save click → POST /api/config (DashboardState with affected wheels)
-             → server processes
-             → WebSocket FieldUpdate per operation
-             → StatusGridService.applyUpdate() → RowViewModel[] updated
-             → Grid re-renders affected cells with abbreviations
+State Management (per tab):
+  TabStateService<T> + TAB_STATE_CONFIG InjectionToken
+  Tab 1: TabStateService<DashboardState> → POST /api/config
+  Tab 2: TabStateService<RareDashboardState> → POST /api/rare-config
 
-  Initial load → Grid renders empty (all cells blank)
+Data Flow (per tab):
+  Save click → TabStateService.saveConfig()
+             → POST /api/config or /api/rare-config
+             → server processes (processConfig or processRareConfig)
+             → server resolves abbreviations (resolveAbbr) → CellValue { value, abbr }
+             → WebSocket FieldUpdate per operation (broadcast to all)
+             → Each tab's StatusGridService.applyUpdate()
+               (ignores fields not in its row defs)
+             → Grid re-renders affected cells (abbr in cell, value in hover popout)
+
+  Initial load → Grid renders empty (all cells = { value: '', abbr: '' })
   Default click → Left panel resets to defaults (right panel unchanged)
 ```
 
@@ -305,6 +379,23 @@ export const FORCE_OPTIONS: DropdownOption[] = [
 ];
 ```
 
+### Rare Operations Options
+
+```typescript
+// 9 of 10 fields use Normal/Force/Ignore
+const NORMAL_FORCE_IGNORE_OPTIONS: DropdownOption[] = [
+  { value: 'normal', label: 'Normal', abbr: 'NRM' },
+  { value: 'force', label: 'Force', abbr: 'FRC' },
+  { value: 'ignore', label: 'Ignore', abbr: 'IGN' },
+];
+
+// 1 field (tireCommFail) uses Yes/No
+const YES_NO_OPTIONS: DropdownOption[] = [
+  { value: 'no', label: 'No', abbr: 'NO' },
+  { value: 'yes', label: 'Yes', abbr: 'YES' },
+];
+```
+
 ### Scenario Options
 
 ```typescript
@@ -345,6 +436,58 @@ export const DEFAULT_DASHBOARD_STATE: DashboardState = {
   operations: DEFAULT_OPERATIONS,
 };
 ```
+
+### Default Rare Operations
+
+```typescript
+export const DEFAULT_RARE_OPERATIONS: RareOperationsModel = {
+  absCriticalFail: 'normal',
+  absWarningFail: 'normal',
+  absFatalFail: 'normal',
+  brakeCriticalFail: 'normal',
+  masterResetFail: 'normal',
+  flashCriticalFail: 'normal',
+  busTempFail: 'normal',
+  tireCommFail: 'no',
+  fuelMapTempFail: 'normal',
+  coolantCriticalFail: 'normal',
+};
+```
+
+---
+
+## State Management — TabStateService\<T\>
+
+**Files**:
+- `src/app/components/dashboard-wrapper/services/tab-state.config.ts`
+- `src/app/components/dashboard-wrapper/services/tab-state.service.ts`
+
+A single generic service handles state for both tabs. Each tab provides its own configuration via the `TAB_STATE_CONFIG` InjectionToken.
+
+```typescript
+export interface TabStateConfig<T> {
+  defaultState: T;
+  apiUrl: string;
+}
+
+export const TAB_STATE_CONFIG = new InjectionToken<TabStateConfig<unknown>>('TabStateConfig');
+```
+
+```typescript
+@Injectable()
+export class TabStateService<T> {
+  readonly state$: Observable<T>;
+  updateState(value: T): void;
+  saveConfig(value: T): void;      // POST to config.apiUrl, rollback on failure
+  cancelChanges(): T;              // revert to saved baseline
+  resetToDefaults(): T;            // revert to config.defaultState
+  getCurrentState(): T;
+  getSavedBaseline(): T;
+}
+```
+
+**Tab 1 provides**: `TabStateConfig<DashboardState>` with `apiUrl: '/api/config'`
+**Tab 2 provides**: `TabStateConfig<RareDashboardState>` with `apiUrl: '/api/rare-config'`
 
 ---
 
@@ -408,6 +551,31 @@ When the user clicks Save, the payload represents which wheels are being configu
 
 The server uses `cmd.sides × cmd.wheels` to determine which columns to update in the WebSocket response. For example, `sides: ['left'], wheels: ['1', '2']` → server broadcasts `FieldUpdate` messages with cells for columns `L1` and `L2` only.
 
+### Rare CMDs POST Payload
+
+```typescript
+// POST /api/rare-config
+{
+  "scenario": "highway-cruise",
+  "cmd": {
+    "sides": ["left", "right"],
+    "wheels": ["1", "2"]
+  },
+  "rareOperations": {
+    "absCriticalFail": "normal",
+    "absWarningFail": "normal",
+    "absFatalFail": "force",
+    "brakeCriticalFail": "normal",
+    "masterResetFail": "normal",
+    "flashCriticalFail": "ignore",
+    "busTempFail": "normal",
+    "tireCommFail": "no",
+    "fuelMapTempFail": "normal",
+    "coolantCriticalFail": "normal"
+  }
+}
+```
+
 ---
 
 ## State Transitions
@@ -456,7 +624,7 @@ The server uses `cmd.sides × cmd.wheels` to determine which columns to update i
 
     FieldUpdate handler:
       1. Find RowViewModel by field
-      2. Merge cells: for each (columnId, abbr) in update.cells:
-           row.cells[columnId] = abbr
+      2. Merge cells: for each (columnId, cellValue) in update.cells:
+           row.cells[columnId] = cellValue  // { value, abbr }
            (unlisted columns remain unchanged)
 ```

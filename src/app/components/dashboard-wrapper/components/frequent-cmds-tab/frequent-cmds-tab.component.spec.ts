@@ -25,7 +25,8 @@ class MockCmdPanelComponent {
 @Component({ selector: 'app-left-panel', template: '' })
 class MockLeftPanelComponent {
   @Input() dashboardState: DashboardState | null = null;
-  @Input() disabled = false;
+  @Input() readOnly = false;
+  @Input() saveBlocked = false;
   @Output() stateChanged = new EventEmitter<LeftPanelPayload>();
   @Output() saved = new EventEmitter<LeftPanelPayload>();
   @Output() cancelled = new EventEmitter<void>();

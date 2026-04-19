@@ -10,7 +10,8 @@
       </div>
       <app-left-panel
         [dashboardState]="state"
-        [disabled]="isRealtime"
+        [readOnly]="isRealtime"
+        [saveBlocked]="!state.cmd.sides.length || !state.cmd.wheels.length"
         (stateChanged)="onStateChanged($event)"
         (saved)="onSaved($event)"
         (cancelled)="onCancelled()"

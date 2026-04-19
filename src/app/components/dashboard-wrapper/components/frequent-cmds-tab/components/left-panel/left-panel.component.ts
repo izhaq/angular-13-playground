@@ -32,7 +32,8 @@ export class LeftPanelComponent {
     this.cmdTest = value.cmdTest;
   }
 
-  @Input() disabled = false;
+  @Input() readOnly = false;
+  @Input() saveBlocked = false;
 
   @Output() readonly stateChanged = new EventEmitter<LeftPanelPayload>();
   @Output() readonly saved = new EventEmitter<LeftPanelPayload>();

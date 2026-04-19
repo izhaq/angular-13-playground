@@ -1,17 +1,18 @@
-<div class="panel-wrapper" [class.panel-wrapper--disabled]="disabled">
+<div class="panel-wrapper" [class.panel-wrapper--disabled]="readOnly">
   <div class="panel">
     <div class="panel__body">
       <div class="panel__section">
         <app-rare-operations-list
           [value]="rareOperations"
-          [disabled]="disabled"
+          [disabled]="readOnly"
           (changed)="onRareOperationsChanged($event)">
         </app-rare-operations-list>
       </div>
     </div>
 
     <app-panel-footer
-      [disabled]="disabled"
+      [readOnly]="readOnly"
+      [saveBlocked]="saveBlocked"
       (defaultClicked)="onDefault()"
       (cancelled)="onCancel()"
       (saved)="onSave()">

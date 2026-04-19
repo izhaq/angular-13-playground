@@ -7,7 +7,8 @@ import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from 
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PanelFooterComponent {
-  @Input() disabled = false;
+  @Input() readOnly = false;
+  @Input() saveBlocked = false;
 
   @Output() readonly saved = new EventEmitter<void>();
   @Output() readonly cancelled = new EventEmitter<void>();

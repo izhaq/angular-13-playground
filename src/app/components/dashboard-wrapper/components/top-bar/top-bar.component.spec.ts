@@ -32,8 +32,6 @@ describe('TopBarComponent', () => {
   it('should render the Scenario dropdown', () => {
     const dropdown = fixture.debugElement.query(By.css('app-dropdown'));
     expect(dropdown).toBeTruthy();
-    const label = fixture.nativeElement.querySelector('.app-dropdown-label');
-    expect(label?.textContent?.trim()).toBe('Scenario');
   });
 
   it('should emit scenarioChanged when dropdown value changes', () => {

@@ -7,16 +7,6 @@
 .top-bar {
   display: flex;
   align-items: center;
-  width: 100%;
-  box-sizing: border-box;
-  padding: $spacing-xs $spacing-md;
-  background-color: $surface-container-high;
-  color: $primary-text;
+  height: 100%;
   font-family: $font-family-body;
-  gap: $spacing-md;
-
-  app-dropdown {
-    flex-shrink: 0;
-    max-width: 15rem;
-  }
 }

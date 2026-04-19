@@ -1,27 +1,28 @@
 <div class="wrapper" *ngIf="{ scenario: scenario$ | async, isRealtime: isRealtime$ | async } as vm">
-  <header class="wrapper__topbar">
+  <div class="wrapper__tabs-area">
     <app-top-bar
+      class="wrapper__inline-scenario"
       [selectedScenario]="vm.scenario!"
       [scenarioOptions]="scenarioOptions"
       (scenarioChanged)="onScenarioChanged($event)">
     </app-top-bar>
-  </header>
 
-  <mat-tab-group class="wrapper__tabs" animationDuration="0ms">
-    <mat-tab>
-      <ng-template mat-tab-label><span [appTestId]="'frequent'">Frequent CMDs</span></ng-template>
-      <app-frequent-cmds-tab
-        [scenario]="vm.scenario!"
-        [isRealtime]="!!vm.isRealtime">
-      </app-frequent-cmds-tab>
-    </mat-tab>
+    <mat-tab-group class="wrapper__tabs" animationDuration="0ms">
+      <mat-tab>
+        <ng-template mat-tab-label><span [appTestId]="'frequent'">Frequent CMDs</span></ng-template>
+        <app-frequent-cmds-tab
+          [scenario]="vm.scenario!"
+          [isRealtime]="!!vm.isRealtime">
+        </app-frequent-cmds-tab>
+      </mat-tab>
 
-    <mat-tab>
-      <ng-template mat-tab-label><span [appTestId]="'rare'">Rare CMDs</span></ng-template>
-      <app-rare-cmds-tab
-        [scenario]="vm.scenario!"
-        [isRealtime]="!!vm.isRealtime">
-      </app-rare-cmds-tab>
-    </mat-tab>
-  </mat-tab-group>
+      <mat-tab>
+        <ng-template mat-tab-label><span [appTestId]="'rare'">Rare CMDs</span></ng-template>
+        <app-rare-cmds-tab
+          [scenario]="vm.scenario!"
+          [isRealtime]="!!vm.isRealtime">
+        </app-rare-cmds-tab>
+      </mat-tab>
+    </mat-tab-group>
+  </div>
 </div>

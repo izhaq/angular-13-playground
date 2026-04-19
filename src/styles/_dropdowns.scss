@@ -97,3 +97,10 @@ $dropdown-h-padding: 0.625em;
     display: none;
   }
 }
+
+// Scenario dropdown lives inline in the tab-header strip and needs more
+// horizontal room than the default 6rem to fit labels like "Highway Cruise".
+.scenario-dropdown .app-dropdown-field {
+  width: 11rem;
+}
+

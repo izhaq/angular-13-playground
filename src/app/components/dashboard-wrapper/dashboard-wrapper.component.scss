@@ -20,11 +20,14 @@ $separator-color: rgba($primary-text, 0.12);
 
   &__topbar {
     flex-shrink: 0;
-    padding-bottom: $spacing-xs;
+    // Give the shared header room to breathe — the CMD panel and Scenario
+    // dropdown are dense controls, and the previous 4px+1px+4px gap was too
+    // tight against the tab strip below.
+    padding-bottom: $spacing-sm;
     border-bottom: 1px solid $separator-color;
-    margin-bottom: $spacing-xs;
+    margin-bottom: $spacing-md;
 
-    // Single shared row: Scenario aligned left, CMD panel pushed to the right.
+    // Single shared row: CMD panel anchored left, Scenario pushed to the right.
     display: flex;
     align-items: center;
     gap: $spacing-md;

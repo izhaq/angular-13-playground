@@ -30,12 +30,7 @@ $separator-color: rgba($primary-text, 0.12);
     gap: $spacing-md;
   }
 
-  &__topbar-scenario {
-    flex-shrink: 0;
-  }
-
   &__topbar-cmd {
-    margin-left: auto;
     flex-shrink: 0;
 
     // Visually fade the CMD panel when realtime mode disables it (matches the
@@ -44,6 +39,11 @@ $separator-color: rgba($primary-text, 0.12);
       opacity: 0.4;
       pointer-events: none;
     }
+  }
+
+  &__topbar-scenario {
+    margin-left: auto;
+    flex-shrink: 0;
   }
 
   &__tabs {

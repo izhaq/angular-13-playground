@@ -5,13 +5,6 @@
     saveBlocked: saveBlocked$ | async
   } as vm">
   <header class="wrapper__topbar">
-    <app-top-bar
-      class="wrapper__topbar-scenario"
-      [selectedScenario]="vm.scenario!"
-      [scenarioOptions]="scenarioOptions"
-      (scenarioChanged)="onScenarioChanged($event)">
-    </app-top-bar>
-
     <app-cmd-panel
       class="wrapper__topbar-cmd"
       [class.wrapper__topbar-cmd--disabled]="vm.isRealtime"
@@ -19,6 +12,13 @@
       [disabled]="!!vm.isRealtime"
       (changed)="onCmdChanged($event)">
     </app-cmd-panel>
+
+    <app-top-bar
+      class="wrapper__topbar-scenario"
+      [selectedScenario]="vm.scenario!"
+      [scenarioOptions]="scenarioOptions"
+      (scenarioChanged)="onScenarioChanged($event)">
+    </app-top-bar>
   </header>
 
   <mat-tab-group class="wrapper__tabs" animationDuration="0ms">

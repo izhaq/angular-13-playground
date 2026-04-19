@@ -1,10 +1,10 @@
-<div class="panel-wrapper" [class.panel-wrapper--disabled]="disabled">
+<div class="panel-wrapper" [class.panel-wrapper--disabled]="readOnly">
   <div class="panel">
     <div class="panel__body">
       <div class="panel__section">
         <app-frequent-operations-list
           [value]="operations"
-          [disabled]="disabled"
+          [disabled]="readOnly"
           (changed)="onOperationsChanged($event)">
         </app-frequent-operations-list>
       </div>
@@ -14,14 +14,15 @@
       <div class="panel__section">
         <app-cmd-test-panel
           [value]="cmdTest"
-          [disabled]="disabled"
+          [disabled]="readOnly"
           (changed)="onCmdTestChanged($event)">
         </app-cmd-test-panel>
       </div>
     </div>
 
     <app-panel-footer
-      [disabled]="disabled"
+      [readOnly]="readOnly"
+      [saveBlocked]="saveBlocked"
       (defaultClicked)="onDefault()"
       (cancelled)="onCancel()"
       (saved)="onSave()">

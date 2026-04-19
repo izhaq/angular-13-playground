@@ -13,7 +13,7 @@ import { DROPDOWN_HOST, DropdownHost, DropdownOption } from '../app-dropdown/app
 export class AppMultiDropdownComponent implements DropdownHost<string[]> {
   @Input() options: DropdownOption[] = [];
   @Input() label = '';
-  @Input() placeholder = '';
+  @Input() placeholder = 'Select';
   @Input() disabled = false;
   @Input() testId = '';
 

@@ -39,8 +39,8 @@ describe('PanelFooterComponent', () => {
     expect(buttons[2].textContent.trim()).toBe('Save');
   });
 
-  it('should disable all buttons when disabled is true', () => {
-    component.disabled = true;
+  it('should disable all buttons when readOnly is true', () => {
+    component.readOnly = true;
     cdr.markForCheck();
     fixture.detectChanges();
 
@@ -51,8 +51,8 @@ describe('PanelFooterComponent', () => {
     });
   });
 
-  it('should enable all buttons when disabled is false', () => {
-    component.disabled = false;
+  it('should enable all buttons when readOnly is false', () => {
+    component.readOnly = false;
     cdr.markForCheck();
     fixture.detectChanges();
 

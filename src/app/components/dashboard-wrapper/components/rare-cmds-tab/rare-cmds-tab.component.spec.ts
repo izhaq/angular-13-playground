@@ -24,7 +24,8 @@ class MockCmdPanelComponent {
 @Component({ selector: 'app-rare-left-panel', template: '' })
 class MockRareLeftPanelComponent {
   @Input() dashboardState: RareDashboardState | null = null;
-  @Input() disabled = false;
+  @Input() readOnly = false;
+  @Input() saveBlocked = false;
   @Output() stateChanged = new EventEmitter<RareLeftPanelPayload>();
   @Output() saved = new EventEmitter<RareLeftPanelPayload>();
   @Output() cancelled = new EventEmitter<void>();

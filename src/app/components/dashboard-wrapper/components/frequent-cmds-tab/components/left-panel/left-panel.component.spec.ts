@@ -24,7 +24,8 @@ class MockCmdTestPanelComponent {
 
 @Component({ selector: 'app-panel-footer', template: '' })
 class MockPanelFooterComponent {
-  @Input() disabled = false;
+  @Input() readOnly = false;
+  @Input() saveBlocked = false;
   @Output() saved = new EventEmitter<void>();
   @Output() cancelled = new EventEmitter<void>();
   @Output() defaultClicked = new EventEmitter<void>();
@@ -103,15 +104,15 @@ describe('LeftPanelComponent', () => {
     expect(opsList.componentInstance.value).toEqual(state.operations);
   });
 
-  it('should pass disabled to all child components including footer', () => {
-    setInputAndDetect('disabled', true);
+  it('should pass readOnly down: disabled to child controls and readOnly to footer', () => {
+    setInputAndDetect('readOnly', true);
 
     const opsList = fixture.debugElement.query(By.directive(MockFrequentOperationsListComponent));
     const cmdTestPanel = fixture.debugElement.query(By.directive(MockCmdTestPanelComponent));
     const footer = fixture.debugElement.query(By.directive(MockPanelFooterComponent));
     expect(opsList.componentInstance.disabled).toBe(true);
     expect(cmdTestPanel.componentInstance.disabled).toBe(true);
-    expect(footer.componentInstance.disabled).toBe(true);
+    expect(footer.componentInstance.readOnly).toBe(true);
   });
 
   it('onOperationsChanged should update operations and emit stateChanged', () => {
@@ -176,14 +177,14 @@ describe('LeftPanelComponent', () => {
     expect(spy).toHaveBeenCalledTimes(1);
   });
 
-  it('should apply disabled class to panel wrapper when disabled', () => {
-    setInputAndDetect('disabled', true);
+  it('should apply disabled class to panel wrapper when readOnly', () => {
+    setInputAndDetect('readOnly', true);
     const wrapper = fixture.debugElement.query(By.css('.panel-wrapper'));
     expect(wrapper.classes['panel-wrapper--disabled']).toBe(true);
   });
 
-  it('should not apply disabled class when not disabled', () => {
-    component.disabled = false;
+  it('should not apply disabled class when not readOnly', () => {
+    component.readOnly = false;
     fixture.detectChanges();
     const wrapper = fixture.debugElement.query(By.css('.panel-wrapper'));
     expect(wrapper.classes['panel-wrapper--disabled']).toBeFalsy();

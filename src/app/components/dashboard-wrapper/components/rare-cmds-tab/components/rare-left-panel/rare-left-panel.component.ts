@@ -28,7 +28,8 @@ export class RareLeftPanelComponent {
     this.rareOperations = value.rareOperations;
   }
 
-  @Input() disabled = false;
+  @Input() readOnly = false;
+  @Input() saveBlocked = false;
 
   @Output() readonly stateChanged = new EventEmitter<RareLeftPanelPayload>();
   @Output() readonly saved = new EventEmitter<RareLeftPanelPayload>();

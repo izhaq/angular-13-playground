@@ -4,7 +4,7 @@ import { DEFAULT_OPERATIONS } from '../components/frequent-operations-list/frequ
 import { DEFAULT_CMD_TEST } from '../components/cmd-test-panel/cmd-test-panel.models';
 
 export const DEFAULT_STATE: DashboardState = {
-  scenario: 'highway-cruise',
+  isRealtime: false,
   cmd: { ...DEFAULT_CMD_SELECTION },
   operations: { ...DEFAULT_OPERATIONS },
   cmdTest: { ...DEFAULT_CMD_TEST },

@@ -2,9 +2,7 @@ import { ChangeDetectionStrategy, Component, OnDestroy, OnInit } from '@angular/
 import { BehaviorSubject } from 'rxjs';
 import { map } from 'rxjs/operators';
 
-import { DropdownOption } from '../app-dropdown/app-dropdown.models';
 import { WsService } from './services/ws.service';
-import { SCENARIOS } from './models/scenario.constants';
 import { CmdSelection, DEFAULT_CMD_SELECTION } from './components/cmd-panel/cmd-panel.models';
 
 @Component({
@@ -15,11 +13,13 @@ import { CmdSelection, DEFAULT_CMD_SELECTION } from './components/cmd-panel/cmd-
   providers: [WsService],
 })
 export class DashboardWrapperComponent implements OnInit, OnDestroy {
-  readonly scenarioOptions: DropdownOption[] = SCENARIOS;
-
-  private readonly scenarioSubject = new BehaviorSubject<string>('highway-cruise');
-  readonly scenario$ = this.scenarioSubject.asObservable();
-  readonly isRealtime$ = this.scenario$.pipe(map((s) => s === 'realtime'));
+  // Realtime is now a single boolean. The previous scenario dropdown carried
+  // 4 values (highway-cruise / city-traffic / off-road-trail / realtime) but
+  // only the realtime branch ever gated UI behavior, so the model collapses
+  // to a checkbox. The boolean flows down to both tabs and into the save
+  // payload directly (replacing the old `scenario: string` field).
+  private readonly isRealtimeSubject = new BehaviorSubject<boolean>(false);
+  readonly isRealtime$ = this.isRealtimeSubject.asObservable();
 
   // CMD selection is hoisted from per-tab to the wrapper (Version 2 UX): a single
   // CMD panel lives in the top bar instead of being duplicated inside each tab.
@@ -36,8 +36,8 @@ export class DashboardWrapperComponent implements OnInit, OnDestroy {
 
   constructor(private readonly wsService: WsService) {}
 
-  get selectedScenario(): string {
-    return this.scenarioSubject.getValue();
+  get selectedRealtime(): boolean {
+    return this.isRealtimeSubject.getValue();
   }
 
   get selectedCmd(): CmdSelection {
@@ -52,8 +52,8 @@ export class DashboardWrapperComponent implements OnInit, OnDestroy {
     this.wsService.disconnect();
   }
 
-  onScenarioChanged(value: string): void {
-    this.scenarioSubject.next(value);
+  onRealtimeChanged(value: boolean): void {
+    this.isRealtimeSubject.next(value);
   }
 
   onCmdChanged(value: CmdSelection): void {

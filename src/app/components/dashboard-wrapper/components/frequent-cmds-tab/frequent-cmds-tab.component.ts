@@ -24,7 +24,6 @@ import { FREQUENT_GRID_CONFIG } from './models/frequent-grid-config';
   ],
 })
 export class FrequentCmdsTabComponent implements OnInit, OnDestroy {
-  @Input() scenario = 'highway-cruise';
   @Input() isRealtime = false;
   // CMD selection is owned by the wrapper (single shared instance across tabs)
   // and pushed down so the save payload can include it without duplicating UI.
@@ -88,7 +87,7 @@ export class FrequentCmdsTabComponent implements OnInit, OnDestroy {
 
   private buildFullState(partial: LeftPanelPayload): DashboardState {
     return {
-      scenario: this.scenario,
+      isRealtime: this.isRealtime,
       cmd: this.cmd,
       operations: partial.operations,
       cmdTest: partial.cmdTest,

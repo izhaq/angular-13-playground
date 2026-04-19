@@ -24,7 +24,6 @@ import { RARE_GRID_CONFIG } from './models/rare-grid-config';
   ],
 })
 export class RareCmdsTabComponent implements OnInit, OnDestroy {
-  @Input() scenario = 'highway-cruise';
   @Input() isRealtime = false;
   // CMD selection is owned by the wrapper (single shared instance across tabs)
   // and pushed down so the save payload can include it without duplicating UI.
@@ -88,7 +87,7 @@ export class RareCmdsTabComponent implements OnInit, OnDestroy {
 
   private buildFullState(partial: RareLeftPanelPayload): RareDashboardState {
     return {
-      scenario: this.scenario,
+      isRealtime: this.isRealtime,
       cmd: this.cmd,
       rareOperations: partial.rareOperations,
     };

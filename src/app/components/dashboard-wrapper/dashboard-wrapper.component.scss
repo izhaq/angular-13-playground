@@ -27,10 +27,18 @@ $separator-color: rgba($primary-text, 0.12);
     border-bottom: 1px solid $separator-color;
     margin-bottom: $spacing-md;
 
-    // Single shared row: CMD panel anchored left, Scenario pushed to the right.
+    // Single shared row: Realtime checkbox + CMD panel grouped on the left,
+    // sitting close together (no margin-left:auto). The checkbox is the
+    // primary mode toggle and the CMD panel reads as a directly-related
+    // detail control, so we want them visually adjacent rather than
+    // pushed to opposite edges.
     display: flex;
     align-items: center;
     gap: $spacing-md;
+  }
+
+  &__topbar-realtime {
+    flex-shrink: 0;
   }
 
   &__topbar-cmd {
@@ -42,11 +50,6 @@ $separator-color: rgba($primary-text, 0.12);
       opacity: 0.4;
       pointer-events: none;
     }
-  }
-
-  &__topbar-scenario {
-    margin-left: auto;
-    flex-shrink: 0;
   }
 
   &__tabs {

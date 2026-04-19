@@ -89,8 +89,7 @@ describe('FrequentCmdsTabComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should default scenario to highway-cruise and isRealtime to false', () => {
-    expect(component.scenario).toBe('highway-cruise');
+  it('should default isRealtime to false', () => {
     expect(component.isRealtime).toBe(false);
   });
 
@@ -128,8 +127,8 @@ describe('FrequentCmdsTabComponent', () => {
     expect(component.defaultClicked.emit).toHaveBeenCalledTimes(1);
   });
 
-  it('onStateChanged should call stateService.updateState with scenario and cmd from inputs', () => {
-    component.scenario = 'city-traffic';
+  it('onStateChanged should call stateService.updateState with isRealtime and cmd from inputs', () => {
+    component.isRealtime = true;
     component.cmd = { sides: ['right'], wheels: ['2'] };
     const partial: LeftPanelPayload = {
       operations: DEFAULT_OPERATIONS,
@@ -139,7 +138,7 @@ describe('FrequentCmdsTabComponent', () => {
     component.onStateChanged(partial);
 
     expect(stateService.updateState).toHaveBeenCalledWith({
-      scenario: 'city-traffic',
+      isRealtime: true,
       cmd: { sides: ['right'], wheels: ['2'] },
       operations: partial.operations,
       cmdTest: partial.cmdTest,
@@ -147,7 +146,7 @@ describe('FrequentCmdsTabComponent', () => {
   });
 
   it('onSaved should call stateService.saveConfig with input cmd and emit saved with cmd', () => {
-    component.scenario = 'off-road-trail';
+    component.isRealtime = false;
     const inputCmd: CmdSelection = { sides: ['left', 'right'], wheels: ['1', '4'] };
     component.cmd = inputCmd;
     spyOn(component.saved, 'emit');
@@ -159,7 +158,7 @@ describe('FrequentCmdsTabComponent', () => {
     component.onSaved(partial);
 
     expect(stateService.saveConfig).toHaveBeenCalledWith({
-      scenario: 'off-road-trail',
+      isRealtime: false,
       cmd: inputCmd,
       operations: partial.operations,
       cmdTest: partial.cmdTest,

@@ -33,7 +33,7 @@ class MockPanelFooterComponent {
 
 function buildTestState(): DashboardState {
   return {
-    scenario: 'city-traffic',
+    isRealtime: false,
     cmd: { sides: ['left', 'right'], wheels: ['1', '2'] },
     operations: {
       ...DEFAULT_OPERATIONS,

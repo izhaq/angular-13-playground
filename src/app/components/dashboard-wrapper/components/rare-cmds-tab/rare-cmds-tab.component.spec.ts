@@ -88,8 +88,7 @@ describe('RareCmdsTabComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should default scenario to highway-cruise and isRealtime to false', () => {
-    expect(component.scenario).toBe('highway-cruise');
+  it('should default isRealtime to false', () => {
     expect(component.isRealtime).toBe(false);
   });
 
@@ -127,8 +126,8 @@ describe('RareCmdsTabComponent', () => {
     expect(component.defaultClicked.emit).toHaveBeenCalledTimes(1);
   });
 
-  it('onStateChanged should call stateService.updateState with scenario and cmd from inputs', () => {
-    component.scenario = 'city-traffic';
+  it('onStateChanged should call stateService.updateState with isRealtime and cmd from inputs', () => {
+    component.isRealtime = true;
     component.cmd = { sides: ['left'], wheels: ['3', '4'] };
     const partial: RareLeftPanelPayload = {
       rareOperations: DEFAULT_RARE_OPERATIONS,
@@ -137,14 +136,14 @@ describe('RareCmdsTabComponent', () => {
     component.onStateChanged(partial);
 
     expect(stateService.updateState).toHaveBeenCalledWith({
-      scenario: 'city-traffic',
+      isRealtime: true,
       cmd: { sides: ['left'], wheels: ['3', '4'] },
       rareOperations: partial.rareOperations,
     });
   });
 
   it('onSaved should call stateService.saveConfig with input cmd and emit saved with cmd', () => {
-    component.scenario = 'off-road-trail';
+    component.isRealtime = false;
     const inputCmd: CmdSelection = { sides: ['right'], wheels: ['2'] };
     component.cmd = inputCmd;
     spyOn(component.saved, 'emit');
@@ -155,7 +154,7 @@ describe('RareCmdsTabComponent', () => {
     component.onSaved(partial);
 
     expect(stateService.saveConfig).toHaveBeenCalledWith({
-      scenario: 'off-road-trail',
+      isRealtime: false,
       cmd: inputCmd,
       rareOperations: partial.rareOperations,
     });

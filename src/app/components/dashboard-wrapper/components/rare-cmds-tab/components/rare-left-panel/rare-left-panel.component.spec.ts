@@ -25,7 +25,7 @@ class MockPanelFooterComponent {
 
 function buildTestState(): RareDashboardState {
   return {
-    scenario: 'city-traffic',
+    isRealtime: false,
     cmd: { sides: ['left', 'right'], wheels: ['1', '2'] },
     rareOperations: {
       ...DEFAULT_RARE_OPERATIONS,

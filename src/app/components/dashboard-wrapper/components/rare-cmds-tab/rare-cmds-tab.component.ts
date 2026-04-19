@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, Input, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
 import { Observable, Subscription } from 'rxjs';
 
 import { CmdSelection, RareDashboardState, RareLeftPanelPayload } from './models/rare-dashboard.models';
@@ -26,12 +26,22 @@ import { RARE_GRID_CONFIG } from './models/rare-grid-config';
 export class RareCmdsTabComponent implements OnInit, OnDestroy {
   @Input() scenario = 'highway-cruise';
   @Input() isRealtime = false;
+  // CMD selection is owned by the wrapper (single shared instance across tabs)
+  // and pushed down so the save payload can include it without duplicating UI.
+  @Input() cmd: CmdSelection = { ...DEFAULT_CMD_SELECTION };
+  @Input() saveBlocked = false;
+
+  // Emitted after the wrapper-owned CMD baseline should be updated. The wrapper
+  // syncs its own cmd subject / baseline so behavior matches the original
+  // per-tab Default/Cancel/Save semantics now that CMD is shared.
+  @Output() readonly saved = new EventEmitter<CmdSelection>();
+  @Output() readonly cancelled = new EventEmitter<void>();
+  @Output() readonly defaultClicked = new EventEmitter<void>();
 
   readonly gridConfig: GridConfig = RARE_GRID_CONFIG;
   readonly dashboardState$: Observable<RareDashboardState>;
   readonly gridRows$: Observable<RowViewModel[]>;
 
-  private cmd: CmdSelection = { ...DEFAULT_CMD_SELECTION };
   private wsSub?: Subscription;
 
   constructor(
@@ -57,15 +67,9 @@ export class RareCmdsTabComponent implements OnInit, OnDestroy {
     this.wsSub?.unsubscribe();
   }
 
-  onCmdChanged(value: CmdSelection): void {
-    this.cmd = value;
-    const current = this.stateService.getCurrentState();
-    this.stateService.updateState({ ...current, cmd: value });
-  }
-
   onDefault(): void {
-    this.cmd = { ...DEFAULT_CMD_SELECTION };
     this.stateService.resetToDefaults();
+    this.defaultClicked.emit();
   }
 
   onStateChanged(partial: RareLeftPanelPayload): void {
@@ -74,11 +78,12 @@ export class RareCmdsTabComponent implements OnInit, OnDestroy {
 
   onSaved(partial: RareLeftPanelPayload): void {
     this.stateService.saveConfig(this.buildFullState(partial));
+    this.saved.emit(this.cmd);
   }
 
   onCancelled(): void {
-    const restored = this.stateService.cancelChanges();
-    this.cmd = restored.cmd;
+    this.stateService.cancelChanges();
+    this.cancelled.emit();
   }
 
   private buildFullState(partial: RareLeftPanelPayload): RareDashboardState {

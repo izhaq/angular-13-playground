@@ -1,10 +1,24 @@
-<div class="wrapper" *ngIf="{ scenario: scenario$ | async, isRealtime: isRealtime$ | async } as vm">
+<div class="wrapper" *ngIf="{
+    scenario: scenario$ | async,
+    isRealtime: isRealtime$ | async,
+    cmd: cmd$ | async,
+    saveBlocked: saveBlocked$ | async
+  } as vm">
   <header class="wrapper__topbar">
     <app-top-bar
+      class="wrapper__topbar-scenario"
       [selectedScenario]="vm.scenario!"
       [scenarioOptions]="scenarioOptions"
       (scenarioChanged)="onScenarioChanged($event)">
     </app-top-bar>
+
+    <app-cmd-panel
+      class="wrapper__topbar-cmd"
+      [class.wrapper__topbar-cmd--disabled]="vm.isRealtime"
+      [value]="vm.cmd!"
+      [disabled]="!!vm.isRealtime"
+      (changed)="onCmdChanged($event)">
+    </app-cmd-panel>
   </header>
 
   <mat-tab-group class="wrapper__tabs" animationDuration="0ms">
@@ -12,7 +26,12 @@
       <ng-template mat-tab-label><span [appTestId]="'frequent'">Frequent CMDs</span></ng-template>
       <app-frequent-cmds-tab
         [scenario]="vm.scenario!"
-        [isRealtime]="!!vm.isRealtime">
+        [isRealtime]="!!vm.isRealtime"
+        [cmd]="vm.cmd!"
+        [saveBlocked]="!!vm.saveBlocked"
+        (saved)="onTabSaved($event)"
+        (cancelled)="onTabCancelled()"
+        (defaultClicked)="onTabDefault()">
       </app-frequent-cmds-tab>
     </mat-tab>
 
@@ -20,7 +39,12 @@
       <ng-template mat-tab-label><span [appTestId]="'rare'">Rare CMDs</span></ng-template>
       <app-rare-cmds-tab
         [scenario]="vm.scenario!"
-        [isRealtime]="!!vm.isRealtime">
+        [isRealtime]="!!vm.isRealtime"
+        [cmd]="vm.cmd!"
+        [saveBlocked]="!!vm.saveBlocked"
+        (saved)="onTabSaved($event)"
+        (cancelled)="onTabCancelled()"
+        (defaultClicked)="onTabDefault()">
       </app-rare-cmds-tab>
     </mat-tab>
   </mat-tab-group>

@@ -12,18 +12,6 @@ $separator-color: rgba($primary-text, 0.12);
   flex-direction: column;
   height: 100%;
 
-  &__cmd-row {
-    flex-shrink: 0;
-    padding: $spacing-sm 0;
-    margin-bottom: $spacing-sm;
-    border-bottom: 1px solid $separator-color;
-
-    &--disabled {
-      opacity: 0.4;
-      pointer-events: none;
-    }
-  }
-
   &__content {
     display: flex;
     flex: 1;

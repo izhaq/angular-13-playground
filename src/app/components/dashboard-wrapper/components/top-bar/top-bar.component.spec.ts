@@ -29,11 +29,13 @@ describe('TopBarComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should render the Scenario dropdown', () => {
+  it('should render the scenario dropdown without a visible label', () => {
     const dropdown = fixture.debugElement.query(By.css('app-dropdown'));
     expect(dropdown).toBeTruthy();
+    // The label was removed from the dropdown to slim down the top bar; the
+    // currently-selected scenario value itself communicates the field's purpose.
     const label = fixture.nativeElement.querySelector('.app-dropdown-label');
-    expect(label?.textContent?.trim()).toBe('Scenario');
+    expect(label).toBeNull();
   });
 
   it('should emit scenarioChanged when dropdown value changes', () => {

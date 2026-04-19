@@ -15,13 +15,6 @@ import { DEFAULT_CMD_SELECTION } from '../cmd-panel/cmd-panel.models';
 import { DEFAULT_OPERATIONS } from './components/frequent-operations-list/frequent-operations-list.models';
 import { DEFAULT_CMD_TEST } from './components/cmd-test-panel/cmd-test-panel.models';
 
-@Component({ selector: 'app-cmd-panel', template: '' })
-class MockCmdPanelComponent {
-  @Input() value!: CmdSelection;
-  @Input() disabled = false;
-  @Output() changed = new EventEmitter<CmdSelection>();
-}
-
 @Component({ selector: 'app-left-panel', template: '' })
 class MockLeftPanelComponent {
   @Input() dashboardState: DashboardState | null = null;
@@ -68,7 +61,6 @@ describe('FrequentCmdsTabComponent', () => {
     await TestBed.configureTestingModule({
       declarations: [
         FrequentCmdsTabComponent,
-        MockCmdPanelComponent,
         MockLeftPanelComponent,
         MockStatusGridComponent,
       ],
@@ -102,6 +94,11 @@ describe('FrequentCmdsTabComponent', () => {
     expect(component.isRealtime).toBe(false);
   });
 
+  it('should default cmd to DEFAULT_CMD_SELECTION and saveBlocked to false', () => {
+    expect(component.cmd).toEqual(DEFAULT_CMD_SELECTION);
+    expect(component.saveBlocked).toBe(false);
+  });
+
   it('should call gridService.configure on init', () => {
     expect(gridService.configure).toHaveBeenCalledTimes(1);
   });
@@ -121,24 +118,19 @@ describe('FrequentCmdsTabComponent', () => {
     expect(gridService.applyUpdate).not.toHaveBeenCalled();
   });
 
-  it('onDefault should call stateService.resetToDefaults only (not gridService)', () => {
+  it('onDefault should call stateService.resetToDefaults and emit defaultClicked', () => {
+    spyOn(component.defaultClicked, 'emit');
+
     component.onDefault();
 
     expect(stateService.resetToDefaults).toHaveBeenCalledTimes(1);
     expect(gridService.resetToDefaults).not.toHaveBeenCalled();
+    expect(component.defaultClicked.emit).toHaveBeenCalledTimes(1);
   });
 
-  it('onCmdChanged should call stateService.updateState with new cmd', () => {
-    const newCmd: CmdSelection = { sides: ['right'], wheels: ['3', '4'] };
-
-    component.onCmdChanged(newCmd);
-
-    expect(stateService.getCurrentState).toHaveBeenCalled();
-    expect(stateService.updateState).toHaveBeenCalledWith(jasmine.objectContaining({ cmd: newCmd }));
-  });
-
-  it('onStateChanged should call stateService.updateState with scenario from input', () => {
+  it('onStateChanged should call stateService.updateState with scenario and cmd from inputs', () => {
     component.scenario = 'city-traffic';
+    component.cmd = { sides: ['right'], wheels: ['2'] };
     const partial: LeftPanelPayload = {
       operations: DEFAULT_OPERATIONS,
       cmdTest: DEFAULT_CMD_TEST,
@@ -148,33 +140,40 @@ describe('FrequentCmdsTabComponent', () => {
 
     expect(stateService.updateState).toHaveBeenCalledWith({
       scenario: 'city-traffic',
-      cmd: DEFAULT_CMD_SELECTION,
+      cmd: { sides: ['right'], wheels: ['2'] },
       operations: partial.operations,
       cmdTest: partial.cmdTest,
     });
   });
 
-  it('onSaved should call stateService.saveConfig with scenario from input', () => {
+  it('onSaved should call stateService.saveConfig with input cmd and emit saved with cmd', () => {
     component.scenario = 'off-road-trail';
+    const inputCmd: CmdSelection = { sides: ['left', 'right'], wheels: ['1', '4'] };
+    component.cmd = inputCmd;
+    spyOn(component.saved, 'emit');
     const partial: LeftPanelPayload = {
-      operations: { ...DEFAULT_OPERATIONS, force: 'force-f' },
-      cmdTest: { ...DEFAULT_CMD_TEST, nta: 'yes' },
+      operations: { ...DEFAULT_OPERATIONS },
+      cmdTest: { ...DEFAULT_CMD_TEST },
     };
 
     component.onSaved(partial);
 
     expect(stateService.saveConfig).toHaveBeenCalledWith({
       scenario: 'off-road-trail',
-      cmd: DEFAULT_CMD_SELECTION,
+      cmd: inputCmd,
       operations: partial.operations,
       cmdTest: partial.cmdTest,
     });
+    expect(component.saved.emit).toHaveBeenCalledWith(inputCmd);
   });
 
-  it('onCancelled should call stateService.cancelChanges and restore cmd', () => {
+  it('onCancelled should call stateService.cancelChanges and emit cancelled', () => {
+    spyOn(component.cancelled, 'emit');
+
     component.onCancelled();
 
     expect(stateService.cancelChanges).toHaveBeenCalledTimes(1);
+    expect(component.cancelled.emit).toHaveBeenCalledTimes(1);
   });
 
   it('dashboardState$ should emit current state from service', (done) => {

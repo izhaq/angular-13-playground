@@ -1,17 +1,10 @@
 <div class="dashboard" *ngIf="dashboardState$ | async as state">
   <div class="dashboard__content">
     <section class="dashboard__left">
-      <div class="dashboard__cmd-row" [class.dashboard__cmd-row--disabled]="isRealtime">
-        <app-cmd-panel
-          [value]="state.cmd"
-          [disabled]="isRealtime"
-          (changed)="onCmdChanged($event)">
-        </app-cmd-panel>
-      </div>
       <app-left-panel
         [dashboardState]="state"
         [readOnly]="isRealtime"
-        [saveBlocked]="!state.cmd.sides.length || !state.cmd.wheels.length"
+        [saveBlocked]="saveBlocked"
         (stateChanged)="onStateChanged($event)"
         (saved)="onSaved($event)"
         (cancelled)="onCancelled()"

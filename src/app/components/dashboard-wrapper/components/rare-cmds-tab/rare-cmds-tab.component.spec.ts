@@ -14,13 +14,6 @@ import { RareCmdsTabComponent } from './rare-cmds-tab.component';
 import { DEFAULT_CMD_SELECTION } from '../cmd-panel/cmd-panel.models';
 import { DEFAULT_RARE_OPERATIONS } from './components/rare-operations-list/rare-operations-list.models';
 
-@Component({ selector: 'app-cmd-panel', template: '' })
-class MockCmdPanelComponent {
-  @Input() value!: CmdSelection;
-  @Input() disabled = false;
-  @Output() changed = new EventEmitter<CmdSelection>();
-}
-
 @Component({ selector: 'app-rare-left-panel', template: '' })
 class MockRareLeftPanelComponent {
   @Input() dashboardState: RareDashboardState | null = null;
@@ -67,7 +60,6 @@ describe('RareCmdsTabComponent', () => {
     await TestBed.configureTestingModule({
       declarations: [
         RareCmdsTabComponent,
-        MockCmdPanelComponent,
         MockRareLeftPanelComponent,
         MockStatusGridComponent,
       ],
@@ -101,6 +93,11 @@ describe('RareCmdsTabComponent', () => {
     expect(component.isRealtime).toBe(false);
   });
 
+  it('should default cmd to DEFAULT_CMD_SELECTION and saveBlocked to false', () => {
+    expect(component.cmd).toEqual(DEFAULT_CMD_SELECTION);
+    expect(component.saveBlocked).toBe(false);
+  });
+
   it('should call gridService.configure on init', () => {
     expect(gridService.configure).toHaveBeenCalledTimes(1);
   });
@@ -120,24 +117,19 @@ describe('RareCmdsTabComponent', () => {
     expect(gridService.applyUpdate).not.toHaveBeenCalled();
   });
 
-  it('onDefault should call stateService.resetToDefaults only (not gridService)', () => {
+  it('onDefault should call stateService.resetToDefaults and emit defaultClicked', () => {
+    spyOn(component.defaultClicked, 'emit');
+
     component.onDefault();
 
     expect(stateService.resetToDefaults).toHaveBeenCalledTimes(1);
     expect(gridService.resetToDefaults).not.toHaveBeenCalled();
+    expect(component.defaultClicked.emit).toHaveBeenCalledTimes(1);
   });
 
-  it('onCmdChanged should call stateService.updateState with new cmd', () => {
-    const newCmd: CmdSelection = { sides: ['right'], wheels: ['3', '4'] };
-
-    component.onCmdChanged(newCmd);
-
-    expect(stateService.getCurrentState).toHaveBeenCalled();
-    expect(stateService.updateState).toHaveBeenCalledWith(jasmine.objectContaining({ cmd: newCmd }));
-  });
-
-  it('onStateChanged should call stateService.updateState with scenario from input', () => {
+  it('onStateChanged should call stateService.updateState with scenario and cmd from inputs', () => {
     component.scenario = 'city-traffic';
+    component.cmd = { sides: ['left'], wheels: ['3', '4'] };
     const partial: RareLeftPanelPayload = {
       rareOperations: DEFAULT_RARE_OPERATIONS,
     };
@@ -146,13 +138,16 @@ describe('RareCmdsTabComponent', () => {
 
     expect(stateService.updateState).toHaveBeenCalledWith({
       scenario: 'city-traffic',
-      cmd: DEFAULT_CMD_SELECTION,
+      cmd: { sides: ['left'], wheels: ['3', '4'] },
       rareOperations: partial.rareOperations,
     });
   });
 
-  it('onSaved should call stateService.saveConfig with scenario from input', () => {
+  it('onSaved should call stateService.saveConfig with input cmd and emit saved with cmd', () => {
     component.scenario = 'off-road-trail';
+    const inputCmd: CmdSelection = { sides: ['right'], wheels: ['2'] };
+    component.cmd = inputCmd;
+    spyOn(component.saved, 'emit');
     const partial: RareLeftPanelPayload = {
       rareOperations: { ...DEFAULT_RARE_OPERATIONS, brakeCriticalFail: 'force' },
     };
@@ -161,15 +156,19 @@ describe('RareCmdsTabComponent', () => {
 
     expect(stateService.saveConfig).toHaveBeenCalledWith({
       scenario: 'off-road-trail',
-      cmd: DEFAULT_CMD_SELECTION,
+      cmd: inputCmd,
       rareOperations: partial.rareOperations,
     });
+    expect(component.saved.emit).toHaveBeenCalledWith(inputCmd);
   });
 
-  it('onCancelled should call stateService.cancelChanges and restore cmd', () => {
+  it('onCancelled should call stateService.cancelChanges and emit cancelled', () => {
+    spyOn(component.cancelled, 'emit');
+
     component.onCancelled();
 
     expect(stateService.cancelChanges).toHaveBeenCalledTimes(1);
+    expect(component.cancelled.emit).toHaveBeenCalledTimes(1);
   });
 
   it('dashboardState$ should emit current state from service', (done) => {

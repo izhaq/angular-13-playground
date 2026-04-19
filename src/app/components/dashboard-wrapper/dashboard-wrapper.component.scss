@@ -1,7 +1,5 @@
 @import 'variables';
 
-$separator-color: rgba($primary-text, 0.12);
-
 :host {
   display: block;
   width: 1120px;
@@ -18,11 +16,23 @@ $separator-color: rgba($primary-text, 0.12);
   padding: $spacing-sm;
   box-sizing: border-box;
 
-  &__topbar {
-    flex-shrink: 0;
-    padding-bottom: $spacing-xs;
-    border-bottom: 1px solid $separator-color;
-    margin-bottom: $spacing-xs;
+  &__tabs-area {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  &__inline-scenario {
+    position: absolute;
+    top: 0;
+    right: $spacing-sm;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    z-index: 2;
+    pointer-events: auto;
   }
 
   &__tabs {
@@ -31,5 +41,4 @@ $separator-color: rgba($primary-text, 0.12);
     display: flex;
     flex-direction: column;
   }
-
 }

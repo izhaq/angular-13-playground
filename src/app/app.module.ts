@@ -4,7 +4,6 @@ import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 
 import { AppComponent } from './app.component';
-import { DashboardWrapperModule } from './components/dashboard-wrapper/dashboard-wrapper.module';
 
 @NgModule({
   declarations: [AppComponent],
@@ -12,7 +11,6 @@ import { DashboardWrapperModule } from './components/dashboard-wrapper/dashboard
     BrowserModule,
     BrowserAnimationsModule,
     HttpClientModule,
-    DashboardWrapperModule,
   ],
   bootstrap: [AppComponent],
 })

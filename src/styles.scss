@@ -49,20 +49,3 @@ body {
   background-color: $background;
   color: $primary-text;
 }
-
-// Override Material component backgrounds with Stitch surface tokens
-.mat-form-field-appearance-fill .mat-form-field-flex {
-  background-color: $surface-container;
-}
-
-.mat-select-panel {
-  background-color: $surface-container-high;
-}
-
-.mat-option {
-  color: $primary-text;
-}
-
-.mat-option:hover:not(.mat-option-disabled) {
-  background-color: $surface-container-highest;
-}

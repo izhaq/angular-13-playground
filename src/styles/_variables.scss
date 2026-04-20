@@ -1,27 +1,5 @@
-// Stitch "Obsidian Monolith" Design Tokens
 
-// Background & Surface hierarchy
-$background: #0e0e0e;
-$surface-container-low: #131313;
-$surface-container: #191a1a;
-$surface-container-high: #1f2020;
-$surface-container-highest: #252626;
-
-// Text
-$primary-text: #e7e5e4;
-$secondary-text: #acabaa;
-$inverse-text: #333333;
-
-// Brand / Accent
-$primary: #c6c6c7;
-$error: #ee7d77;
-$tertiary: #eff8ff;
-
-// Typography — system font stack (no remote dependencies, works offline / air-gapped).
-// Renders in the OS-native UI font: San Francisco on macOS/iOS, Segoe UI on Windows,
-// Roboto on Android, Cantarell on GNOME, etc. Hierarchy is achieved via weight + size,
-// not via swapping families.
-$font-family-system: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+$font-family-system: 'Helvetica Neue', sans-serif;
 $font-family-headline: $font-family-system;
 $font-family-body: $font-family-system;
 

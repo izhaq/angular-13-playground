@@ -2,6 +2,8 @@
   <label *ngIf="label" class="app-dropdown-label">{{ label }}</label>
   <mat-form-field appearance="fill" class="app-dropdown-field">
     <mat-select
+      panelClass="app-dropdown-panel"
+      disableOptionCentering
       [appTestId]="testId"
       [value]="value"
       [placeholder]="placeholder"

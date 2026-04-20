@@ -4,6 +4,7 @@ import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 
 import { AppComponent } from './app.component';
+import { DemoPageModule } from './demo/demo-page.module';
 
 @NgModule({
   declarations: [AppComponent],
@@ -11,6 +12,7 @@ import { AppComponent } from './app.component';
     BrowserModule,
     BrowserAnimationsModule,
     HttpClientModule,
+    DemoPageModule,
   ],
   bootstrap: [AppComponent],
 })

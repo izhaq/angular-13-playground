@@ -1,7 +1,9 @@
-
-$font-family-system: 'Helvetica Neue', sans-serif;
-$font-family-headline: $font-family-system;
-$font-family-body: $font-family-system;
+// Shared, theme-agnostic SCSS tokens. This file travels with the migration
+// and is the canonical place to declare values reused across multiple style
+// partials / component SCSS (spacing, radius, z-indices, breakpoints, ...).
+//
+// Anything theme-related (colors, typography, fonts) intentionally lives
+// elsewhere — the host application's theme owns those.
 
 // Spacing
 $spacing-xs: 4px;

@@ -12,6 +12,7 @@ import { TestIdDirectiveModule } from '../data-test-id/test-id.module';
   imports: [
     CommonModule,
     MatSelectModule,
+    MatFormFieldModule,
     TestIdDirectiveModule,
   ],
   exports: [AppMultiDropdownComponent],

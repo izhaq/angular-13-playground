@@ -1,0 +1,156 @@
+<main class="demo-page">
+  <header class="demo-page__header">
+    <h1>Component Playground</h1>
+    <p>
+      Live preview of every component in <code>src/app/components/</code>. This
+      page is not part of the migration — only the components themselves move.
+    </p>
+  </header>
+
+  <nav class="demo-page__toc" aria-label="Sections">
+    <ul>
+      <li><a href="#dropdown-standalone">AppDropdown — standalone (input/output)</a></li>
+      <li><a href="#dropdown-reactive">AppDropdown — Reactive Forms (formControl)</a></li>
+      <li><a href="#dropdown-ngmodel">AppDropdown — Template Forms ([(ngModel)])</a></li>
+      <li><a href="#dropdown-disabled">AppDropdown — disabled state</a></li>
+      <li><a href="#multi-standalone">AppMultiDropdown — standalone</a></li>
+      <li><a href="#multi-reactive">AppMultiDropdown — Reactive Forms (formControl)</a></li>
+      <li><a href="#test-id">TestIdDirective ([appTestId])</a></li>
+    </ul>
+  </nav>
+
+  <section class="demo-section" id="dropdown-standalone">
+    <h2>AppDropdown — standalone (input/output)</h2>
+    <p class="demo-section__desc">
+      Single-select dropdown driven by [value] / (changed). No forms involvement.
+    </p>
+
+    <div class="demo-section__example">
+      <app-dropdown
+        label="Fruit"
+        placeholder="Choose…"
+        testId="demo-standalone-single"
+        [options]="fruits"
+        [value]="standaloneSingle"
+        (changed)="standaloneSingle = $event">
+      </app-dropdown>
+    </div>
+
+    <pre class="demo-section__state">value = {{ standaloneSingle | json }}</pre>
+  </section>
+
+  <section class="demo-section" id="dropdown-reactive">
+    <h2>AppDropdown — Reactive Forms (formControl)</h2>
+    <p class="demo-section__desc">
+      Single-select dropdown bound through AppDropdownCvaDirective using a FormControl.
+    </p>
+
+    <form [formGroup]="form" class="demo-section__example">
+      <app-dropdown
+        label="Fruit"
+        placeholder="Choose…"
+        testId="demo-reactive-single"
+        formControlName="fruit"
+        [options]="fruits">
+      </app-dropdown>
+    </form>
+
+    <div class="demo-section__actions">
+      <button type="button" (click)="resetForm()">Reset form</button>
+      <button type="button" (click)="toggleFormDisabled()">Toggle disabled</button>
+    </div>
+
+    <pre class="demo-section__state">form.value = {{ form.value | json }}
+form.status = {{ form.status }}</pre>
+  </section>
+
+  <section class="demo-section" id="dropdown-ngmodel">
+    <h2>AppDropdown — Template Forms ([(ngModel)])</h2>
+    <p class="demo-section__desc">
+      Same component, two-way bound via ngModel through the same CVA directive.
+    </p>
+
+    <div class="demo-section__example">
+      <app-dropdown
+        label="Fruit"
+        placeholder="Choose…"
+        testId="demo-ngmodel-single"
+        name="ngModelFruit"
+        [options]="fruits"
+        [(ngModel)]="ngModelSingle">
+      </app-dropdown>
+    </div>
+
+    <pre class="demo-section__state">ngModel = {{ ngModelSingle | json }}</pre>
+  </section>
+
+  <section class="demo-section" id="dropdown-disabled">
+    <h2>AppDropdown — disabled state</h2>
+    <p class="demo-section__desc">
+      Disabled flag flows through to the underlying mat-select.
+    </p>
+
+    <div class="demo-section__example">
+      <app-dropdown
+        label="Fruit"
+        placeholder="Choose…"
+        testId="demo-disabled-single"
+        [options]="fruits"
+        [value]="'banana'"
+        [disabled]="true">
+      </app-dropdown>
+    </div>
+  </section>
+
+  <section class="demo-section" id="multi-standalone">
+    <h2>AppMultiDropdown — standalone</h2>
+    <p class="demo-section__desc">
+      Multi-select variant, driven by [value] / (changed) with a string[] value.
+    </p>
+
+    <div class="demo-section__example">
+      <app-multi-dropdown
+        label="Tags"
+        placeholder="Pick tags"
+        testId="demo-standalone-multi"
+        [options]="tags"
+        [value]="standaloneMulti"
+        (changed)="standaloneMulti = $event">
+      </app-multi-dropdown>
+    </div>
+
+    <pre class="demo-section__state">value = {{ standaloneMulti | json }}</pre>
+  </section>
+
+  <section class="demo-section" id="multi-reactive">
+    <h2>AppMultiDropdown — Reactive Forms (formControl)</h2>
+    <p class="demo-section__desc">
+      Multi-select bound via the shared AppDropdownCvaDirective using a FormControl&lt;string[]&gt;.
+    </p>
+
+    <form [formGroup]="form" class="demo-section__example">
+      <app-multi-dropdown
+        label="Tags"
+        placeholder="Pick tags"
+        testId="demo-reactive-multi"
+        formControlName="tags"
+        [options]="tags">
+      </app-multi-dropdown>
+    </form>
+
+    <pre class="demo-section__state">form.value.tags = {{ form.value.tags | json }}</pre>
+  </section>
+
+  <section class="demo-section" id="test-id">
+    <h2>TestIdDirective ([appTestId])</h2>
+    <p class="demo-section__desc">
+      Renders a data-test-id attribute. Inspect the box below in DevTools.
+    </p>
+
+    <div class="demo-section__example">
+      <div class="demo-test-id-target" appTestId="demo-test-id-target">
+        Inspect me — should have <code>data-test-id="demo-test-id-target"</code>
+      </div>
+    </div>
+  </section>
+</main>

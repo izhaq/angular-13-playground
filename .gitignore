@@ -40,3 +40,7 @@ testem.log
 # System files
 .DS_Store
 Thumbs.db
+
+# tools/rename.js ledger (forward run state, used by --reverse to undo)
+/tools/.rename-state.json
+/tools/.rename-state.json.undone-*

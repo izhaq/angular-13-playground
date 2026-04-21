@@ -4,14 +4,14 @@
     <mat-select
       panelClass="app-dropdown-panel"
       disableOptionCentering
-      [appTestId]="testId"
+      [attr.data-test-id]="testId || null"
       [multiple]="true"
       [value]="value"
       [placeholder]="placeholder"
       [disabled]="disabled"
       (selectionChange)="onSelectionChange($event)">
       <mat-option *ngFor="let option of options" [value]="option.value"
-                  [appTestId]="option.value">
+                  [attr.data-test-id]="option.value">
         {{ option.label }}
       </mat-option>
     </mat-select>

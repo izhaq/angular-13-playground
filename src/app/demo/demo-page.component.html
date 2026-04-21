@@ -15,7 +15,7 @@
       <li><a href="#dropdown-disabled">AppDropdown — disabled state</a></li>
       <li><a href="#multi-standalone">AppMultiDropdown — standalone</a></li>
       <li><a href="#multi-reactive">AppMultiDropdown — Reactive Forms (formControl)</a></li>
-      <li><a href="#test-id">TestIdDirective ([appTestId])</a></li>
+      <li><a href="#test-id">data-test-id (native attribute)</a></li>
     </ul>
   </nav>
 
@@ -142,13 +142,13 @@ form.status = {{ form.status }}</pre>
   </section>
 
   <section class="demo-section" id="test-id">
-    <h2>TestIdDirective ([appTestId])</h2>
+    <h2>data-test-id (native attribute)</h2>
     <p class="demo-section__desc">
-      Renders a data-test-id attribute. Inspect the box below in DevTools.
+      Plain data-test-id attribute. Inspect the box below in DevTools.
     </p>
 
     <div class="demo-section__example">
-      <div class="demo-test-id-target" appTestId="demo-test-id-target">
+      <div class="demo-test-id-target" data-test-id="demo-test-id-target">
         Inspect me — should have <code>data-test-id="demo-test-id-target"</code>
       </div>
     </div>

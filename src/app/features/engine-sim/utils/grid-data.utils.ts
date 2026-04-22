@@ -97,7 +97,7 @@ function cellValuesForField(
 ): Record<string, string> {
   const values: Record<string, string> = {};
   for (const col of columns) {
-    const raw = grid[col.id]?.[field.key];
+    const raw = grid[col.id as GridColId]?.[field.key];
     values[col.id] = abbrFor(field, raw);
   }
   return values;

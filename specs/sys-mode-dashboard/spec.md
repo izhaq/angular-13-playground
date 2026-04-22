@@ -121,7 +121,7 @@ src/app/features/engine-sim/
 │   └── build-defaults.util.ts                  # buildDefaultValues() helper
 ├── boards/                                     # One folder per dashboard tab — self-contained
 │   ├── primary-commands/                       # Primary — "System Commands" tab (frequently used)
-│   │   ├── primary-commands.options.ts         # DropdownOption arrays (with `abbr`)
+│   │   ├── primary-commands.options.ts         # LabeledOption arrays (DropdownOption + required `abbr`)
 │   │   ├── primary-commands.fields.ts          # FieldConfig[] + defaults builder
 │   │   ├── primary-commands.columns.ts         # 8-column grid definition
 │   │   └── primary-commands-form/              # Phase 5 form component (board-specific UI)
@@ -340,21 +340,23 @@ Following the Angular state management ladder (**no NgRx**):
 
 ---
 
-## Enums & Mappers
+## Option Values & Mappers
 
-Each field has an enum mapping BE keys → FE display:
+Each field's option `value` strings come from canonical `as const` maps in `shared/option-values.ts` (preferred over `enum` to avoid `const enum` build pitfalls and keep JS output minimal). Board-local option arrays attach a board-specific `abbr` (used as the grid cell text):
 
 ```typescript
-enum TransmitValue {
-  NO = 'no',
-  YES = 'yes',
-}
+// shared/option-values.ts
+export const YES_NO = { No: 'no', Yes: 'yes' } as const;
+export type YesNo = typeof YES_NO[keyof typeof YES_NO];
 
-const TRANSMIT_OPTIONS: DropdownOption[] = [
-  { value: TransmitValue.NO,  label: 'No',  abbr: 'N' },
-  { value: TransmitValue.YES, label: 'Yes', abbr: 'Y' },
+// boards/primary-commands/primary-commands.options.ts
+export const YES_NO_OPTIONS: LabeledOption[] = [
+  { value: YES_NO.No,  label: L.no,  abbr: 'No' },
+  { value: YES_NO.Yes, label: L.yes, abbr: 'Yes' },
 ];
 ```
+
+`LabeledOption = DropdownOption & { abbr: string }` — the required `abbr` makes "missing grid cell text" a compile error rather than a silent UX bug. `FieldConfig` is a discriminated union on `type` so `defaultValue` shape (single → `string`, multi → `string[]`) is also enforced by the compiler.
 
 ### Label Translations
 

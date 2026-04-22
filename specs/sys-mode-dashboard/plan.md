@@ -354,6 +354,18 @@ No shared services for state. No BehaviorSubjects. All state is component-local 
 
 ## 10. Implementation Phases
 
+### Testing Approach (applies to every phase)
+
+Test-after, not strict TDD — the spec is stable enough that tests document what's built rather than drive design. But each phase ships with tests in the same change-set; no phase is "done" until its tests are green.
+
+**Types over tests** — push invariants into the type system whenever possible, then skip the corresponding runtime test. A test for static configuration is a smell; the right tool is a tighter type. Examples already shipped in Phase 1: `FieldConfig` is a discriminated union on `type` (so single fields can't have an array default and vice versa), and `LabeledOption` requires `abbr` (so a board option can't render a blank grid cell).
+
+**What we test** — pure functions, observable contracts, dumb-component input/output behavior, and one happy-path integration spec for the shell.
+
+**What we don't test** — Angular Material internals, CSS layout (visual QA covers that), private methods, snapshot tests of templates, **the shape of static configuration arrays** (the types do that).
+
+**Test file convention** — `<file>.spec.ts` colocated next to source. Jasmine + Karma + ChromeHeadless (existing setup).
+
 ### Phase 1: Models, Labels, Per-Board Configuration (XS-S) — ✅ Complete
 
 Foundation layer — no components, no services. Just TypeScript.
@@ -371,14 +383,27 @@ Foundation layer — no components, no services. Just TypeScript.
 
 **Acceptance criteria:** `ng build` passes. All types/configs importable.
 
+**Tests delivered (6 specs, all green):**
+- `shared/build-defaults.util.spec.ts` — pure utility: array cloning, fresh-object-per-call, mixed single/multi defaults
+
+**Invariants enforced by types (no runtime test needed):**
+- `FieldConfig = SingleSelectField | MultiSelectField` — narrowing on the `type` literal forces `defaultValue: string` on single fields and `defaultValue: string[]` on multi fields. A wrong-shape default fails compile.
+- `LabeledOption = DropdownOption & { abbr: string }` — every option array used by a field is typed as `LabeledOption[]`, so a missing `abbr` (which would render a blank grid cell) fails compile.
+- `gridColGroup: 'all8' | 'tll_tlr' | 'gdl' | 'none'` — string literal union; typos fail compile.
+- Option `value`s come from canonical `as const` maps in `option-values.ts`, exported as derived literal-union types — drift between boards fails compile.
+
 ### Phase 2: Services (S)
 
 - `EngineSimDataService` — GET + WebSocket → `Observable<EngineSimResponse>`
 - `EngineSimApiService` — two POST methods
 - `grid-data.utils.ts` — pure transformation functions
-- Unit tests for services and utils
 
 **Acceptance criteria:** Services injectable. Utils produce correct `GridRow[]` from mock response data. `ng test` passes.
+
+**Tests:**
+- `grid-data.utils.spec.ts` — `buildPrimaryRows` maps `mCommands.standardFields` to L1-R4 cells; `buildSecondaryRows` correctly partitions `additionalFields` (8 cols) vs `aCommands` + 5 props (TLL/TLR/GDL); abbreviation lookup uses the right per-board options; missing field keys produce empty strings
+- `engine-sim-api.service.spec.ts` — `postPrimary` / `postSecondary` POST to the URLs from the injected `ENGINE_SIM_API_CONFIG` token; payload matches `BoardPostPayload` shape (use `HttpClientTestingModule`)
+- `engine-sim-data.service.spec.ts` — emits the GET response first, then merges WebSocket frames; reconnects after WS error (use a fake WebSocket factory and `HttpClientTestingModule`)
 
 ### Phase 3: Dumb Components — Grid + Footer + CMD (S-M)
 
@@ -390,12 +415,21 @@ Build the three reusable dumb components that have no board-specific knowledge:
 
 **Acceptance criteria:** Each component renders in isolation with mock inputs. Test IDs present. Column hover works. `ng test` passes.
 
+**Tests:**
+- `status-grid.component.spec.ts` — renders `columns.length + 1` columns (label col + data cols); each cell has `data-test-id="grid-{fieldKey}-{colId}"`; cell click sets `selectedCellId`; column hover sets `hoveredColId`
+- `board-footer.component.spec.ts` — emits `defaults`, `cancel`, `apply` on the corresponding button clicks; buttons have the expected `data-test-id` attributes
+- `cmd-section.component.spec.ts` — emits `selectionChange` with `{ sides, wheels }` when either dropdown changes; respects `disabled` input
+
 ### Phase 4: Board Layout Component (S)
 
 - `EngineSimBoardComponent` — sticky header/footer layout with `ng-content` slots
 - SCSS for the two-column (form + grid) split, sticky behavior, scroll
 
 **Acceptance criteria:** Content projection works. Sticky header/footer verified. Resize shrinks proportionally.
+
+**Tests:**
+- `engine-sim-board.component.spec.ts` — projects content into `boardCmd`, `boardForm`, `boardGrid`, `boardFooter` slots in the right place (assert with a host test component)
+- (Layout/sticky behavior is verified visually in Phase 7 — not unit tested)
 
 ### Phase 5: Form Components (M)
 
@@ -406,6 +440,10 @@ Both consume `FormGroup` + `disabled` as inputs. All dropdowns use `formControlN
 
 **Acceptance criteria:** Forms render all fields with correct options and defaults. Disable/enable toggles all controls. Test IDs on every dropdown. `ng test` passes.
 
+**Tests:**
+- `primary-commands-form.component.spec.ts` — renders one dropdown per field in `PRIMARY_COMMANDS_ALL_FIELDS`; "Cmd to GS" sub-section renders the 3 `PRIMARY_COMMANDS_CMD_TO_GS_FIELDS`; toggling `disabled` input disables/enables the whole `FormGroup`; every dropdown has `data-test-id="form-{fieldKey}"`
+- `secondary-commands-form.component.spec.ts` — same shape for `SECONDARY_COMMANDS_ALL_FIELDS` (no sub-sections)
+
 ### Phase 6: Shell Component — Integration (M-L)
 
 - `EngineSimShellComponent` — the smart orchestrator
@@ -414,6 +452,9 @@ Both consume `FormGroup` + `disabled` as inputs. All dropdowns use `formControlN
 
 **Acceptance criteria:** Full feature works end-to-end. Tab switching preserves CMD. Apply saves, Cancel reverts, Defaults resets. Grid shows live data. Test/Live toggle disables forms. `ng build` clean. `ng test` passes.
 
+**Tests:**
+- `engine-sim-shell.component.spec.ts` — Apply on Primary tab calls `EngineSimApiService.postPrimary` with `{ sides, wheels, fields: { ...defaults, ...edits } }`; Cancel restores the form to the snapshot; Defaults resets to `buildPrimaryCommandsDefaults()`; switching tabs preserves `cmdSaved` but not unapplied form edits; toggling test mode off disables both form groups but leaves the grid enabled (use spy services injected via TestBed providers)
+
 ### Phase 7: Polish and Verify (S)
 
 - Visual QA — layout, spacing, alignment, sticky behavior
@@ -421,6 +462,8 @@ Both consume `FormGroup` + `disabled` as inputs. All dropdowns use `formControlN
 - All `data-test-id` attributes verified
 - Full test suite green
 - Production build clean
+
+**Tests:** No new tests — this phase is verification only. Confirm `ng test --no-watch --browsers=ChromeHeadless` and `ng build` are both clean.
 
 ---
 

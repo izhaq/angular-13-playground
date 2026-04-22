@@ -36,19 +36,39 @@ export interface GridRow {
 // Field Configuration (drives form rendering + grid row ordering)
 // ---------------------------------------------------------------------------
 
-export type FieldType = 'single' | 'multi';
-
 export type GridColGroup =
   | 'all8'       // L1-R4 (Primary board and Secondary first 8)
   | 'tll_tlr'    // TLL + TLR only
   | 'gdl'        // GDL only
   | 'none';      // excluded from grid (e.g. "Cmd to GS" fields)
 
-export interface FieldConfig {
+/**
+ * A dropdown option that is also rendered in the status grid.
+ * Extends the generic DropdownOption by making `abbr` required — the grid
+ * uses `abbr` as the cell text, so a missing abbr would render blank.
+ */
+export type LabeledOption = DropdownOption & { abbr: string };
+
+interface BaseFieldConfig {
   key: string;
   label: string;
-  type: FieldType;
-  options: DropdownOption[];
-  defaultValue: string | string[];
+  options: LabeledOption[];
   gridColGroup: GridColGroup;
 }
+
+export interface SingleSelectField extends BaseFieldConfig {
+  type: 'single';
+  defaultValue: string;
+}
+
+export interface MultiSelectField extends BaseFieldConfig {
+  type: 'multi';
+  defaultValue: string[];
+}
+
+/**
+ * Discriminated union: narrowing on `type` enforces `defaultValue` shape
+ * at compile time (single → string, multi → string[]).
+ */
+export type FieldConfig = SingleSelectField | MultiSelectField;
+export type FieldType = FieldConfig['type'];

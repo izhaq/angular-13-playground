@@ -4,7 +4,7 @@
 **Spec**: [spec.md](./spec.md)
 **Field Definitions**: [field-definitions.md](./field-definitions.md)
 **Date**: 2026-04-21
-**Status**: Ready for Implementation
+**Status**: Phase 1 ✅ · Phase 2 ✅ · Phases 3-7 pending
 
 ---
 
@@ -94,7 +94,9 @@ engine-sim/
 │   ├── engine-sim.api-contract.ts         # Wire format: EngineSimResponse, EntityData, MCommandItem, BoardPostPayload, EngineSimApiConfig
 │   ├── engine-sim.models.ts               # Internal view models: CmdSelection, GridColumn, GridRow, FieldConfig
 │   ├── engine-sim.labels.ts               # ENGINE_SIM_LABELS centralized translation map
-│   ├── engine-sim.tokens.ts               # ENGINE_SIM_API_CONFIG injection token
+│   ├── engine-sim.tokens.ts               # ENGINE_SIM_API_CONFIG + ENGINE_SIM_WS_FACTORY injection tokens
+│   ├── board-ids.ts                       # BOARD_IDS const + BoardId type (namespaces all data-test-id values)
+│   ├── column-ids.ts                      # COL_IDS const + GridColId type (single source for grid column ids)
 │   ├── option-values.ts                   # Canonical value maps + derived types (YES_NO, ON_OFF, SIDE, WHEEL, …)
 │   ├── cmd-options.ts                     # CMD_SIDE_OPTIONS, CMD_WHEEL_OPTIONS (reused by both boards)
 │   └── build-defaults.util.ts             # buildDefaultValues() helper
@@ -110,7 +112,7 @@ engine-sim/
 │       ├── secondary-commands.columns.ts  # 11-column grid (reuses Primary's 8)
 │       └── secondary-commands-form/       # Phase 5 form component (14 fields)
 ├── utils/
-│   └── grid-data.utils.ts                 # Pure functions: response → grid rows (per board)
+│   └── grid-data.utils.ts                 # normalizeResponse() + generic buildRows() — single board-agnostic pipeline
 ├── services/
 │   ├── engine-sim-api.service.ts          # POST for each board
 │   └── engine-sim-data.service.ts         # GET + WebSocket → Observable<EngineSimResponse>
@@ -217,7 +219,7 @@ export const TFF = { NotActive: 'not_active', LightActive: 'light_active', Domin
 export type Tff = typeof TFF[keyof typeof TFF];
 
 // boards/primary-commands/primary-commands.options.ts
-export const TFF_OPTIONS: DropdownOption[] = [
+export const TFF_OPTIONS: LabeledOption[] = [
   { value: TFF.NotActive,   label: L.tffNotActive,   abbr: 'NACV' },
   { value: TFF.LightActive, label: L.tffLightActive, abbr: 'LACV' },
   { value: TFF.Dominate,    label: L.tffDominate,    abbr: 'DMN' },
@@ -225,12 +227,12 @@ export const TFF_OPTIONS: DropdownOption[] = [
 
 // boards/primary-commands/primary-commands.fields.ts
 export const PRIMARY_COMMANDS_MAIN_FIELDS: FieldConfig[] = [
-  { key: 'tff', label: L.tff, type: 'single', options: TFF_OPTIONS, defaultValue: TFF.NotActive, gridColGroup: 'all8' },
+  { key: 'tff', label: L.tff, type: 'single', options: TFF_OPTIONS, defaultValue: TFF.NotActive },
   // ...
 ];
 ```
 
-All 25+ fields follow this structure. `PRIMARY_COMMANDS_ALL_FIELDS` (Primary) and `SECONDARY_COMMANDS_ALL_FIELDS` (Secondary) collect each board's field configs for iteration in forms and grid.
+`FieldConfig` carries no "appears in grid" metadata. Form-only fields (Primary's "Cmd to GS" sub-section) are kept in their own array (`PRIMARY_COMMANDS_CMD_TO_GS_FIELDS`) and just not passed to the grid row builder. The form renders `*_ALL_FIELDS`; the grid renders the subset with wire data behind it.
 
 ### Label map (in `engine-sim.labels.ts`)
 
@@ -290,14 +292,14 @@ Two `app-multi-dropdown` instances (Side and Wheel) bound via CVA `formControlNa
 
 **Outputs:** `defaults`, `cancel`, `apply` (all `EventEmitter<void>`)
 
-Three `mat-button` elements with `data-test-id` attributes (`footer-defaults`, `footer-cancel`, `footer-apply`). Labels from `LABELS`.
+Three `mat-button` elements. Takes `@Input() boardId: BoardId` and stamps `[attr.data-test-id]="'footer-' + boardId + '-' + action"` on each button (e.g. `footer-primary-apply`). Labels from `LABELS`.
 
 ### `PrimaryCommandsFormComponent` (Dumb — Primary)
 
 **Inputs:** `formGroup: FormGroup`, `disabled: boolean`
 **No outputs** — parent reads `formGroup.getRawValue()` directly.
 
-Iterates `PRIMARY_COMMANDS_MAIN_FIELDS` config to render 11 dropdowns using `app-dropdown` / `app-multi-dropdown` with `formControlName`. Below the main fields, a bordered "Cmd to GS" section with 3 more dropdowns (`PRIMARY_COMMANDS_CMD_TO_GS_FIELDS`). Each dropdown gets `[attr.data-test-id]="'form-' + field.key"`.
+Iterates `PRIMARY_COMMANDS_MAIN_FIELDS` config to render 11 dropdowns using `app-dropdown` / `app-multi-dropdown` with `formControlName`. Below the main fields, a bordered "Cmd to GS" section with 3 more dropdowns (`PRIMARY_COMMANDS_CMD_TO_GS_FIELDS`). Each dropdown gets `[attr.data-test-id]="'form-' + BOARD_IDS.primary + '-' + field.key"` (Secondary form uses `BOARD_IDS.secondary` — the board id is hard-coded per form, not threaded through as an input, since each form component owns exactly one board).
 
 When `disabled` changes: `formGroup.disable()` / `formGroup.enable()`.
 
@@ -318,7 +320,7 @@ Same pattern, 14 fields from `SECONDARY_COMMANDS_ALL_FIELDS` (composed of `SECON
 - Column hover: CSS column class toggled via `mouseenter`/`mouseleave` on cells (stores `hoveredColId`)
 - Cell click: stores `selectedCellId` (fieldKey + colId composite)
 - Abbreviations: `row.values[col.id]` directly renders the abbr string
-- Test IDs: `[attr.data-test-id]="'grid-' + row.fieldKey + '-' + col.id"` on each cell
+- Test IDs: `[attr.data-test-id]="'grid-' + boardId + '-' + row.fieldKey + '-' + col.id"` on each cell, plus `grid-header-{boardId}-{colId}` on column headers and `grid-label-{boardId}-{fieldKey}` on row labels. `boardId: BoardId` is an `@Input` on `StatusGridComponent`.
 
 **SCSS:** White background, `1px solid` borders on cells, highlight class for hovered column, selected cell border. `text-overflow: ellipsis` on cells.
 
@@ -350,14 +352,19 @@ postSecondary(payload: BoardPostPayload): Observable<void>
 
 ## 7. Grid Data Transformation (`grid-data.utils.ts`)
 
-Pure functions, no service needed:
+Two-step pipeline. Pure functions, no service:
 
 ```typescript
-function buildPrimaryRows(response: EngineSimResponse, fields: FieldConfig[]): GridRow[]
-function buildSecondaryRows(response: EngineSimResponse, fields: FieldConfig[]): GridRow[]
+function normalizeResponse(response: EngineSimResponse): FlatGrid;
+function buildRows(fields: FieldConfig[], grid: FlatGrid, columns: GridColumn[]): GridRow[];
 ```
 
-Maps `response.entities[0/1].mCommands[*].standardFields` (or `additionalFields` + `aCommands`) into `GridRow[]` with abbreviation lookups. Called in `EngineSimShellComponent` whenever `gridData$` emits.
+- **`normalizeResponse`** is the only place that knows the wire shape. It flattens `entities[*].mCommands[i].standardFields|additionalFields`, `aCommands`, and the flat GDL props into a column-keyed `FlatGrid` (`Partial<Record<GridColId, Record<fieldKey, rawValue>>>`).
+- **`buildRows`** is fully generic — same function for both boards. For each `(field, column)` pair, looks up the raw value in the grid and renders its abbreviation. Caller controls which fields appear: pass `PRIMARY_COMMANDS_MAIN_FIELDS` (excludes "Cmd to GS") for the Primary grid; pass `SECONDARY_COMMANDS_ALL_FIELDS` for Secondary.
+
+Cell rendering rule (`abbrFor`): missing/empty → `''`; known value → its `abbr`; unknown but present → first 3 chars of the raw value (so QA can spot wire drift instead of staring at silent empty cells).
+
+Called in `EngineSimShellComponent` whenever `gridData$` emits — once per frame, then both boards' rows derived from the same `FlatGrid`.
 
 ---
 
@@ -428,21 +435,34 @@ Foundation layer — no components, no services. Just TypeScript.
 **Invariants enforced by types (no runtime test needed):**
 - `FieldConfig = SingleSelectField | MultiSelectField` — narrowing on the `type` literal forces `defaultValue: string` on single fields and `defaultValue: string[]` on multi fields. A wrong-shape default fails compile.
 - `LabeledOption = DropdownOption & { abbr: string }` — every option array used by a field is typed as `LabeledOption[]`, so a missing `abbr` (which would render a blank grid cell) fails compile.
-- `gridColGroup: 'all8' | 'tll_tlr' | 'gdl' | 'none'` — string literal union; typos fail compile.
+- `GridColId` (in `shared/column-ids.ts`) — every grid column id is a member of one literal-union derived from `COL_IDS`. Typos in column references fail compile.
 - Option `value`s come from canonical `as const` maps in `option-values.ts`, exported as derived literal-union types — drift between boards fails compile.
 
-### Phase 2: Services (S)
+### Phase 2: Services (S) — ✅ Complete
 
-- `EngineSimDataService` — GET + WebSocket → `Observable<EngineSimResponse>`
-- `EngineSimApiService` — two POST methods
-- `grid-data.utils.ts` — pure transformation functions
+- `shared/column-ids.ts` — `COL_IDS` const + `GridColId` literal-union (single source for column ids)
+- `utils/grid-data.utils.ts` — two-step pipeline: `normalizeResponse` (wire-aware) + generic `buildRows` (board-agnostic)
+- `services/engine-sim-api.service.ts` — `postPrimary` / `postSecondary`
+- `services/engine-sim-data.service.ts` — `connect()`: GET seed → WS stream, auto-reconnect, multicast
+- `shared/engine-sim.tokens.ts` — added `ENGINE_SIM_WS_FACTORY` token + `EngineSimWebSocketFactory` type so tests can swap in a fake socket
+- `engine-sim.module.ts` — provides both services + the default `webSocket()`-backed factory; imports `HttpClientModule`
 
-**Acceptance criteria:** Services injectable. Utils produce correct `GridRow[]` from mock response data. `ng test` passes.
+**Acceptance criteria:** Services injectable. `normalizeResponse` + `buildRows` produce correct `GridRow[]` from mock response data. `ng test` passes (49/49 green).
 
-**Tests:**
-- `grid-data.utils.spec.ts` — `buildPrimaryRows` maps `mCommands.standardFields` to L1-R4 cells; `buildSecondaryRows` correctly partitions `additionalFields` (8 cols) vs `aCommands` + 5 props (TLL/TLR/GDL); abbreviation lookup uses the right per-board options; missing field keys produce empty strings
-- `engine-sim-api.service.spec.ts` — `postPrimary` / `postSecondary` POST to the URLs from the injected `ENGINE_SIM_API_CONFIG` token; payload matches `BoardPostPayload` shape (use `HttpClientTestingModule`)
-- `engine-sim-data.service.spec.ts` — emits the GET response first, then merges WebSocket frames; reconnects after WS error (use a fake WebSocket factory and `HttpClientTestingModule`)
+**Tests delivered (18 specs, all green):**
+- `utils/grid-data.utils.spec.ts` (11)
+  - `normalizeResponse` (5): routes `left.mCommands[i]` (standard + additional merged) → `left{i+1}`; same for right; `left.aCommands` → `tll`, `right.aCommands` → `tlr`; left entity flat GDL props → `gdl` (right entity duplicate ignored); `entityId` / `mCommands` / `aCommands` never leak into the gdl cell.
+  - `buildRows` (6): emits one row per field in given order; per-field abbreviation lookup per column; missing wire values render empty; **unknown values fall back to first 3 chars of the raw value** (so wire drift is visible to QA, not silently swallowed); only writes to columns it is given (Primary 8 vs Secondary 11); fields not passed in are absent from the rows (form-only fields are filtered by *not* passing them, no metadata flag).
+- `services/engine-sim-api.service.spec.ts` (3) — `postPrimary` / `postSecondary` POST to the URLs from the injected `ENGINE_SIM_API_CONFIG` token with the exact `BoardPostPayload` body; no network call until subscribe.
+- `services/engine-sim-data.service.spec.ts` (4) — emits GET seed first, then merges WS frames; opens the WS once per stream against `wsUrl`; reconnects after WS error with a 3 s delay (verified via `fakeAsync` + `tick`); multiple subscribers share one upstream connection.
+
+**Design notes:**
+- `EngineSimDataService` uses `concat(get$, ws$)` (not `merge`) so a stale WS frame never beats the GET seed onto the screen; `defer` + `retry({ delay })` makes the WS factory re-invoke on every reconnect; `shareReplay({ bufferSize: 1, refCount: true })` keeps the connection single while letting late subscribers see the latest frame.
+- The 3 s reconnect delay is a private static constant; if it ever needs to be configurable, lift it to `EngineSimApiConfig`.
+- **Grid pipeline split**: `normalizeResponse` is the only place that knows the wire shape. `buildRows` is fully generic — same function for both boards, no per-board variants, no `gridColGroup` routing flag on `FieldConfig`. To exclude a field from the grid (e.g. Primary's "Cmd to GS"), the shell just doesn't pass it to `buildRows`. This shrank the utility from ~120 LoC of board-specific helpers to ~70 LoC of one wire mapper + one row builder, and removed `GridColGroup` from the type system.
+- `abbrFor` falls back to `value.slice(0, 3)` when the wire value isn't a known option — surfaces backend drift in the UI instead of rendering blank cells QA can't distinguish from "no data".
+- `column-ids.ts` is the single source for column ids — both `*.columns.ts` files and `normalizeResponse` import from it, so renaming a column id is a one-line change.
+- `ENGINE_SIM_API_CONFIG` is intentionally NOT provided by `EngineSimModule` — the host project supplies its own URLs at module-setup time, keeping the feature URL-agnostic for migration.
 
 ### Phase 3: Dumb Components — Grid + Footer + CMD (S-M)
 
@@ -455,8 +475,8 @@ Build the three reusable dumb components that have no board-specific knowledge:
 **Acceptance criteria:** Each component renders in isolation with mock inputs. Test IDs present. Column hover works. `ng test` passes.
 
 **Tests:**
-- `status-grid.component.spec.ts` — renders `columns.length + 1` columns (label col + data cols); each cell has `data-test-id="grid-{fieldKey}-{colId}"`; cell click sets `selectedCellId`; column hover sets `hoveredColId`
-- `board-footer.component.spec.ts` — emits `defaults`, `cancel`, `apply` on the corresponding button clicks; buttons have the expected `data-test-id` attributes
+- `status-grid.component.spec.ts` — renders `columns.length + 1` columns (label col + data cols); each cell has `data-test-id="grid-{boardId}-{fieldKey}-{colId}"`; column header has `grid-header-{boardId}-{colId}`; row label has `grid-label-{boardId}-{fieldKey}`; cell click sets `selectedCellId`; column hover sets `hoveredColId`
+- `board-footer.component.spec.ts` — emits `defaults`, `cancel`, `apply` on the corresponding button clicks; buttons have `data-test-id="footer-{boardId}-{action}"`
 - `cmd-section.component.spec.ts` — emits `selectionChange` with `{ sides, wheels }` when either dropdown changes; respects `disabled` input
 
 ### Phase 4: Board Layout Component (S)
@@ -480,7 +500,7 @@ Both consume `FormGroup` + `disabled` as inputs. All dropdowns use `formControlN
 **Acceptance criteria:** Forms render all fields with correct options and defaults. Disable/enable toggles all controls. Test IDs on every dropdown. `ng test` passes.
 
 **Tests:**
-- `primary-commands-form.component.spec.ts` — renders one dropdown per field in `PRIMARY_COMMANDS_ALL_FIELDS`; "Cmd to GS" sub-section renders the 3 `PRIMARY_COMMANDS_CMD_TO_GS_FIELDS`; toggling `disabled` input disables/enables the whole `FormGroup`; every dropdown has `data-test-id="form-{fieldKey}"`
+- `primary-commands-form.component.spec.ts` — renders one dropdown per field in `PRIMARY_COMMANDS_ALL_FIELDS`; "Cmd to GS" sub-section renders the 3 `PRIMARY_COMMANDS_CMD_TO_GS_FIELDS`; toggling `disabled` input disables/enables the whole `FormGroup`; every dropdown has `data-test-id="form-primary-{fieldKey}"` (Secondary asserts `form-secondary-{fieldKey}`)
 - `secondary-commands-form.component.spec.ts` — same shape for `SECONDARY_COMMANDS_ALL_FIELDS` (no sub-sections)
 
 ### Phase 6: Shell Component — Integration (M-L)

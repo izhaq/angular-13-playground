@@ -1,3 +1,4 @@
+import { COL_IDS } from '../../shared/column-ids';
 import { ENGINE_SIM_LABELS as L } from '../../shared/engine-sim.labels';
 import { GridColumn } from '../../shared/engine-sim.models';
 import { PRIMARY_COMMANDS_COLUMNS } from '../primary-commands/primary-commands.columns';
@@ -8,7 +9,7 @@ import { PRIMARY_COMMANDS_COLUMNS } from '../primary-commands/primary-commands.c
  */
 export const SECONDARY_COMMANDS_COLUMNS: GridColumn[] = [
   ...PRIMARY_COMMANDS_COLUMNS,
-  { id: 'tll', label: L.colTll },
-  { id: 'tlr', label: L.colTlr },
-  { id: 'gdl', label: L.colGdl },
+  { id: COL_IDS.tll, label: L.colTll },
+  { id: COL_IDS.tlr, label: L.colTlr },
+  { id: COL_IDS.gdl, label: L.colGdl },
 ];

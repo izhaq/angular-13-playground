@@ -1,4 +1,5 @@
 import { DropdownOption } from '../../../components/app-dropdown/app-dropdown.models';
+import { GridColId } from './column-ids';
 import { Side, Wheel } from './option-values';
 
 /**
@@ -22,7 +23,7 @@ export interface CmdSelection {
 // ---------------------------------------------------------------------------
 
 export interface GridColumn {
-  id: string;
+  id: GridColId;
   label: string;
 }
 
@@ -33,14 +34,8 @@ export interface GridRow {
 }
 
 // ---------------------------------------------------------------------------
-// Field Configuration (drives form rendering + grid row ordering)
+// Field Configuration (drives form rendering)
 // ---------------------------------------------------------------------------
-
-export type GridColGroup =
-  | 'all8'       // L1-R4 (Primary board and Secondary first 8)
-  | 'tll_tlr'    // TLL + TLR only
-  | 'gdl'        // GDL only
-  | 'none';      // excluded from grid (e.g. "Cmd to GS" fields)
 
 /**
  * A dropdown option that is also rendered in the status grid.
@@ -49,11 +44,16 @@ export type GridColGroup =
  */
 export type LabeledOption = DropdownOption & { abbr: string };
 
+/**
+ * No "this field belongs in the grid" flag here on purpose. Form-only fields
+ * (e.g. Primary's "Cmd to GS" sub-section) are kept in their own array and
+ * just not passed to the grid row builder. The form renders ALL_FIELDS, the
+ * grid renders the subset that actually has wire data behind it.
+ */
 interface BaseFieldConfig {
   key: string;
   label: string;
   options: LabeledOption[];
-  gridColGroup: GridColGroup;
 }
 
 export interface SingleSelectField extends BaseFieldConfig {

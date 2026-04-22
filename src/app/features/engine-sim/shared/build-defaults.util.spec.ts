@@ -6,11 +6,11 @@ describe('buildDefaultValues', () => {
   const dummyOptions: LabeledOption[] = [{ value: 'x', label: 'X', abbr: 'X' }];
 
   function singleField(key: string, defaultValue: string): FieldConfig {
-    return { key, label: key, type: 'single', options: dummyOptions, defaultValue, gridColGroup: 'all8' };
+    return { key, label: key, type: 'single', options: dummyOptions, defaultValue };
   }
 
   function multiField(key: string, defaultValue: string[]): FieldConfig {
-    return { key, label: key, type: 'multi', options: dummyOptions, defaultValue, gridColGroup: 'all8' };
+    return { key, label: key, type: 'multi', options: dummyOptions, defaultValue };
   }
 
   it('returns an empty object for an empty field list', () => {

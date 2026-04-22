@@ -398,21 +398,27 @@ All interactive/selectable elements must have a `data-test-id` attribute for Pla
 | CMD side dropdown | `cmd-side-select` | `cmd-side-select` |
 | CMD wheel dropdown | `cmd-wheel-select` | `cmd-wheel-select` |
 | Test/Live toggle | `mode-toggle` | `mode-toggle` |
-| Tab | `tab-{boardKey}` | `tab-primary-commands` |
-| Form dropdown | `form-{fieldKey}` | `form-tff`, `form-video-rec-type` |
-| Footer buttons | `footer-{action}` | `footer-defaults`, `footer-cancel`, `footer-apply` |
-| Grid cell | `grid-{fieldKey}-{colKey}` | `grid-tff-left1`, `grid-mtr-rec-right4` |
-| Grid column header | `grid-header-{colKey}` | `grid-header-left1`, `grid-header-tll` |
-| Grid row label | `grid-label-{fieldKey}` | `grid-label-tff`, `grid-label-abort` |
+| Tab | `tab-{boardId}` | `tab-primary`, `tab-secondary` |
+| Form dropdown | `form-{boardId}-{fieldKey}` | `form-primary-tff`, `form-secondary-whlCriticalFail` |
+| Footer buttons | `footer-{boardId}-{action}` | `footer-primary-apply`, `footer-secondary-defaults` |
+| Grid cell | `grid-{boardId}-{fieldKey}-{colId}` | `grid-primary-tff-left1`, `grid-secondary-uuuAntSelect-gdl` |
+| Grid column header | `grid-header-{boardId}-{colId}` | `grid-header-primary-left1`, `grid-header-secondary-tll` |
+| Grid row label | `grid-label-{boardId}-{fieldKey}` | `grid-label-primary-tff`, `grid-label-secondary-abort` |
+
+`boardId` is one of `primary` / `secondary`, sourced from the `BOARD_IDS` const in `shared/board-ids.ts`.
+
+### Why namespace by `boardId`
+
+Material tabs render content **eagerly by default** — both boards live in the DOM at the same time. Without a board prefix, `data-test-id` values would collide the moment any field key appears in both boards (a likely future change). Footer button ids (`apply`, `cancel`, `defaults`) would collide today even with no field overlap. Namespacing now is a one-time cost; retrofitting it later means rewriting every Playwright selector.
 
 ### Grid Cell Test ID Design
 
-The grid cell test ID pattern `grid-{fieldKey}-{colKey}` enables e2e tests to:
+The grid cell test ID pattern `grid-{boardId}-{fieldKey}-{colId}` enables e2e tests to:
 1. Change a form field value on the left.
 2. Click Apply.
-3. Assert the corresponding grid cell on the right updated — by targeting `[data-test-id="grid-{fieldKey}-{colKey}"]`.
+3. Assert the corresponding grid cell on the right updated — by targeting `[data-test-id="grid-{boardId}-{fieldKey}-{colId}"]`.
 
-The `fieldKey` must match between the form dropdown and the grid row so automation can correlate them.
+The `fieldKey` must match between the form dropdown and the grid row so automation can correlate them within a board.
 
 ---
 

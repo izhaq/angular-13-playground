@@ -8,7 +8,7 @@ This feature is part of a **GTA-style open-world game**. The SYS Mode dashboard 
 
 | | |
 |---|---|
-| **What** | Dual-board SYS Mode dashboard for the vehicle systems simulation panel. Two boards (Board 1: System Commands, Board 2: Failure & Antenna) inside a tabbed wrapper with shared CMD state, per-board forms, and a real-time data grid. |
+| **What** | Dual-board SYS Mode dashboard for the vehicle systems simulation panel. Two boards (**Primary** — "System Commands" tab, frequently used; **Secondary** — "Failure & Antenna" tab, less frequently used) inside a tabbed wrapper with shared CMD state, per-board forms, and a real-time data grid. |
 | **Why** | Control interface for configuring and monitoring vehicle subsystems (transmission, video, power, antennas, failure states) per side and wheel, with live status feedback. |
 | **Who** | Game engine operators / simulation engineers. |
 
@@ -37,8 +37,8 @@ interface SysModeResponse {
 interface EntityData {
   entityId: 0 | 1;                      // 0 = Left, 1 = Right
   mCommands: MCommandItem[];            // One item per form field row
-  aCommands: ACommandsData;             // 5 fields → Board 2 rows, last 3 columns only
-  aProp1: ColumnValue;                  // Board 2, last 3 columns only
+  aCommands: ACommandsData;             // 5 fields → Secondary rows, last 3 columns only
+  aProp1: ColumnValue;                  // Secondary, last 3 columns only
   aProp2: ColumnValue;
   aProp3: ColumnValue;
   aProp4: ColumnValue;
@@ -47,11 +47,11 @@ interface EntityData {
 
 interface MCommandItem {
   standardFields: Record<string, ColumnValues>;
-  // Keys match Board 1 form field names.
+  // Keys match Primary form field names.
   // Values: one value per wheel (4 values → cols 0-3 for Left, 4-7 for Right).
 
   additionalFields: Record<string, ColumnValues>;
-  // Keys match Board 2 form field names (first 8 columns).
+  // Keys match Secondary form field names (first 8 columns).
   // Same 4-per-side pattern.
 }
 
@@ -62,7 +62,7 @@ For the complete list of fields, dropdown options, defaults, and grid column map
 
 ### Grid Column Mapping
 
-**Board 1 — 8 columns:**
+**Primary — 8 columns:**
 
 | Col 0 | Col 1 | Col 2 | Col 3 | Col 4 | Col 5 | Col 6 | Col 7 |
 |-------|-------|-------|-------|-------|-------|-------|-------|
@@ -70,13 +70,13 @@ For the complete list of fields, dropdown options, defaults, and grid column map
 
 Source: `entity[0].mCommands[*].standardFields` → cols 0–3, `entity[1].mCommands[*].standardFields` → cols 4–7.
 
-**Board 2 — 11 columns:**
+**Secondary — 11 columns:**
 
 | Col 0–3 | Col 4–7 | Col 8 | Col 9 | Col 10 |
 |---------|---------|-------|-------|--------|
 | L1–L4   | R1–R4   | TLL   | TLR   | GDL    |
 
-- Cols 0–7: from `entity[*].mCommands[*].additionalFields` (same pattern as Board 1).
+- Cols 0–7: from `entity[*].mCommands[*].additionalFields` (same pattern as Primary).
 - Cols 8–10: from `entity[*].aCommands` + the 5 extra props (only certain rows).
 
 ### CMD Shared State
@@ -111,42 +111,60 @@ The payload contains the CMD selection + all form field values (changed values m
 ```
 src/app/features/engine-sim/
 ├── engine-sim.module.ts                        # Feature module
-├── models/
-│   ├── engine-sim.models.ts                    # Interfaces above
-│   └── engine-sim.enums.ts                     # Field enums, defaults, BE↔FE mappers
+├── shared/                                     # Cross-board primitives (no UI)
+│   ├── engine-sim.api-contract.ts              # Wire format — what the backend dictates (response, payload, config)
+│   ├── engine-sim.models.ts                    # Internal view models — what we own (CmdSelection, GridRow, FieldConfig, …)
+│   ├── engine-sim.labels.ts                    # ENGINE_SIM_LABELS centralized translation map
+│   ├── engine-sim.tokens.ts                    # ENGINE_SIM_API_CONFIG injection token
+│   ├── option-values.ts                        # Canonical value maps + derived types (YES_NO, ON_OFF, SIDE, WHEEL, …)
+│   ├── cmd-options.ts                          # CMD_SIDE_OPTIONS, CMD_WHEEL_OPTIONS (reused by both boards)
+│   └── build-defaults.util.ts                  # buildDefaultValues() helper
+├── boards/                                     # One folder per dashboard tab — self-contained
+│   ├── primary-commands/                       # Primary — "System Commands" tab (frequently used)
+│   │   ├── primary-commands.options.ts         # DropdownOption arrays (with `abbr`)
+│   │   ├── primary-commands.fields.ts          # FieldConfig[] + defaults builder
+│   │   ├── primary-commands.columns.ts         # 8-column grid definition
+│   │   └── primary-commands-form/              # Phase 5 form component (board-specific UI)
+│   │       ├── primary-commands-form.component.ts
+│   │       ├── primary-commands-form.component.html
+│   │       └── primary-commands-form.component.scss
+│   └── secondary-commands/                     # Secondary — "Failure & Antenna" tab (less frequently used)
+│       ├── secondary-commands.options.ts
+│       ├── secondary-commands.fields.ts
+│       ├── secondary-commands.columns.ts       # 11-column grid definition (reuses Primary's 8)
+│       └── secondary-commands-form/            # Phase 5 form component
+│           ├── secondary-commands-form.component.ts
+│           ├── secondary-commands-form.component.html
+│           └── secondary-commands-form.component.scss
 ├── services/
 │   ├── engine-sim-api.service.ts               # POST calls (one per board)
 │   └── engine-sim-data.service.ts              # GET + WebSocket → Observable<EngineSimResponse>
-├── components/
-│   ├── engine-sim-shell/                       # Tabs + test/live mode toggle
-│   │   ├── engine-sim-shell.component.ts
-│   │   ├── engine-sim-shell.component.html
-│   │   └── engine-sim-shell.component.scss
-│   ├── engine-sim-board/                       # Reusable layout: sticky CMD + scroll form + sticky footer
-│   │   ├── engine-sim-board.component.ts
-│   │   ├── engine-sim-board.component.html
-│   │   └── engine-sim-board.component.scss
-│   ├── cmd-section/                            # Shared CMD dropdowns (side + wheel)
-│   │   ├── cmd-section.component.ts
-│   │   ├── cmd-section.component.html
-│   │   └── cmd-section.component.scss
-│   ├── board-footer/                           # Defaults / Cancel / Apply buttons
-│   │   ├── board-footer.component.ts
-│   │   ├── board-footer.component.html
-│   │   └── board-footer.component.scss
-│   ├── system-commands-form/                   # Board 1 specific form fields
-│   │   ├── system-commands-form.component.ts
-│   │   ├── system-commands-form.component.html
-│   │   └── system-commands-form.component.scss
-│   ├── failure-antenna-form/                   # Board 2 specific form fields
-│   │   ├── failure-antenna-form.component.ts
-│   │   ├── failure-antenna-form.component.html
-│   │   └── failure-antenna-form.component.scss
-│   └── status-grid/                            # Right column: field labels + dynamic data grid
-│       ├── status-grid.component.ts
-│       ├── status-grid.component.html
-│       └── status-grid.component.scss
+├── utils/
+│   └── grid-data.utils.ts                      # Pure functions: response → GridRow[] (per board)
+└── components/                                 # Cross-board / shell-level UI
+    ├── engine-sim-shell/                       # Tabs + test/live mode toggle
+    │   ├── engine-sim-shell.component.ts
+    │   ├── engine-sim-shell.component.html
+    │   └── engine-sim-shell.component.scss
+    ├── engine-sim-board/                       # Reusable layout: sticky CMD + scroll form + sticky footer
+    │   ├── engine-sim-board.component.ts
+    │   ├── engine-sim-board.component.html
+    │   └── engine-sim-board.component.scss
+    ├── cmd-section/                            # Shared CMD dropdowns (side + wheel)
+    │   ├── cmd-section.component.ts
+    │   ├── cmd-section.component.html
+    │   └── cmd-section.component.scss
+    ├── board-footer/                           # Defaults / Cancel / Apply buttons
+    │   ├── board-footer.component.ts
+    │   ├── board-footer.component.html
+    │   └── board-footer.component.scss
+    └── status-grid/                            # Right column: field labels + dynamic data grid
+        ├── status-grid.component.ts
+        ├── status-grid.component.html
+        └── status-grid.component.scss
 ```
+
+**Migration unit:** each `boards/<board>/` folder is self-contained and depends only on `shared/`. Lifting one board to another project is a folder copy + `shared/` copy.
 
 ### Component Responsibilities
 
@@ -156,8 +174,8 @@ src/app/features/engine-sim/
 | `EngineSimBoardComponent` | **Dumb (layout)** | Two-column layout: Form (left) + Status Grid (right). Sticky CMD row at top, sticky footer at bottom, scrollable middle. Receives `disabled` from test/live mode. |
 | `CmdSectionComponent` | **Dumb** | CMD row: label + two multi-dropdowns (sides, wheels). `@Input` value, `@Output` changed. |
 | `BoardFooterComponent` | **Dumb** | Three buttons: Defaults, Cancel, Apply. `@Output` for defaults / cancel / apply. |
-| `SystemCommandsFormComponent` | **Dumb** | Board 1 form fields (left column). All dropdowns, includes "Cmd to GS" sub-section. `@Input` formGroup + disabled. No API calls. |
-| `FailureAntennaFormComponent` | **Dumb** | Board 2 form fields (left column). Same pattern, different fields. |
+| `PrimaryCommandsFormComponent` | **Dumb** | Primary form fields (left column). All dropdowns, includes "Cmd to GS" sub-section. `@Input` formGroup + disabled. No API calls. |
+| `SecondaryCommandsFormComponent` | **Dumb** | Secondary form fields (left column). Same pattern, different fields. |
 | `StatusGridComponent` | **Dumb** | Right column: field labels (row headers) + dynamic data grid (8 or 11 cols). Column hover effect, cell click selection. Receives column config + row data + abbreviation mapper. White background, cell borders. No board-specific knowledge. |
 
 ### Data Flow
@@ -170,32 +188,32 @@ EngineSimShellComponent
   │
   ├── cmdSelection: CmdSelection (shared across tabs, persisted on Apply)
   │
-  ├── Tab 1: EngineSimBoardComponent (two-column layout)
+  ├── Tab 1 — Primary ("System Commands"): EngineSimBoardComponent (two-column layout)
   │     │
   │     ├── CMD row (sticky top):
   │     │     └── CmdSectionComponent  ← [selection] / (changed) →
   │     │
-  │     ├── Left col:  SystemCommandsFormComponent  ← [formGroup] [disabled]
+  │     ├── Left col:  PrimaryCommandsFormComponent  ← [formGroup] [disabled]
   │     │     (includes "Cmd to GS" sub-section — these fields excluded from grid)
   │     ├── Right col:  StatusGridComponent  ← [columns: 8] [rows] [abbrMapper]
   │     │     (row labels + grid cells, filtered from response.entities + standardFields)
   │     │
   │     └── Footer (sticky bottom):
   │           BoardFooterComponent → (defaults) (cancel) (apply)
-  │              apply → EngineSimApiService.postBoardOne(payload)
+  │              apply → EngineSimApiService.postPrimary(payload)
   │
-  └── Tab 2: EngineSimBoardComponent (two-column layout)
+  └── Tab 2 — Secondary ("Failure & Antenna"): EngineSimBoardComponent (two-column layout)
         │
         ├── CMD row (sticky top):
         │     └── CmdSectionComponent  ← [selection] (same saved value) / (changed) →
         │
-        ├── Left col:  FailureAntennaFormComponent  ← [formGroup] [disabled]
+        ├── Left col:  SecondaryCommandsFormComponent  ← [formGroup] [disabled]
         ├── Right col:  StatusGridComponent  ← [columns: 11] [rows] [abbrMapper]
         │     (row labels + grid cells, filtered from response.entities + additionalFields + aCommands)
         │
         └── Footer (sticky bottom):
               BoardFooterComponent → (defaults) (cancel) (apply)
-                 apply → EngineSimApiService.postBoardTwo(payload)
+                 apply → EngineSimApiService.postSecondary(payload)
 ```
 
 ---
@@ -238,7 +256,7 @@ A **test/live mode toggle** sits at the wrapper level (above/beside the tabs). I
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Board 2 layout** follows the same two-column structure, but the grid has **11 columns** (L1–L4, R1–R4, TLL, TLR, GDL) and different form fields. All form fields appear as grid rows (no sub-section exclusion on Board 2).
+**Secondary layout** follows the same two-column structure, but the grid has **11 columns** (L1–L4, R1–R4, TLL, TLR, GDL) and different form fields. All form fields appear as grid rows (no sub-section exclusion on Secondary).
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -274,7 +292,7 @@ A **test/live mode toggle** sits at the wrapper level (above/beside the tabs). I
 - **Cell click selection**: clicking a cell visually marks it as selected.
 - **Abbreviation display**: grid cells display the `abbr` (shortcut) of the value, not the full label, since cells are compact. The abbreviation mapper is defined per field in the enums.
 - Each form field row on the left is **vertically aligned** with its corresponding grid row on the right.
-- Board 1's **"Cmd to GS" sub-section** fields are excluded from the grid — they appear only in the form.
+- Primary's **"Cmd to GS" sub-section** fields are excluded from the grid — they appear only in the form.
 
 ### Key Layout Points
 
@@ -282,7 +300,7 @@ A **test/live mode toggle** sits at the wrapper level (above/beside the tabs). I
 - **Test/Live toggle** at the wrapper level controls form editability.
 - **Footer** has **Defaults**, **Cancel**, and **Apply**.
 - The form column shows **field label + dropdown** side by side on each row.
-- Board 1 has a sub-section **"Cmd to GS"** with its own bordered header and 3 additional fields (excluded from the grid).
+- Primary has a sub-section **"Cmd to GS"** with its own bordered header and 3 additional fields (excluded from the grid).
 
 ---
 
@@ -294,8 +312,8 @@ Following the Angular state management ladder (**no NgRx**):
 |-------|-------|-----------|
 | CMD selection (unsaved draft) | `EngineSimShellComponent` | Component property |
 | CMD selection (saved) | `EngineSimShellComponent` | Component property, updated on Apply |
-| Board 1 form values | `SystemCommandsFormComponent` | Reactive `FormGroup` |
-| Board 2 form values | `FailureAntennaFormComponent` | Reactive `FormGroup` |
+| Primary form values | `PrimaryCommandsFormComponent` | Reactive `FormGroup` |
+| Secondary form values | `SecondaryCommandsFormComponent` | Reactive `FormGroup` |
 | Test/Live mode | `EngineSimShellComponent` | Component property, passed as `@Input` disabled |
 | Grid data (live) | `EngineSimShellComponent` | `EngineSimDataService` Observable, piped with `async` |
 | Last saved form state (for Cancel) | `EngineSimShellComponent` | Snapshot object, updated on successful Apply |
@@ -314,9 +332,9 @@ Following the Angular state management ladder (**no NgRx**):
 
 ### `EngineSimApiService`
 
-- `postSystemCommands(payload: BoardPostPayload): Observable<void>`
-- `postFailureAntenna(payload: BoardPostPayload): Observable<void>`
-- Two separate endpoints, two separate methods.
+- `postPrimary(payload: BoardPostPayload): Observable<void>`
+- `postSecondary(payload: BoardPostPayload): Observable<void>`
+- Two separate endpoints (URLs come from `ENGINE_SIM_API_CONFIG.primaryPostUrl` / `.secondaryPostUrl`), two separate methods.
 
 **No dedicated grid service.** Column hover, cell selection, and data-to-cell mapping are UI concerns handled by `StatusGridComponent` itself (CSS for hover, component property for selection). Data transformation from the WebSocket response to grid rows is a pure function in the shell component or a utility — not a service.
 
@@ -377,7 +395,7 @@ All interactive/selectable elements must have a `data-test-id` attribute for Pla
 | CMD side dropdown | `cmd-side-select` | `cmd-side-select` |
 | CMD wheel dropdown | `cmd-wheel-select` | `cmd-wheel-select` |
 | Test/Live toggle | `mode-toggle` | `mode-toggle` |
-| Tab | `tab-{boardKey}` | `tab-system-commands` |
+| Tab | `tab-{boardKey}` | `tab-primary-commands` |
 | Form dropdown | `form-{fieldKey}` | `form-tff`, `form-video-rec-type` |
 | Footer buttons | `footer-{action}` | `footer-defaults`, `footer-cancel`, `footer-apply` |
 | Grid cell | `grid-{fieldKey}-{colKey}` | `grid-tff-left1`, `grid-mtr-rec-right4` |

@@ -43,7 +43,7 @@ CMD selection is shared across tabs. The CMD dropdowns visually persist when swi
 
 ---
 
-## Board 1 — System Commands
+## Primary Commands ("System Commands" tab)
 
 **Grid: 8 columns** (L1, L2, L3, L4, R1, R2, R3, R4)
 
@@ -79,7 +79,7 @@ These fields appear in the form only — they do **not** have a corresponding gr
 
 ---
 
-## Board 2 — Failure & Antenna Controls
+## Secondary Commands ("Failure & Antenna" tab)
 
 **Grid: 11 columns** (L1, L2, L3, L4, R1, R2, R3, R4, TLL, TLR, GDL)
 
@@ -117,7 +117,7 @@ Fields 8–11 populate TLL + TLR (2 columns). Fields 12–14 populate GDL only (
 
 ## Grid Column Definitions
 
-### Board 1 — 8 Columns
+### Primary — 8 Columns
 
 | Index | Key | Label | Side |
 |-------|-----|-------|------|
@@ -130,7 +130,7 @@ Fields 8–11 populate TLL + TLR (2 columns). Fields 12–14 populate GDL only (
 | 6 | `right3` | R3 | Right |
 | 7 | `right4` | R4 | Right |
 
-### Board 2 — 11 Columns
+### Secondary — 11 Columns
 
 | Index | Key | Label | Side | Notes |
 |-------|-----|-------|------|-------|

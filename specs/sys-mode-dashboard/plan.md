@@ -21,35 +21,35 @@ graph TD
     Shell -->|"subscribe"| DataSvc
     Shell -->|"POST on Apply"| ApiSvc
     
-    subgraph tab1 [Tab 1: System Commands]
-        Board1["EngineSimBoardComponent"]
+    subgraph tab1 [Tab 1 — Primary: System Commands]
+        Primary["EngineSimBoardComponent"]
         Cmd1["CmdSectionComponent"]
-        Form1["SystemCommandsFormComponent"]
+        Form1["PrimaryCommandsFormComponent"]
         Grid1["StatusGridComponent (8 cols)"]
         Footer1["BoardFooterComponent"]
-        Board1 --- Cmd1
-        Board1 --- Form1
-        Board1 --- Grid1
-        Board1 --- Footer1
+        Primary --- Cmd1
+        Primary --- Form1
+        Primary --- Grid1
+        Primary --- Footer1
     end
     
-    subgraph tab2 [Tab 2: Failure and Antenna]
-        Board2["EngineSimBoardComponent"]
+    subgraph tab2 [Tab 2 — Secondary: Failure and Antenna]
+        Secondary["EngineSimBoardComponent"]
         Cmd2["CmdSectionComponent"]
-        Form2["FailureAntennaFormComponent"]
+        Form2["SecondaryCommandsFormComponent"]
         Grid2["StatusGridComponent (11 cols)"]
         Footer2["BoardFooterComponent"]
-        Board2 --- Cmd2
-        Board2 --- Form2
-        Board2 --- Grid2
-        Board2 --- Footer2
+        Secondary --- Cmd2
+        Secondary --- Form2
+        Secondary --- Grid2
+        Secondary --- Footer2
     end
     
-    Shell --- Board1
-    Shell --- Board2
+    Shell --- Primary
+    Shell --- Secondary
     
     DataSvc -->|"GET + WebSocket"| WS["Backend"]
-    ApiSvc -->|"POST board1 / POST board2"| WS
+    ApiSvc -->|"POST primary / POST secondary"| WS
 ```
 
 ### Architecture Decisions
@@ -90,31 +90,47 @@ All files live under `src/app/features/engine-sim/`:
 ```
 engine-sim/
 ├── engine-sim.module.ts
-├── engine-sim.tokens.ts                   # InjectionToken for API config
-├── models/
-│   ├── engine-sim.models.ts               # Response, EntityData, MCommandItem, CmdSelection, etc.
-│   ├── engine-sim.enums.ts                # Per-field enums, option arrays, defaults, abbr maps
-│   └── engine-sim.labels.ts               # ENGINE_SIM_LABELS centralized label map
+├── shared/                                # Cross-board primitives (no UI)
+│   ├── engine-sim.api-contract.ts         # Wire format: EngineSimResponse, EntityData, MCommandItem, BoardPostPayload, EngineSimApiConfig
+│   ├── engine-sim.models.ts               # Internal view models: CmdSelection, GridColumn, GridRow, FieldConfig
+│   ├── engine-sim.labels.ts               # ENGINE_SIM_LABELS centralized translation map
+│   ├── engine-sim.tokens.ts               # ENGINE_SIM_API_CONFIG injection token
+│   ├── option-values.ts                   # Canonical value maps + derived types (YES_NO, ON_OFF, SIDE, WHEEL, …)
+│   ├── cmd-options.ts                     # CMD_SIDE_OPTIONS, CMD_WHEEL_OPTIONS (reused by both boards)
+│   └── build-defaults.util.ts             # buildDefaultValues() helper
+├── boards/                                # One folder per dashboard tab — self-contained
+│   ├── primary-commands/                  # Primary — "System Commands" tab (frequently used)
+│   │   ├── primary-commands.options.ts    # DropdownOption arrays (with `abbr`)
+│   │   ├── primary-commands.fields.ts     # PRIMARY_COMMANDS_*_FIELDS configs + buildPrimaryCommandsDefaults()
+│   │   ├── primary-commands.columns.ts    # 8-column grid
+│   │   └── primary-commands-form/         # Phase 5 form component (11 main + 3 "Cmd to GS" fields)
+│   └── secondary-commands/                # Secondary — "Failure & Antenna" tab (less frequently used)
+│       ├── secondary-commands.options.ts
+│       ├── secondary-commands.fields.ts   # SECONDARY_COMMANDS_*_FIELDS configs + buildSecondaryCommandsDefaults()
+│       ├── secondary-commands.columns.ts  # 11-column grid (reuses Primary's 8)
+│       └── secondary-commands-form/       # Phase 5 form component (14 fields)
 ├── utils/
 │   └── grid-data.utils.ts                 # Pure functions: response → grid rows (per board)
 ├── services/
-│   ├── engine-sim-api.service.ts           # POST for each board
-│   └── engine-sim-data.service.ts          # GET + WebSocket → Observable<EngineSimResponse>
-└── components/
-    ├── engine-sim-shell/                   # Smart: tabs, toggle, CMD state, WS subscription
-    ├── engine-sim-board/                   # Dumb layout: sticky CMD + scroll body + sticky footer
-    ├── cmd-section/                        # Dumb: 2 multi-dropdowns (side, wheel)
-    ├── board-footer/                       # Dumb: Defaults, Cancel, Apply buttons
-    ├── system-commands-form/               # Dumb: Board 1 form (11 main + 3 "Cmd to GS" fields)
-    ├── failure-antenna-form/               # Dumb: Board 2 form (14 fields)
-    └── status-grid/                        # Dumb: dynamic grid with row labels, column hover, cell click
+│   ├── engine-sim-api.service.ts          # POST for each board
+│   └── engine-sim-data.service.ts         # GET + WebSocket → Observable<EngineSimResponse>
+└── components/                            # Cross-board / shell-level UI
+    ├── engine-sim-shell/                  # Smart: tabs, toggle, CMD state, WS subscription
+    ├── engine-sim-board/                  # Dumb layout: sticky CMD + scroll body + sticky footer
+    ├── cmd-section/                       # Dumb: 2 multi-dropdowns (side, wheel)
+    ├── board-footer/                      # Dumb: Defaults, Cancel, Apply buttons
+    └── status-grid/                       # Dumb: dynamic grid with row labels, column hover, cell click
 ```
+
+Each `boards/<board>/` folder is the **migration unit** — self-contained, depends only on `shared/`. Form components live inside their board folder so the whole dashboard moves as one piece.
 
 ---
 
 ## 4. Data Model
 
-### Core interfaces (in `engine-sim.models.ts`)
+### Wire format (in `engine-sim.api-contract.ts`)
+
+The types below cross the network boundary — they are dictated by the backend. Quarantined from the internal view models so a backend change is a one-file question.
 
 ```typescript
 interface EngineSimResponse {
@@ -152,20 +168,30 @@ interface GridRow {
 }
 ```
 
-### Enums pattern (in `engine-sim.enums.ts`)
+### Per-board configuration pattern
 
-Each field gets: an enum for BE values, an options array with `value`/`label`/`abbr`, and a default:
+Each board owns its `*.options.ts`, `*.fields.ts`, and `*.columns.ts` under `boards/<board>/`. Option values come from canonical `as const` maps in `shared/option-values.ts` (so the wire format stays consistent across boards), while `abbr` (display abbreviation) and `label` (translation key) are board-local:
 
 ```typescript
-const TFF_OPTIONS: DropdownOption[] = [
-  { value: 'not_active', label: LABELS.tffNotActive, abbr: 'NACV' },
-  { value: 'light_active', label: LABELS.tffLightActive, abbr: 'LACV' },
-  { value: 'dominate', label: LABELS.tffDominate, abbr: 'DMN' },
+// shared/option-values.ts
+export const TFF = { NotActive: 'not_active', LightActive: 'light_active', Dominate: 'dominate' } as const;
+export type Tff = typeof TFF[keyof typeof TFF];
+
+// boards/primary-commands/primary-commands.options.ts
+export const TFF_OPTIONS: DropdownOption[] = [
+  { value: TFF.NotActive,   label: L.tffNotActive,   abbr: 'NACV' },
+  { value: TFF.LightActive, label: L.tffLightActive, abbr: 'LACV' },
+  { value: TFF.Dominate,    label: L.tffDominate,    abbr: 'DMN' },
 ];
-const TFF_DEFAULT = 'not_active';
+
+// boards/primary-commands/primary-commands.fields.ts
+export const PRIMARY_COMMANDS_MAIN_FIELDS: FieldConfig[] = [
+  { key: 'tff', label: L.tff, type: 'single', options: TFF_OPTIONS, defaultValue: TFF.NotActive, gridColGroup: 'all8' },
+  // ...
+];
 ```
 
-All 25+ fields follow this structure. `BOARD_1_FIELDS` and `BOARD_2_FIELDS` arrays collect field configs for iteration in forms and grid.
+All 25+ fields follow this structure. `PRIMARY_COMMANDS_ALL_FIELDS` (Primary) and `SECONDARY_COMMANDS_ALL_FIELDS` (Secondary) collect each board's field configs for iteration in forms and grid.
 
 ### Label map (in `engine-sim.labels.ts`)
 
@@ -181,10 +207,10 @@ Flat `const` object. Every user-visible string — field names, option labels, b
 - `testMode: boolean` (toggle)
 - `cmdDraft: CmdSelection` (live edits to CMD dropdowns)
 - `cmdSaved: CmdSelection` (persisted on Apply)
-- `board1FormGroup` and `board2FormGroup` (created here, passed down)
-- `board1Snapshot` / `board2Snapshot` (for Cancel — last saved state)
+- `primaryFormGroup` and `secondaryFormGroup` (created here, passed down)
+- `primarySnapshot` / `secondarySnapshot` (for Cancel — last saved state)
 - `gridData$: Observable<EngineSimResponse>` via `EngineSimDataService`
-- `board1Rows` / `board2Rows` — precomputed from `gridData$` using pure util functions
+- `primaryRows` / `secondaryRows` — precomputed from `gridData$` using pure util functions
 
 **Key logic:**
 - On Apply (from either tab): merge CMD + form values into payload, call `EngineSimApiService`, snapshot form state on success
@@ -227,18 +253,18 @@ Two `app-multi-dropdown` instances (Side and Wheel) bound via CVA `formControlNa
 
 Three `mat-button` elements with `data-test-id` attributes (`footer-defaults`, `footer-cancel`, `footer-apply`). Labels from `LABELS`.
 
-### `SystemCommandsFormComponent` (Dumb — Board 1)
+### `PrimaryCommandsFormComponent` (Dumb — Primary)
 
 **Inputs:** `formGroup: FormGroup`, `disabled: boolean`
 **No outputs** — parent reads `formGroup.getRawValue()` directly.
 
-Iterates `BOARD_1_MAIN_FIELDS` config to render 11 dropdowns using `app-dropdown` / `app-multi-dropdown` with `formControlName`. Below the main fields, a bordered "Cmd to GS" section with 3 more dropdowns (`BOARD_1_CMD_TO_GS_FIELDS`). Each dropdown gets `[attr.data-test-id]="'form-' + field.key"`.
+Iterates `PRIMARY_COMMANDS_MAIN_FIELDS` config to render 11 dropdowns using `app-dropdown` / `app-multi-dropdown` with `formControlName`. Below the main fields, a bordered "Cmd to GS" section with 3 more dropdowns (`PRIMARY_COMMANDS_CMD_TO_GS_FIELDS`). Each dropdown gets `[attr.data-test-id]="'form-' + field.key"`.
 
 When `disabled` changes: `formGroup.disable()` / `formGroup.enable()`.
 
-### `FailureAntennaFormComponent` (Dumb — Board 2)
+### `SecondaryCommandsFormComponent` (Dumb — Secondary)
 
-Same pattern, 14 fields from `BOARD_2_FIELDS`. No sub-sections. All fields render as grid rows.
+Same pattern, 14 fields from `SECONDARY_COMMANDS_ALL_FIELDS` (composed of `SECONDARY_COMMANDS_8COL_FIELDS` + `SECONDARY_COMMANDS_TLL_TLR_FIELDS` + `SECONDARY_COMMANDS_GDL_FIELDS`). No sub-sections. All fields render as grid rows.
 
 ### `StatusGridComponent` (Dumb)
 
@@ -275,11 +301,11 @@ connect(): Observable<EngineSimResponse>
 ### `EngineSimApiService`
 
 ```typescript
-postSystemCommands(payload: BoardPostPayload): Observable<void>
-postFailureAntenna(payload: BoardPostPayload): Observable<void>
+postPrimary(payload: BoardPostPayload): Observable<void>
+postSecondary(payload: BoardPostPayload): Observable<void>
 ```
 
-- Two POST endpoints, injected via `ENGINE_SIM_API_CONFIG` token for migration portability
+- Two POST endpoints (URLs from `ENGINE_SIM_API_CONFIG.primaryPostUrl` / `.secondaryPostUrl`), injected via `ENGINE_SIM_API_CONFIG` token for migration portability
 
 ---
 
@@ -288,8 +314,8 @@ postFailureAntenna(payload: BoardPostPayload): Observable<void>
 Pure functions, no service needed:
 
 ```typescript
-function buildBoard1Rows(response: EngineSimResponse, fields: FieldConfig[]): GridRow[]
-function buildBoard2Rows(response: EngineSimResponse, fields: FieldConfig[]): GridRow[]
+function buildPrimaryRows(response: EngineSimResponse, fields: FieldConfig[]): GridRow[]
+function buildSecondaryRows(response: EngineSimResponse, fields: FieldConfig[]): GridRow[]
 ```
 
 Maps `response.entities[0/1].mCommands[*].standardFields` (or `additionalFields` + `aCommands`) into `GridRow[]` with abbreviation lookups. Called in `EngineSimShellComponent` whenever `gridData$` emits.
@@ -302,8 +328,8 @@ Maps `response.entities[0/1].mCommands[*].standardFields` (or `additionalFields`
 |-------|-------|-----------|
 | CMD draft | `EngineSimShellComponent.cmdDraft` | Local property, updated on `CmdSectionComponent` output |
 | CMD saved | `EngineSimShellComponent.cmdSaved` | Updated on Apply |
-| Form state (Board 1) | `FormGroup` created in shell | Passed to `SystemCommandsFormComponent` |
-| Form state (Board 2) | `FormGroup` created in shell | Passed to `FailureAntennaFormComponent` |
+| Form state (Primary) | `FormGroup` created in shell | Passed to `PrimaryCommandsFormComponent` |
+| Form state (Secondary) | `FormGroup` created in shell | Passed to `SecondaryCommandsFormComponent` |
 | Form snapshots | Plain objects | For Cancel restore |
 | Test/Live mode | Shell boolean | Passed as `disabled` input |
 | Grid data | `async` pipe on `gridData$` | From `EngineSimDataService` |
@@ -328,17 +354,22 @@ No shared services for state. No BehaviorSubjects. All state is component-local 
 
 ## 10. Implementation Phases
 
-### Phase 1: Models, Enums, Labels (XS-S)
+### Phase 1: Models, Labels, Per-Board Configuration (XS-S) — ✅ Complete
 
 Foundation layer — no components, no services. Just TypeScript.
 
-- `engine-sim.models.ts` — all interfaces
-- `engine-sim.enums.ts` — all 25+ field enums, options arrays with abbr, defaults
-- `engine-sim.labels.ts` — centralized label map
-- `engine-sim.tokens.ts` — `ENGINE_SIM_API_CONFIG` injection token
+- `shared/engine-sim.api-contract.ts` — wire-format types (response, payload, config)
+- `shared/engine-sim.models.ts` — internal view models (CmdSelection, GridColumn, GridRow, FieldConfig)
+- `shared/engine-sim.labels.ts` — centralized translation map
+- `shared/engine-sim.tokens.ts` — `ENGINE_SIM_API_CONFIG` injection token
+- `shared/option-values.ts` — canonical `as const` value maps + derived literal-union types
+- `shared/cmd-options.ts` — `CMD_SIDE_OPTIONS`, `CMD_WHEEL_OPTIONS`
+- `shared/build-defaults.util.ts` — `buildDefaultValues()` helper
+- `boards/primary-commands/{options,fields,columns}.ts` — Primary's 14 fields
+- `boards/secondary-commands/{options,fields,columns}.ts` — Secondary's 14 fields
 - `engine-sim.module.ts` — empty shell module
 
-**Acceptance criteria:** `ng build` passes. All types/enums importable.
+**Acceptance criteria:** `ng build` passes. All types/configs importable.
 
 ### Phase 2: Services (S)
 
@@ -368,8 +399,8 @@ Build the three reusable dumb components that have no board-specific knowledge:
 
 ### Phase 5: Form Components (M)
 
-- `SystemCommandsFormComponent` — 11 main fields + 3 "Cmd to GS" fields, all from config arrays
-- `FailureAntennaFormComponent` — 14 fields
+- `PrimaryCommandsFormComponent` (under `boards/primary-commands/`) — 11 main fields + 3 "Cmd to GS" fields, all from config arrays
+- `SecondaryCommandsFormComponent` (under `boards/secondary-commands/`) — 14 fields
 
 Both consume `FormGroup` + `disabled` as inputs. All dropdowns use `formControlName` (CVA).
 
@@ -428,7 +459,7 @@ After Phase 1, Phases 2-5 are independent and can run in parallel. Phase 6 depen
 | Angular Material tabs destroy content on switch | Medium | Low | Keep `FormGroup` instances at shell level so they survive tab switches regardless |
 | Grid row alignment with form rows | Medium | Medium | Use same `FieldConfig[]` array for both form and grid ordering; matching fixed row heights |
 | 11-column grid overflow on small containers | Low | Medium | `minmax(0, 1fr)` columns + `text-overflow: ellipsis` + small font on grid cells |
-| Board 2 dual grid mappings (L1-R4 vs TLL/TLR/GDL) | Medium | Low | `buildBoard2Rows` util explicitly sets only mapped columns; grid renders empty string for missing keys |
+| Secondary dual grid mappings (L1-R4 vs TLL/TLR/GDL) | Medium | Low | `buildSecondaryRows` util explicitly sets only mapped columns; grid renders empty string for missing keys |
 
 ---
 
@@ -436,7 +467,7 @@ After Phase 1, Phases 2-5 are independent and can run in parallel. Phase 6 depen
 
 - **Any fields scrolled out of view?** — The screenshots may not show all fields. Confirm the field lists in `field-definitions.md` are complete before Phase 5.
 - **WebSocket URL / GET endpoints** — Not specified. Will use injection token with placeholder URLs.
-- **Board 2 aCommands structure** — The exact shape of `ACommandsData` (5 fields mapped to TLL/TLR/GDL) needs confirmation when we build the data transformation in Phase 2.
+- **Secondary aCommands structure** — The exact shape of `ACommandsData` (5 fields mapped to TLL/TLR/GDL) needs confirmation when we build the data transformation in Phase 2.
 
 ---
 

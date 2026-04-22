@@ -31,7 +31,7 @@ export const ENGINE_SIM_LABELS = {
   cancel: 'Cancel',
   apply: 'Apply',
 
-  // -- Board 1: System Commands — Main Fields --------------------------------
+  // -- Primary: Main Fields --------------------------------------------------
   tff: 'TFF',
   tffNotActive: 'Not Active',
   tffLightActive: 'Light Active',
@@ -50,52 +50,40 @@ export const ENGINE_SIM_LABELS = {
   videoRecTypeHdr: 'HDR',
 
   mtrRec: 'Mtr Rec',
-
   speedPwrOnOff: 'Speed PWR On/Off',
-
   forceTtl: 'Force TTL',
   forceTtlNormal: 'Normal',
   forceTtlForced: 'FORCED',
-
   nuu: 'NUU',
-
   muDump: 'MU dump',
-
   sendMtrTss: 'Send Mtr TSS',
-
   abort: 'Abort',
 
-  // -- Board 1: "Cmd to GS" Sub-Section -------------------------------------
+  // -- Primary: "Cmd to GS" Sub-Section --------------------------------------
   cmdToGs: 'Cmd to GS',
   teo: 'Teo',
   gsMtrRec: 'Mtr Rec',
   aiMtrRec: 'Ai Mtr Rec',
 
-  // -- Board 2: Failure & Antenna — First 8 Columns -------------------------
-  criticalFail: 'Critical Fail',
-  tmpWarningFail: 'Tmp Warning Fail',
-  tmpFatalFail: 'Tmp Fatal Fail',
-  tggCriticalFail: 'TGG Critical Fail',
+  // -- Secondary: 8-Column Fields (additionalFields) -------------------------
+  whlCriticalFail: 'Wheel Critical Fail',
+  whlWarningFail:  'Wheel Warning Fail',
+  whlFatalFail:    'Wheel Fatal Fail',
 
-  masterFail: 'Master Fail',
+  // -- Secondary: TLL/TLR Fields (aCommands) ---------------------------------
+  tlCriticalFail:  'TL Critical Fail',
+  masterTlFail:    'Master TL Fail',
+  msTlFail:        'MSs TL Fail',
+  tlTempFail:      'TL Temp Fail',
+  tlToAgCommFail:  'TL to AGM Comm Fail',
 
-  mslsFail: 'MSLs Fail',
-
-  tempFail: 'Temp Fail',
-
-  // -- Board 2: Failure & Antenna — Last 3 Columns --------------------------
-  commFail: 'Comm Fail',
-
-  truFail: 'TRU Fail',
-  truTempFail: 'TRU Temp Fail',
-
-  antSelectCmd: 'Ant Select Cmd',
-  antSelectCmdAuto: 'Auto',
-  antSelectCmdManual: 'Manual',
-
-  antTransmitPwr: 'Ant Transmit Pwr',
-  superTransmitPwr: 'Super Transmit Pwr',
-  tmpAntSelect: 'Tmp Ant Select',
+  // -- Secondary: GDL Fields (per-entity, side-independent) ------------------
+  gdlFail:         'GDL Fail',
+  gdlTempFail:     'GDL Temp Fail',
+  antTransmitPwr:  'Ant Transmit Pwr',
+  antSelectedCmd:  'Ant Selected Cmd',
+  gdlTransmitPwr:  'GDL Transmit Pwr',
+  uuuAntSelect:    'UUU Ant Select',
 
   // -- Shared Option Labels --------------------------------------------------
   no: 'No',
@@ -106,6 +94,8 @@ export const ENGINE_SIM_LABELS = {
   forced: 'FORCED',
   internal: 'Internal',
   external: 'External',
+  auto: 'Auto',
+  manual: 'Manual',
 
   // -- Grid Column Headers ---------------------------------------------------
   colL1: 'L1',

@@ -133,25 +133,64 @@ Each `boards/<board>/` folder is the **migration unit** — self-contained, depe
 The types below cross the network boundary — they are dictated by the backend. Quarantined from the internal view models so a backend change is a one-file question.
 
 ```typescript
+type EntityId = 'left' | 'right';
+
 interface EngineSimResponse {
+  // Always 2 entities. entities[0] = left side, entities[1] = right side.
   entities: [EntityData, EntityData];
 }
 
 interface EntityData {
-  entityId: 0 | 1;
-  mCommands: MCommandItem[];
+  entityId: EntityId;
+
+  // 4 items, one per column on this side.
+  // Left  entity: mCommands[0..3] → grid cols L1..L4
+  // Right entity: mCommands[0..3] → grid cols R1..R4
+  mCommands: [MCommandItem, MCommandItem, MCommandItem, MCommandItem];
+
+  // Per-side TLL/TLR data.
+  // Left entity → TLL column. Right entity → TLR column.
   aCommands: ACommandsData;
-  aProp1: ColumnValue; aProp2: ColumnValue; aProp3: ColumnValue;
-  aProp4: ColumnValue; aProp5: ColumnValue;
+
+  // GDL column fields — flat on entity per the backend wire format
+  // (no `gdl` wrapper). Side-independent — backend duplicates across both
+  // entities for symmetry; the grid reads from entities[0] only.
+  gdlFail: string; gdlTempFail: string;
+  antTransmitPwr: string; antSelectedCmd: string;
+  gdlTransmitPwr: string; uuuAntSelect: string;
 }
 
 interface MCommandItem {
-  standardFields: Record<string, ColumnValues>;
-  additionalFields: Record<string, ColumnValues>;
+  standardFields:   PrimaryStandardFields;     // 11 fields — Primary's 8-col grid rows
+  additionalFields: SecondaryAdditionalFields; // 3 fields — Secondary's first 8-col rows
 }
 
-type ColumnValues = [string, string, string, string];
+interface PrimaryStandardFields {
+  tff: string; mlmTransmit: string; videoRec: string; videoRecType: string;
+  mtrRec: string; speedPwrOnOff: string; forceTtl: string; nuu: string;
+  muDump: string; sendMtrTss: string; abort: string;
+}
+
+interface SecondaryAdditionalFields {
+  whlCriticalFail: string;
+  whlWarningFail: string;
+  whlFatalFail: string;
+}
+
+interface ACommandsData { // 5 fields — Secondary's TLL/TLR rows (per side)
+  tlCriticalFail: string; masterTlFail: string; msTlFail: string;
+  tlTempFail: string; tlToAgCommFail: string;
+}
+
+// GDL field keys — values themselves are flat on EntityData. This union
+// just lets grid-data.utils.ts iterate the group without redeclaring keys.
+type GdlFieldKey =
+  | 'gdlFail' | 'gdlTempFail'
+  | 'antTransmitPwr' | 'antSelectedCmd'
+  | 'gdlTransmitPwr' | 'uuuAntSelect';
 ```
+
+**Why named props over `Record<string, …>`:** every grid cell traces back to a field key the UI knows about. Naming the props lets the compiler catch wire-format drift (a typo'd backend field shows up as a TS error in `grid-data.utils.ts`, not as a blank cell discovered in QA). It's the same "types over tests" stance from Phase 1.
 
 ### Grid view models (in `engine-sim.models.ts`)
 
@@ -370,15 +409,15 @@ Test-after, not strict TDD — the spec is stable enough that tests document wha
 
 Foundation layer — no components, no services. Just TypeScript.
 
-- `shared/engine-sim.api-contract.ts` — wire-format types (response, payload, config)
+- `shared/engine-sim.api-contract.ts` — wire-format types (response, payload, config) with named props per board (`PrimaryStandardFields`, `SecondaryAdditionalFields`, `ACommandsData`, `GdlFieldKey`)
 - `shared/engine-sim.models.ts` — internal view models (CmdSelection, GridColumn, GridRow, FieldConfig)
 - `shared/engine-sim.labels.ts` — centralized translation map
 - `shared/engine-sim.tokens.ts` — `ENGINE_SIM_API_CONFIG` injection token
 - `shared/option-values.ts` — canonical `as const` value maps + derived literal-union types
 - `shared/cmd-options.ts` — `CMD_SIDE_OPTIONS`, `CMD_WHEEL_OPTIONS`
 - `shared/build-defaults.util.ts` — `buildDefaultValues()` helper
-- `boards/primary-commands/{options,fields,columns}.ts` — Primary's 14 fields
-- `boards/secondary-commands/{options,fields,columns}.ts` — Secondary's 14 fields
+- `boards/primary-commands/{options,fields,columns}.ts` — Primary's 14 fields (11 main + 3 "Cmd to GS")
+- `boards/secondary-commands/{options,fields,columns}.ts` — Secondary's 14 fields (3 `additionalFields` + 5 `aCommands` + 6 `gdl`)
 - `engine-sim.module.ts` — empty shell module
 
 **Acceptance criteria:** `ng build` passes. All types/configs importable.
@@ -510,7 +549,9 @@ After Phase 1, Phases 2-5 are independent and can run in parallel. Phase 6 depen
 
 - **Any fields scrolled out of view?** — The screenshots may not show all fields. Confirm the field lists in `field-definitions.md` are complete before Phase 5.
 - **WebSocket URL / GET endpoints** — Not specified. Will use injection token with placeholder URLs.
-- **Secondary aCommands structure** — The exact shape of `ACommandsData` (5 fields mapped to TLL/TLR/GDL) needs confirmation when we build the data transformation in Phase 2.
+- **Primary `videoRecType` (multi-select) wire shape** — Form value is `string[]`, but each grid cell shows a single abbreviation. Wire is currently typed as `string` (one display value per cell). Confirm whether the backend sends the full multi-select array or a single representative value before Phase 2's `grid-data.utils.ts` lands.
+- **Primary `videoRecType` default `['no']`** — Currently pre-selects "No". Confirm whether this should be `[]` (no pre-selection) for a multi-select.
+- ~~**Secondary `aCommands` / GDL shape**~~ — Resolved. `aCommands` carries 5 named props per side (TLL on left, TLR on right). The 6 GDL fields are flat on `EntityData` (no wrapper), duplicated across both entities — read from `entities[0]`.
 
 ---
 

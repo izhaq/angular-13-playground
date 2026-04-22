@@ -68,7 +68,7 @@ For the complete list of fields, dropdown options, defaults, and grid column map
 |-------|-------|-------|-------|-------|-------|-------|-------|
 | L1    | L2    | L3    | L4    | R1    | R2    | R3    | R4    |
 
-Source: `entity[0].mCommands[*].standardFields` → cols 0–3, `entity[1].mCommands[*].standardFields` → cols 4–7.
+Source: `entities[0].mCommands[i].standardFields` → col `i` (L1–L4), `entities[1].mCommands[i].standardFields` → col `i + 4` (R1–R4). Each `mCommands` array has exactly 4 items, one per column on that side.
 
 **Secondary — 11 columns:**
 
@@ -76,8 +76,9 @@ Source: `entity[0].mCommands[*].standardFields` → cols 0–3, `entity[1].mComm
 |---------|---------|-------|-------|--------|
 | L1–L4   | R1–R4   | TLL   | TLR   | GDL    |
 
-- Cols 0–7: from `entity[*].mCommands[*].additionalFields` (same pattern as Primary).
-- Cols 8–10: from `entity[*].aCommands` + the 5 extra props (only certain rows).
+- **Cols 0–7 (L1–R4):** from `entities[*].mCommands[i].additionalFields` (same per-column pattern as Primary, but scoped to Secondary's 3 `additionalFields` rows).
+- **Cols 8–9 (TLL, TLR):** from `aCommands` per entity. Left entity's `aCommands` → TLL column. Right entity's `aCommands` → TLR column.
+- **Col 10 (GDL):** from the 6 GDL props **flat on `EntityData`** (`gdlFail`, `gdlTempFail`, `antTransmitPwr`, `antSelectedCmd`, `gdlTransmitPwr`, `uuuAntSelect`) — no wrapper. Side-independent — backend duplicates them across both entities for symmetry; the grid reads from `entities[0]` only.
 
 ### CMD Shared State
 
@@ -263,23 +264,23 @@ A **test/live mode toggle** sits at the wrapper level (above/beside the tabs). I
 │ Cmd.  [Selected ▾▲]  [Selected ▾▲]                                         │
 │ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ │
 │                                                                             │
-│  FORM (left)                │ STATUS GRID (right, 11 cols)                  │
-│                              │ Label           L1 L2 L3 L4 R1 R2 R3 R4 TLL TLR GDL│
-│  Critical Fail   [No ▾]    │ Critical Fail   │  │  │  │  │ N│ N│  │  │   │   │   │
-│  Tmp Warning Fail [Int ▾]   │ Tmp Warning F.  │  │  │  │  │  │  │  │  │   │   │   │
-│  Tmp Fatal Fail  [No ▾▲]   │ Tmp Fatal Fail  │  │  │  │  │  │ F│  │  │   │   │   │
-│  Critical Fail   [No ▾▲]   │ Critical Fail   │  │  │  │  │ I│ Y│  │  │   │   │   │
-│  Master Fail     [On ▾▲]   │ Master Fail     │  │  │  │  │  │  │  │  │   │   │   │
-│  MSLs Fail       [Normal ▾▲]│ MSLs Fail      │  │  │  │  │  │  │  │  │   │   │   │
-│  Temp Fail       [No ▾▲]   │ Temp Fail       │  │  │  │  │  │  │  │  │   │   │   │
-│  Comm Fail       [No ▾▲]   │ Comm Fail       │  │  │  │  │  │  │  │  │   │   │   │
-│  Fail            [Normal ▾] │ Fail            │  │  │  │  │  │  │  │  │   │   │   │
-│  Temp Fail       [Normal ▾] │ Temp Fail       │  │  │  │  │  │  │  │  │   │   │   │
-│  Ant Select Cmd  [Auto ▾▲]  │ Ant Select Cmd  │  │  │  │  │  │  │  │  │   │   │   │
-│  Ant Transmit Pwr[Normal ▾▲]│ Ant Transmit Pwr│  │  │  │  │  │  │  │  │   │   │   │
-│  Transmit Pwr    [Normal ▾▲]│ Transmit Pwr    │  │  │  │  │  │  │  │  │   │   │   │
-│  Ant Select      [Normal ▾▲]│ Ant Select      │  │  │  │  │  │  │  │  │   │   │   │
-│                              │                                               │
+│  FORM (left)                 │ STATUS GRID (right, 11 cols)                  │
+│                              │ Label             L1 L2 L3 L4 R1 R2 R3 R4 TLL TLR GDL │
+│  Wheel Critical Fail  [No]   │ Wheel Critical    │  │  │  │  │NO│NO│  │  │   │   │   │
+│  Wheel Warning Fail   [Norm] │ Wheel Warning     │  │  │  │  │  │  │  │  │   │   │   │
+│  Wheel Fatal Fail     [No]   │ Wheel Fatal       │  │  │  │  │  │FR│  │  │   │   │   │
+│  TL Critical Fail     [No]   │ TL Critical       │  │  │  │  │  │  │  │  │ NO│ NO│   │
+│  Master TL Fail       [On]   │ Master TL         │  │  │  │  │  │  │  │  │ ON│ ON│   │
+│  MSs TL Fail          [Norm] │ MSs TL            │  │  │  │  │  │  │  │  │NRM│NRM│   │
+│  TL Temp Fail         [No]   │ TL Temp           │  │  │  │  │  │  │  │  │ NO│ NO│   │
+│  TL to AGM Comm Fail  [No]   │ TL→AGM Comm       │  │  │  │  │  │  │  │  │ NO│ NO│   │
+│  GDL Fail             [Norm] │ GDL Fail          │  │  │  │  │  │  │  │  │   │   │NRM│
+│  GDL Temp Fail        [Norm] │ GDL Temp          │  │  │  │  │  │  │  │  │   │   │NRM│
+│  Ant Transmit Pwr     [Auto] │ Ant Transmit Pwr  │  │  │  │  │  │  │  │  │   │   │ATU│
+│  Ant Selected Cmd     [Norm] │ Ant Selected Cmd  │  │  │  │  │  │  │  │  │   │   │NRM│
+│  GDL Transmit Pwr     [Norm] │ GDL Transmit Pwr  │  │  │  │  │  │  │  │  │   │   │NRM│
+│  UUU Ant Select       [Norm] │ UUU Ant Select    │  │  │  │  │  │  │  │  │   │   │NRM│
+│                              │                                                │
 ├──────────────────────────────┴───────────────────────────────────────────────┤
 │              [Defaults]           [Cancel]              [Apply]              │
 └─────────────────────────────────────────────────────────────────────────────┘

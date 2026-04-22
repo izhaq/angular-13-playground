@@ -83,35 +83,44 @@ These fields appear in the form only — they do **not** have a corresponding gr
 
 **Grid: 11 columns** (L1, L2, L3, L4, R1, R2, R3, R4, TLL, TLR, GDL)
 
-All form fields have a corresponding grid row. Fields map to different parts of the response:
-- Fields on **first 8 columns** (L1–R4): from `mCommands[*].additionalFields`
-- Fields on **last 3 columns only** (TLL, TLR, GDL): from `aCommands` + the 5 extra entity props
+All form fields have a corresponding grid row. Fields map to three different wire-format slots:
 
-### Fields → First 8 Columns (from additionalFields)
+| Wire slot | Where it lives | Drives grid columns |
+|---|---|---|
+| `mCommands[col].additionalFields` | per-column on each entity | L1–R4 (first 8) |
+| `aCommands` | per-entity (left → TLL, right → TLR) | TLL + TLR |
+| flat on `EntityData` (no wrapper) | per-entity (duplicated; we read `entities[0]`) | GDL |
 
-| # | Field Name | Type | Options (Value / Label / Abbr) | Default | Grid Cols |
-|---|-----------|------|-------------------------------|---------|-----------|
-| 1 | Critical Fail | `single` | `no` / No / NO, `yes` / Yes / YES | No | L1–R4 (8) |
-| 2 | Tmp Warning Fail | `single` | `internal` / Internal / Int, `external` / External / EXT | Internal | L1–R4 (8) |
-| 3 | Tmp Fatal Fail | `single` | `no` / No / NO, `yes` / Yes / YES | No | L1–R4 (8) |
-| 4 | TGG Critical Fail | `single` | `no` / No / NO, `yes` / Yes / YES | No | L1–R4 (8) |
-| 5 | Master Fail | `single` | `on` / On / —, `off` / Off / — | On | L1–R4 (8) |
-| 6 | MSLs Fail | `single` | `normal` / Normal / NRML, `forced` / FORCED / FRC | Normal | L1–R4 (8) |
-| 7 | Temp Fail | `single` | `no` / No / NO, `yes` / Yes / YES | No | L1–R4 (8) |
+### Fields → First 8 Columns (from `additionalFields`)
 
-### Fields → Last 3 Columns Only (from aCommands / extra props)
+| # | Field Key | Field Name | Type | Options (Value / Label / Abbr) | Default | Grid Cols |
+|---|-----------|------------|------|-------------------------------|---------|-----------|
+| 1 | `whlCriticalFail` | Wheel Critical Fail | `single` | `no` / No / NO, `yes` / Yes / YES | No | L1–R4 (8) |
+| 2 | `whlWarningFail`  | Wheel Warning Fail  | `single` | `normal` / Normal / NRML, `forced` / FORCED / FRC | Normal | L1–R4 (8) |
+| 3 | `whlFatalFail`    | Wheel Fatal Fail    | `single` | `no` / No / NO, `yes` / Yes / YES | No | L1–R4 (8) |
 
-Fields 8–11 populate TLL + TLR (2 columns). Fields 12–14 populate GDL only (1 column).
+### Fields → TLL + TLR Columns (from `aCommands`)
 
-| # | Field Name | Type | Options (Value / Label / Abbr) | Default | Grid Cols |
-|---|-----------|------|-------------------------------|---------|-----------|
-| 8 | Comm Fail | `single` | `no` / No / NO, `yes` / Yes / YES | No | TLL, TLR (2) |
-| 9 | TRU Fail | `single` | `normal` / Normal / NRML, `forced` / FORCED / FRC | Normal | TLL, TLR (2) |
-| 10 | TRU Temp Fail | `single` | `normal` / Normal / NRML, `forced` / FORCED / FRC | Normal | TLL, TLR (2) |
-| 11 | Ant Select Cmd | `single` | `auto` / Auto / ATU, `manual` / Manual / MNL | Auto | TLL, TLR (2) |
-| 12 | Ant Transmit Pwr | `single` | `normal` / Normal / NRML, `forced` / FORCED / FRC | Normal | GDL (1) |
-| 13 | Super Transmit Pwr | `single` | `normal` / Normal / NRML, `forced` / FORCED / FRC | Normal | GDL (1) |
-| 14 | Tmp Ant Select | `single` | `normal` / Normal / NRML, `forced` / FORCED / FRC | Normal | GDL (1) |
+| # | Field Key | Field Name | Type | Options (Value / Label / Abbr) | Default | Grid Cols |
+|---|-----------|------------|------|-------------------------------|---------|-----------|
+| 4 | `tlCriticalFail` | TL Critical Fail    | `single` | `no` / No / NO, `yes` / Yes / YES | No | TLL, TLR (2) |
+| 5 | `masterTlFail`   | Master TL Fail      | `single` | `on` / On / ON, `off` / Off / OFF | On | TLL, TLR (2) |
+| 6 | `msTlFail`       | MSs TL Fail         | `single` | `normal` / Normal / NRML, `forced` / FORCED / FRC | Normal | TLL, TLR (2) |
+| 7 | `tlTempFail`     | TL Temp Fail        | `single` | `no` / No / NO, `yes` / Yes / YES | No | TLL, TLR (2) |
+| 8 | `tlToAgCommFail` | TL to AGM Comm Fail | `single` | `no` / No / NO, `yes` / Yes / YES | No | TLL, TLR (2) |
+
+### Fields → GDL Column (flat on `EntityData`, side-independent)
+
+GDL is a single column. The 6 fields below sit **directly on `EntityData`** — there's no `gdl` wrapper on the wire. Backend duplicates them across both entities for symmetry; the grid reads from `entities[0]`.
+
+| # | Field Key | Field Name | Type | Options (Value / Label / Abbr) | Default | Grid Cols |
+|---|-----------|------------|------|-------------------------------|---------|-----------|
+|  9 | `gdlFail`        | GDL Fail          | `single` | `normal` / Normal / NRML, `forced` / FORCED / FRC | Normal | GDL (1) |
+| 10 | `gdlTempFail`    | GDL Temp Fail     | `single` | `normal` / Normal / NRML, `forced` / FORCED / FRC | Normal | GDL (1) |
+| 11 | `antTransmitPwr` | Ant Transmit Pwr  | `single` | `auto` / Auto / ATU, `manual` / Manual / MNL | Auto | GDL (1) |
+| 12 | `antSelectedCmd` | Ant Selected Cmd  | `single` | `normal` / Normal / NRML, `forced` / FORCED / FRC | Normal | GDL (1) |
+| 13 | `gdlTransmitPwr` | GDL Transmit Pwr  | `single` | `normal` / Normal / NRML, `forced` / FORCED / FRC | Normal | GDL (1) |
+| 14 | `uuuAntSelect`   | UUU Ant Select    | `single` | `normal` / Normal / NRML, `forced` / FORCED / FRC | Normal | GDL (1) |
 
 ---
 
@@ -142,9 +151,9 @@ Fields 8–11 populate TLL + TLR (2 columns). Fields 12–14 populate GDL only (
 | 5 | `right2` | R2 | Right | |
 | 6 | `right3` | R3 | Right | |
 | 7 | `right4` | R4 | Right | |
-| 8 | `tll` | TLL | — | Fields 8–11 populate this column |
-| 9 | `tlr` | TLR | — | Fields 8–11 populate this column |
-| 10 | `gdl` | GDL | — | Fields 12–14 populate this column |
+| 8 | `tll` | TLL | Left  | Fields 4–8 populate this column (from left entity's `aCommands`) |
+| 9 | `tlr` | TLR | Right | Fields 4–8 populate this column (from right entity's `aCommands`) |
+| 10 | `gdl` | GDL | —     | Fields 9–14 populate this column (from `entities[0]`'s flat GDL props) |
 
 ---
 

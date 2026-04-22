@@ -38,11 +38,8 @@ export const VIDEO_REC_TYPE = {
 } as const;
 export type VideoRecType = typeof VIDEO_REC_TYPE[keyof typeof VIDEO_REC_TYPE];
 
-export const ANT_SELECT_CMD = {
-  Auto:   'auto',
-  Manual: 'manual',
-} as const;
-export type AntSelectCmd = typeof ANT_SELECT_CMD[keyof typeof ANT_SELECT_CMD];
+export const AUTO_MANUAL = { Auto: 'auto', Manual: 'manual' } as const;
+export type AutoManual = typeof AUTO_MANUAL[keyof typeof AUTO_MANUAL];
 
 export const SIDE = { Left: 'left', Right: 'right' } as const;
 export type Side = typeof SIDE[keyof typeof SIDE];

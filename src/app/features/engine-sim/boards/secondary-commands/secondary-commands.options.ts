@@ -1,8 +1,7 @@
 import { ENGINE_SIM_LABELS as L } from '../../shared/engine-sim.labels';
 import { LabeledOption } from '../../shared/engine-sim.models';
 import {
-  ANT_SELECT_CMD,
-  INT_EXT,
+  AUTO_MANUAL,
   NORMAL_FORCED,
   ON_OFF,
   YES_NO,
@@ -20,22 +19,17 @@ export const YES_NO_OPTIONS: LabeledOption[] = [
   { value: YES_NO.Yes, label: L.yes, abbr: 'YES' },
 ];
 
-export const INTERNAL_EXTERNAL_OPTIONS: LabeledOption[] = [
-  { value: INT_EXT.Internal, label: L.internal, abbr: 'Int' },
-  { value: INT_EXT.External, label: L.external, abbr: 'EXT' },
-];
-
 export const NORMAL_FORCED_OPTIONS: LabeledOption[] = [
   { value: NORMAL_FORCED.Normal, label: L.normal, abbr: 'NRML' },
   { value: NORMAL_FORCED.Forced, label: L.forced, abbr: 'FRC' },
 ];
 
-export const MASTER_FAIL_OPTIONS: LabeledOption[] = [
-  { value: ON_OFF.On,  label: L.on,  abbr: '—' },
-  { value: ON_OFF.Off, label: L.off, abbr: '—' },
+export const ON_OFF_OPTIONS: LabeledOption[] = [
+  { value: ON_OFF.On,  label: L.on,  abbr: 'ON' },
+  { value: ON_OFF.Off, label: L.off, abbr: 'OFF' },
 ];
 
-export const ANT_SELECT_CMD_OPTIONS: LabeledOption[] = [
-  { value: ANT_SELECT_CMD.Auto,   label: L.antSelectCmdAuto,   abbr: 'ATU' },
-  { value: ANT_SELECT_CMD.Manual, label: L.antSelectCmdManual, abbr: 'MNL' },
+export const AUTO_MANUAL_OPTIONS: LabeledOption[] = [
+  { value: AUTO_MANUAL.Auto,   label: L.auto,   abbr: 'ATU' },
+  { value: AUTO_MANUAL.Manual, label: L.manual, abbr: 'MNL' },
 ];

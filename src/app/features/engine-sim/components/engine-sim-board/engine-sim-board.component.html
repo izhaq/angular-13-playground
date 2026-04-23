@@ -1,12 +1,14 @@
 <div class="engine-sim-board">
-  <div class="engine-sim-board__cmd">
-    <ng-content select="[boardCmd]"></ng-content>
-  </div>
-
   <div class="engine-sim-board__body">
-    <div class="engine-sim-board__form">
-      <ng-content select="[boardForm]"></ng-content>
+    <div class="engine-sim-board__left">
+      <div class="engine-sim-board__cmd">
+        <ng-content select="[boardCmd]"></ng-content>
+      </div>
+      <div class="engine-sim-board__form">
+        <ng-content select="[boardForm]"></ng-content>
+      </div>
     </div>
+
     <div class="engine-sim-board__grid">
       <ng-content select="[boardGrid]"></ng-content>
     </div>

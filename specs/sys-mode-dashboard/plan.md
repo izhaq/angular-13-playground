@@ -510,18 +510,28 @@ All three are OnPush, declared and exported by `EngineSimModule`, and live under
 - `min-height: 0` on the body and `min-width: 0` / `min-height: 0` on form/grid columns are critical — without them, flex/grid children refuse to shrink below their intrinsic content size and the layout overflows on narrow shells. Comments in the SCSS explain why each one is needed.
 - Slot markers use plain attribute selectors (`[boardCmd]`, `[boardForm]`, `[boardGrid]`, `[boardFooter]`) so consumers can attach them to any element or component without coupling the layout to a specific child class. CamelCase chosen to match the rest of Angular's directive / projection conventions.
 
-### Phase 5: Form Components (M)
+### Phase 5: Form Components (M) — ✅ Complete
 
-- `PrimaryCommandsFormComponent` (under `boards/primary-commands/`) — 11 main fields + 3 "Cmd to GS" fields, all from config arrays
-- `SecondaryCommandsFormComponent` (under `boards/secondary-commands/`) — 14 fields
+- `PrimaryCommandsFormComponent` (under `boards/primary-commands/primary-commands-form/`) — 11 main fields + 3 "Cmd to GS" fields, all from config arrays
+- `SecondaryCommandsFormComponent` (under `boards/secondary-commands/secondary-commands-form/`) — 14 fields
 
-Both consume `FormGroup` + `disabled` as inputs. All dropdowns use `formControlName` (CVA).
+Both consume `FormGroup` + `disabled` as inputs. All dropdowns use `formControlName` (CVA via `AppDropdownCvaDirective`).
 
 **Acceptance criteria:** Forms render all fields with correct options and defaults. Disable/enable toggles all controls. Test IDs on every dropdown. `ng test` passes.
 
-**Tests:**
-- `primary-commands-form.component.spec.ts` — renders one dropdown per field in `PRIMARY_COMMANDS_ALL_FIELDS`; "Cmd to GS" sub-section renders the 3 `PRIMARY_COMMANDS_CMD_TO_GS_FIELDS`; toggling `disabled` input disables/enables the whole `FormGroup`; every dropdown has `data-test-id="form-primary-{fieldKey}"` (Secondary asserts `form-secondary-{fieldKey}`)
-- `secondary-commands-form.component.spec.ts` — same shape for `SECONDARY_COMMANDS_ALL_FIELDS` (no sub-sections)
+**Tests delivered (12 specs total, all green):**
+- `primary-commands-form.component.spec.ts` (6 specs) — one dropdown per field in `PRIMARY_COMMANDS_ALL_FIELDS` (with total-count sanity); "Cmd to GS" sub-section header + its three fields render; multi vs single fields render via the right dropdown component (`app-multi-dropdown` vs `app-dropdown`); FormGroup seeded to per-field defaults; `[disabled]=true` disables the whole FormGroup and every control; flipping back re-enables it
+- `secondary-commands-form.component.spec.ts` (6 specs) — same shape for `SECONDARY_COMMANDS_ALL_FIELDS`, plus an explicit "no sub-section header" assertion since the secondary form is intentionally flat
+
+**Notes from Phase 5 implementation:**
+- **`buildFormGroup(fields)` util added in `shared/build-form-group.util.ts`** — takes a `FieldConfig[]` and returns a `FormGroup` with one `FormControl` per field, seeded to the field's `defaultValue`. Used by both form specs and (in Phase 6) the shell when it constructs each board's reactive form. Keeping the helper in one place means the wire-up is identical in tests and production — the shell can never build a different shape than the form expects to render.
+- **Row markup is inlined in both ngFor blocks** (Primary's main + cmd-to-gs sections) rather than extracted to an `<ng-template>` rendered via `*ngTemplateOutlet`. Reason: embedded views created via `*ngTemplateOutlet` don't inherit the parent `formGroup` directive's DI scope, so `formControlName` falls back to "no parent formGroup" and throws at runtime. The duplication is small (~20 lines) and the simplicity is worth more than the DRY win.
+- **Section header test ids use a different prefix (`section-{boardId}-{name}`) from field test ids (`form-{boardId}-{fieldKey}`)** so a `[data-test-id^="form-{boardId}-"]` selector counts only field dropdowns. Originally tried `form-primary-cmd-to-gs-header` and the count assertion silently included it — caught by the spec on the first red, fixed by renaming.
+- **Form components own enable/disable on the FormGroup** via `ngOnChanges` watching either `disabled` or `formGroup` input changes. Uses `{ emitEvent: false }` because toggling test/live mode is a UI concern, not a value change — downstream `valueChanges` subscribers should not see a phantom event when the user flips the mode toggle.
+- **Each row uses CSS Grid (`label-col + minmax(0, 1fr) control-col`)** so the control side can shrink with the form pane on narrow shells. `min-width: 0` on the control wrapper is the must-have — without it, `mat-form-field`'s intrinsic width pushes past the pane and breaks the layout.
+- **Primary's "Cmd to GS" sub-header** uses a boxed pill style that mirrors the cmd-section title — both are bordered with `currentColor` + `$control-radius` from the shared tokens partial, so they read as one visual family.
+- **`disabled` input intentionally lives on the form component, not on the board layout.** The shell wires the `[disabled]` directly: `<engine-sim-primary-commands-form [disabled]="!testMode" boardForm>`. The board (Phase 4) is pure layout and doesn't pass anything through.
+- **Demo page wired with both standalone form previews + a real Primary form inside the full board layout** (replacing the Phase 4 form stub). Each standalone preview has a "Toggle disabled" button so the test/live mode behavior is observable end-to-end.
 
 ### Phase 6: Shell Component — Integration (M-L)
 
@@ -600,3 +610,87 @@ After Phase 1, Phases 2-5 are independent and can run in parallel. Phase 6 depen
 1. Review this plan
 2. Start implementation with Phase 1 (Models, Enums, Labels)
 3. After Phase 1, Phases 2-5 can run in parallel
+
+---
+
+## 14. Phase 5 Polish — Follow-up Notes (post-build)
+
+These adjustments landed after the initial Phase 5 build, in response to demo-page visual review and a design discussion about `[disabled]` ergonomics. Captured here so Phase 6 starts from the corrected baseline.
+
+### 14.1 Dropdown width — `.dropdown-stretch` opt-in utility
+
+**Where**: `src/styles/_dropdowns.scss` — appended a single utility class:
+
+```scss
+.dropdown-stretch {
+  .app-dropdown-wrapper { justify-content: stretch; }
+  .app-dropdown-field.mat-form-field-appearance-fill { width: 100%; }
+}
+```
+
+**Opt-in**: Both form root elements got `class="… dropdown-stretch"`. The class is generic — any future container that needs the same behavior just adds it; no domain-specific selectors hardcoded into the global stylesheet.
+
+**Why global, not in each form's SCSS**: Material's `mat-form-field` internals sit behind the dropdown component's encapsulation. Reaching them from a component would need `::ng-deep` (project policy: avoid). The global file already owns every other `mat-form-field` override, so the new rule sits next to its peers and migrates with them.
+
+**Effect**: Inside any `.dropdown-stretch` container, every dropdown fills its column → all dropdowns read the same width regardless of selected text length. Outside (CMD section, demo standalone previews, future consumers without the class), the dropdown keeps its default shrink-to-content behavior.
+
+### 14.2 Board layout — CMD inside the left pane
+
+**Where**: `src/app/features/engine-sim/components/engine-sim-board/engine-sim-board.component.{html,scss,spec.ts}`.
+
+**Before**: CMD was a top row spanning the full board width (CMD → body → footer, vertical stack).
+
+**After**: CMD sits inside a new `__left` pane stacked above the form. The `__body` is now `[__left | __grid]` side-by-side; the grid takes the full body height with no empty space above it.
+
+**Why**: The user's visual feedback on the demo was that CMD, form, and footer should visually share a width. Putting CMD inside the left pane makes that "share a width" a structural property of the layout rather than a tuning game with margins.
+
+```text
++------------------+----------------+
+| CMD              |                |
+| ---------------- |                |
+| form (scrolls)   |   grid (4:6)   |
++------------------+----------------+
+| footer (full width)               |
++-----------------------------------+
+```
+
+The footer stays a sibling of `__body` (full-width action bar); CMD sits alongside the form so they line up edge-to-edge. Spec assertions updated to lock both invariants: cmd+form+grid all live inside `__body`, footer does not; cmd+form share the `__left` container, grid does not.
+
+### 14.3 Demo board preview — real envelope (1150 × 550)
+
+**Where**: `src/app/demo/demo-page.component.scss`.
+
+**Change**: The full-board demo now renders at the production envelope (`width: 1150px; height: 550px`). The narrow demo viewport (`max-width: 880px`) used to crush the layout, hiding bugs and making the form/grid pane look wrong. The parent `.demo-section` now allows `overflow-x: auto` so the section card scrolls horizontally on narrow demo viewports instead of clipping.
+
+**Why this matters past the demo**: The grid is sized for ~640px (11 cols × 44 + 90 label = 574 minimum). At ~440px (the squashed demo), the grid was the dominant pressure on layout decisions. Sizing the demo to the real shell envelope means review feedback now applies to the actual production geometry.
+
+### 14.4 Dropping the form components' `[disabled]` input
+
+**Where**: `boards/primary-commands/primary-commands-form/primary-commands-form.component.ts`, `boards/secondary-commands/secondary-commands-form/secondary-commands-form.component.ts`, both `.spec.ts` files, plus the demo page.
+
+**Before**:
+```typescript
+@Input() formGroup!: FormGroup;
+@Input() disabled = false;
+
+ngOnChanges(changes: SimpleChanges): void {
+  if (changes['disabled'] || changes['formGroup']) {
+    this.disabled
+      ? this.formGroup.disable({ emitEvent: false })
+      : this.formGroup.enable({ emitEvent: false });
+  }
+}
+```
+
+**After**:
+```typescript
+@Input() formGroup!: FormGroup;
+```
+
+**Why**: Two sources of truth for "is this form disabled?" (the boolean input and the `FormGroup`'s own state) is one too many. The shell already owns the `FormGroup`; making it own the disabled bit too keeps a single source of truth and removes a whole `ngOnChanges` lifecycle hook from each form component.
+
+**Phase 6 contract**: The shell holds the test-mode toggle. When test mode flips, the shell calls `primaryFormGroup.disable()` / `.enable()` (and similarly for secondary). The form components are pure renderers — they read the FormGroup, project it through `formControlName`, and Angular's `FormGroup.statusChanges` propagates the disabled state down to every control automatically.
+
+**Spec rewrites**: Both `*-form.component.spec.ts` files dropped the host wrapper's `disabled` field and replaced the two `[disabled]` input tests with two `formGroup.disable() / .enable()` tests that exercise the actual production contract. Net change: same coverage, fewer lines, no test for a layer that no longer exists.
+
+**Demo update**: The demo's "Toggle disabled" buttons now call `togglePrimaryFormDisabled()` / `toggleSecondaryFormDisabled()` which hit `formGroup.disable()` / `.enable()` directly. The labels read `formGroup.disabled` instead of a local boolean. The full-board demo's projected primary form likewise drops the `[disabled]` attribute binding.

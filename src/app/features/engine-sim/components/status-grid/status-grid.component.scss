@@ -1,9 +1,15 @@
-@import 'engine-sim-tokens';
+// Engine-sim color palette (mirrors `src/styles/_dropdowns.scss`):
+//   text on dark surface  → #e6e6e6
+//   text on light surface → #1f1f1f
+//   grid card background  → #ffffff
+//   grid border           → #cccccc
+//   grid hover background → #eef4ff
+//   grid selected outline → #1976d2
+// Hardcoded inline below — duplication is deliberate. The host system
+// this feature migrates into has its own design tokens; replacing colors
+// is a one-pass find/replace per hex, no shared partial needed.
 
-// Component-internal layout values. Kept here (not in the tokens partial)
-// because they describe one component's design and aren't reused elsewhere.
-//
-// Sizing budget — sized for the 1150 × 550 shell envelope:
+// Component-internal layout values. Sized for the 1150 × 550 shell envelope:
 //   The grid lives in the right pane (~640px wide). With an 11-column
 //   secondary grid + the row-label column we need to fit inside that
 //   without horizontal scroll: 11 × 44 + 90 = 574px ✓.
@@ -61,7 +67,7 @@ $border-width:  1px;
 
   &__row-label {
     background: transparent;
-    color: $color-text-on-dark;
+    color: #e6e6e6;
     font-weight: 500;
     text-align: left;
     padding-left: 0;
@@ -70,38 +76,38 @@ $border-width:  1px;
   // Data cells (header + body) form the bordered card.
   &__col-header,
   &__cell {
-    background: $color-grid-card-bg;
-    color: $color-text-on-light;
+    background: #ffffff;
+    color: #1f1f1f;
   }
 
   &__col-header {
     font-weight: 600;
     text-align: center;
-    border-top: $border-width solid $color-grid-border;
-    border-right: $border-width solid $color-grid-border;
-    border-bottom: $border-width solid $color-grid-border;
+    border-top: $border-width solid #cccccc;
+    border-right: $border-width solid #cccccc;
+    border-bottom: $border-width solid #cccccc;
   }
 
   &__cell {
     text-align: center;
     cursor: pointer;
-    border-right: $border-width solid $color-grid-border;
-    border-bottom: $border-width solid $color-grid-border;
+    border-right: $border-width solid #cccccc;
+    border-bottom: $border-width solid #cccccc;
   }
 
   // Closes the left edge of the bordered card.
   &__col-header--first-col,
   &__cell--first-col {
-    border-left: $border-width solid $color-grid-border;
+    border-left: $border-width solid #cccccc;
   }
 
   &__col-header--hovered,
   &__cell--col-hovered {
-    background: $color-grid-hover-bg;
+    background: #eef4ff;
   }
 
   &__cell--selected {
-    outline: 2px solid $color-grid-selected;
+    outline: 2px solid #1976d2;
     outline-offset: -2px;
   }
 }

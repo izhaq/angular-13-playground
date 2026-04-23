@@ -1,10 +1,15 @@
 import { CommonModule } from '@angular/common';
 import { HttpClientModule } from '@angular/common/http';
 import { NgModule } from '@angular/core';
+import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { webSocket } from 'rxjs/webSocket';
 
+import { AppDropdownCvaModule } from '../../components/app-dropdown-cva/app-dropdown-cva.module';
+import { AppDropdownModule } from '../../components/app-dropdown/app-dropdown.module';
 import { AppMultiDropdownModule } from '../../components/app-multi-dropdown/app-multi-dropdown.module';
+import { PrimaryCommandsFormComponent } from './boards/primary-commands/primary-commands-form/primary-commands-form.component';
+import { SecondaryCommandsFormComponent } from './boards/secondary-commands/secondary-commands-form/secondary-commands-form.component';
 import { BoardFooterComponent } from './components/board-footer/board-footer.component';
 import { CmdSectionComponent } from './components/cmd-section/cmd-section.component';
 import { EngineSimBoardComponent } from './components/engine-sim-board/engine-sim-board.component';
@@ -30,18 +35,25 @@ const defaultWebSocketFactory: EngineSimWebSocketFactory =
     BoardFooterComponent,
     CmdSectionComponent,
     EngineSimBoardComponent,
+    PrimaryCommandsFormComponent,
+    SecondaryCommandsFormComponent,
     StatusGridComponent,
   ],
   imports: [
     CommonModule,
     HttpClientModule,
+    ReactiveFormsModule,
     MatButtonModule,
+    AppDropdownModule,
     AppMultiDropdownModule,
+    AppDropdownCvaModule,
   ],
   exports: [
     BoardFooterComponent,
     CmdSectionComponent,
     EngineSimBoardComponent,
+    PrimaryCommandsFormComponent,
+    SecondaryCommandsFormComponent,
     StatusGridComponent,
   ],
   providers: [

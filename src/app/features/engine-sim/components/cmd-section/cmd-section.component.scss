@@ -1,7 +1,8 @@
-@import 'engine-sim-tokens';
-
-// Component-internal layout values. Kept here (not in the tokens partial)
-// because they describe one component's design and aren't reused elsewhere.
+// Engine-sim color palette (mirrors `src/styles/_dropdowns.scss`):
+//   control radius        → 2px (boxed cmd title border)
+// Hardcoded inline below — duplication is deliberate. The host system
+// this feature migrates into has its own design tokens; replacing values
+// is a one-pass find/replace, no shared partial needed.
 $field-width:     120px;
 $gap:             12px;   // outer flex gap (label ↔ controls)
 $controls-gap:    8px;    // inter-dropdown gap inside controls
@@ -31,7 +32,7 @@ $title-font-size: 12px;
     line-height: 1;
     padding: $title-pad-y $title-pad-x;
     border: 1px solid currentColor;
-    border-radius: $control-radius;
+    border-radius: 2px;
   }
 
   &__controls {

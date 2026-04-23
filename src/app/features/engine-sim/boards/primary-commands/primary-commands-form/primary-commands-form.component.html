@@ -1,0 +1,63 @@
+<!--
+  Row markup is inlined in both ngFor blocks rather than extracted to an
+  `<ng-template>` rendered via `*ngTemplateOutlet` — embedded views created
+  that way don't inherit the parent `formGroup` directive's DI scope, so
+  `formControlName` falls back to "no parent formGroup" and throws.
+  The duplication is small and worth the simplicity.
+-->
+<form [formGroup]="formGroup" class="primary-commands-form dropdown-stretch">
+  <div class="primary-commands-form__rows">
+
+    <div *ngFor="let field of mainFields; trackBy: trackByKey"
+         class="primary-commands-form__row">
+      <label class="primary-commands-form__label">{{ field.label }}</label>
+
+      <ng-container [ngSwitch]="field.type">
+        <app-dropdown
+          *ngSwitchCase="'single'"
+          class="primary-commands-form__control"
+          [options]="field.options"
+          [formControlName]="field.key"
+          [testId]="'form-' + boardId + '-' + field.key">
+        </app-dropdown>
+
+        <app-multi-dropdown
+          *ngSwitchCase="'multi'"
+          class="primary-commands-form__control"
+          [options]="field.options"
+          [formControlName]="field.key"
+          [testId]="'form-' + boardId + '-' + field.key">
+        </app-multi-dropdown>
+      </ng-container>
+    </div>
+
+    <h3 class="primary-commands-form__sub-header"
+        [attr.data-test-id]="'section-' + boardId + '-cmd-to-gs'">
+      {{ labels.cmdToGs }}
+    </h3>
+
+    <div *ngFor="let field of cmdToGsFields; trackBy: trackByKey"
+         class="primary-commands-form__row">
+      <label class="primary-commands-form__label">{{ field.label }}</label>
+
+      <ng-container [ngSwitch]="field.type">
+        <app-dropdown
+          *ngSwitchCase="'single'"
+          class="primary-commands-form__control"
+          [options]="field.options"
+          [formControlName]="field.key"
+          [testId]="'form-' + boardId + '-' + field.key">
+        </app-dropdown>
+
+        <app-multi-dropdown
+          *ngSwitchCase="'multi'"
+          class="primary-commands-form__control"
+          [options]="field.options"
+          [formControlName]="field.key"
+          [testId]="'form-' + boardId + '-' + field.key">
+        </app-multi-dropdown>
+      </ng-container>
+    </div>
+
+  </div>
+</form>

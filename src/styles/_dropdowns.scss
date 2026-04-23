@@ -143,6 +143,20 @@ $row-selected: rgba(255, 255, 255, 0.14);
   }
 }
 
+// Opt-in stretch utility: any container marked with `.dropdown-stretch`
+// makes its descendant dropdowns fill the available width instead of
+// shrinking to content. Used by engine-sim form rows so every row's
+// control reads the same width regardless of selected text length.
+//
+// Lives in the global dropdown overrides file (rather than in a component
+// SCSS) because Material's mat-form-field internals sit behind the
+// dropdown component's encapsulation boundary — reaching them from a
+// component SCSS would require `::ng-deep`, which the project avoids.
+.dropdown-stretch {
+  .app-dropdown-wrapper { justify-content: stretch; }
+  .app-dropdown-field.mat-form-field-appearance-fill { width: 100%; }
+}
+
 // Open-state panel (rendered in a CDK overlay outside the component DOM)
 .app-dropdown-panel.mat-select-panel {
   background: $bg;

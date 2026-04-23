@@ -71,6 +71,11 @@
   flex-direction: column;
   gap: 12px;
   scroll-margin-top: 16px;
+  // Allow oversize children (notably the 1150px board preview, which is
+  // wider than the 880px demo-page container) to scroll horizontally
+  // instead of overflowing the section card.
+  min-width: 0;
+  overflow-x: auto;
 
   h2 {
     margin: 0;
@@ -112,46 +117,26 @@
     padding: 24px;
   }
 
-  // Demo-only sizer for the board-layout preview. The real shell renders
-  // the board in a 1150 × 550 envelope; the demo viewport is narrower
-  // (~880px) and we want to prove resize behavior, so we let the width
-  // shrink and only fix the height. 550px height triggers the body
-  // scroll because the form stub overflows.
+  // Demo-only sizer for the board-layout preview. Renders at the real
+  // production envelope (1150 × 550) so the grid pane has its full ~640px
+  // and the form pane its full ~460px — exactly what the host shell will
+  // give it. The parent section gets `overflow-x: auto` so narrower demo
+  // viewports just scroll horizontally instead of crushing the layout.
   &__example--board {
+    width: 1150px;
+    max-width: none;
     height: 550px;
     padding: 0;
     overflow: hidden;
   }
-}
 
-// Form-column stub used inside the EngineSimBoardComponent preview. It
-// is a pure demo affordance — there's no real form yet (Phase 5). Padding
-// + border separate it visually from the grid pane on the right.
-.demo-board {
-  &__form-stub {
-    height: 100%;
-    padding: 12px 16px;
-    border-right: 1px solid #2d3f5e;
-    color: #e6e6e6;
-    font-size: 12px;
-  }
-
-  &__form-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 8px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  }
-
-  &__form-row-label {
-    color: #c9d1d9;
-  }
-
-  &__form-row-value {
-    color: #8b949e;
-    font-variant-numeric: tabular-nums;
+  // Demo-only sizer for the standalone form previews — bounds the height
+  // so the disabled-toggle button stays in view without scrolling the
+  // whole page. The form's own host has overflow handling already.
+  &__example--form {
+    max-height: 380px;
+    overflow: auto;
+    padding: 0;
   }
 
   &__actions {

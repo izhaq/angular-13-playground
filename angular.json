@@ -28,8 +28,7 @@
             "inlineStyleLanguage": "scss",
             "stylePreprocessorOptions": {
               "includePaths": [
-                "src/styles",
-                "src/app/features/engine-sim/styles"
+                "src/styles"
               ]
             },
             "assets": [
@@ -106,8 +105,7 @@
             "inlineStyleLanguage": "scss",
             "stylePreprocessorOptions": {
               "includePaths": [
-                "src/styles",
-                "src/app/features/engine-sim/styles"
+                "src/styles"
               ]
             },
             "assets": [

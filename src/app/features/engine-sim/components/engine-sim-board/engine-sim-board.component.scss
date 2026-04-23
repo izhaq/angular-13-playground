@@ -1,12 +1,15 @@
-@import 'engine-sim-tokens';
-
-// Component-internal layout values. Sized for the 1150 × 550 shell envelope:
-// after the cmd row (~50px) and footer row (~50px), the body lands at ~450px.
+// Sizing budget for the engine-sim feature.
 //
-// Form / grid horizontal split is 4 : 6 — gives the 11-column secondary grid
-// the ~640px pane it needs (90 + 11 × 44 = 574px minimum), leaving ~460px
-// for the form rows. If the host gives us a different envelope or a wider
-// form, retune this ratio here.
+//   The dashboard renders inside a fixed 1150 × 550px shell container.
+//   Vertical:   tabs (~48) + footer (~50)  ≈ 100  →  body height ≈ 450px.
+//               CMD lives inside the body's left pane (~50px), so the form's
+//               own scroll area within that pane is ≈ 400px.
+//   Horizontal: form pane + grid pane = 1150, split 4 : 6 below
+//               (≈ 460px left pane + ≈ 690px grid pane after the gap).
+//   The 4 : 6 split gives the 11-column secondary grid the ~640px pane it
+//   needs (90 + 11 × 44 = 574px minimum), leaving ~460px for the left pane
+//   (CMD row stacked above the form). If the host gives us a different
+//   envelope or a wider form, retune this ratio here.
 $body-form-fr: 4;
 $body-grid-fr: 6;
 
@@ -23,15 +26,10 @@ $body-grid-fr: 6;
   height: 100%;
 }
 
-// CMD and footer rows do not shrink — they own their natural height and
-// the body absorbs whatever's left. Combined with the body's `overflow`
-// they read as "sticky" without using `position: sticky` (cleaner: no
-// stacking-context games, no scroll-container assumptions).
-.engine-sim-board__cmd,
-.engine-sim-board__footer {
-  flex: 0 0 auto;
-}
-
+// Body holds two top-level columns: the left pane (CMD + form stacked)
+// and the grid pane. CMD lives INSIDE the left pane so it visually
+// shares a width with the form — the grid then takes the full body
+// height on the right with no empty space above it.
 .engine-sim-board__body {
   flex: 1 1 auto;
 
@@ -46,12 +44,38 @@ $body-grid-fr: 6;
     minmax(0, #{$body-grid-fr}fr);
 }
 
-.engine-sim-board__form,
+// Left pane: vertical stack of CMD (fixed) + form (scrollable).
+// `min-width: 0` is the grid equivalent of `min-height: 0` above —
+// without it, grid children refuse to shrink below their intrinsic
+// content width and the layout overflows on narrow shells.
+.engine-sim-board__left {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.engine-sim-board__cmd {
+  flex: 0 0 auto;
+}
+
+.engine-sim-board__form {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+// Right pane: status grid takes the full body height. Same min-* rules.
 .engine-sim-board__grid {
-  // `min-width: 0` is the grid equivalent of `min-height: 0` above —
-  // without it, grid children refuse to shrink below their intrinsic
-  // content width and the layout overflows on narrow shells.
   min-width: 0;
   min-height: 0;
   overflow: auto;
+}
+
+// Footer spans both panes (intentionally — it's the board-wide action bar).
+// Combined with the body's `overflow` and the cmd's `flex: 0 0 auto`, the
+// CMD/footer read as "sticky" without using `position: sticky` (cleaner:
+// no stacking-context games, no scroll-container assumptions).
+.engine-sim-board__footer {
+  flex: 0 0 auto;
 }

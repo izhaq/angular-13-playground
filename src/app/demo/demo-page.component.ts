@@ -2,11 +2,14 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { FormControl, FormGroup } from '@angular/forms';
 
 import { DropdownOption } from '../components/app-dropdown/app-dropdown.models';
+import { PRIMARY_COMMANDS_ALL_FIELDS } from '../features/engine-sim/boards/primary-commands/primary-commands.fields';
+import { PRIMARY_COMMANDS_COLUMNS } from '../features/engine-sim/boards/primary-commands/primary-commands.columns';
+import { SECONDARY_COMMANDS_ALL_FIELDS } from '../features/engine-sim/boards/secondary-commands/secondary-commands.fields';
+import { SECONDARY_COMMANDS_COLUMNS } from '../features/engine-sim/boards/secondary-commands/secondary-commands.columns';
 import { BOARD_IDS } from '../features/engine-sim/shared/board-ids';
+import { buildFormGroup } from '../features/engine-sim/shared/build-form-group.util';
 import { COL_IDS } from '../features/engine-sim/shared/column-ids';
 import { CmdSelection, GridColumn, GridRow } from '../features/engine-sim/shared/engine-sim.models';
-import { PRIMARY_COMMANDS_COLUMNS } from '../features/engine-sim/boards/primary-commands/primary-commands.columns';
-import { SECONDARY_COMMANDS_COLUMNS } from '../features/engine-sim/boards/secondary-commands/secondary-commands.columns';
 
 @Component({
   selector: 'app-demo-page',
@@ -97,25 +100,30 @@ export class DemoPageComponent {
     },
   ];
 
-  // Form-column stub for the EngineSimBoardComponent preview. Enough rows to
-  // overflow the body so the scroll behavior (and the sticky cmd / footer)
-  // is observable. Real form components arrive in Phase 5.
-  readonly boardFormStubRows: { label: string; value: string }[] = [
-    { label: 'TFF',                  value: 'NA' },
-    { label: 'MLM transmit',         value: 'No' },
-    { label: 'Video rec',            value: 'Internal' },
-    { label: 'Video Rec Type',       value: 'No' },
-    { label: 'Mtr Rec',              value: 'No' },
-    { label: 'PWR On/Off',           value: 'On' },
-    { label: 'Force',                value: 'Normal' },
-    { label: 'Wheel Critical Fail',  value: 'No' },
-    { label: 'Wheel Warning Fail',   value: 'Normal' },
-    { label: 'TL Critical Fail',     value: 'No' },
-    { label: 'Master TL Fail',       value: 'On' },
-    { label: 'GDL Fail',             value: 'Normal' },
-    { label: 'Ant Transmit Pwr',     value: 'Auto' },
-    { label: 'UUU Ant Select',       value: 'Normal' },
-  ];
+  // ---------------------------------------------------------------------------
+  // Engine Sim — Phase 5 form components
+  // ---------------------------------------------------------------------------
+  //
+  // Each form gets its own FormGroup seeded from the canonical defaults so
+  // the demo behaves the same way the shell will in Phase 6. Test-mode
+  // toggling drives `formGroup.disable()` / `.enable()` directly — the
+  // form components themselves don't expose a `[disabled]` input, the
+  // FormGroup is the single source of truth for that bit of state.
+
+  readonly primaryFormGroup: FormGroup = buildFormGroup(PRIMARY_COMMANDS_ALL_FIELDS);
+  readonly secondaryFormGroup: FormGroup = buildFormGroup(SECONDARY_COMMANDS_ALL_FIELDS);
+
+  togglePrimaryFormDisabled(): void {
+    this.primaryFormGroup.disabled
+      ? this.primaryFormGroup.enable()
+      : this.primaryFormGroup.disable();
+  }
+
+  toggleSecondaryFormDisabled(): void {
+    this.secondaryFormGroup.disabled
+      ? this.secondaryFormGroup.enable()
+      : this.secondaryFormGroup.disable();
+  }
 
   // Status grid — 11-col preview using SECONDARY_COMMANDS_COLUMNS
   readonly secondaryGridColumns: GridColumn[] = SECONDARY_COMMANDS_COLUMNS;

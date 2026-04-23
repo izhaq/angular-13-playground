@@ -66,15 +66,27 @@ describe('EngineSimBoardComponent', () => {
     expect(markerInside('engine-sim-board__footer', 'footer-marker')).toBe(true);
   });
 
-  it('groups form and grid inside the scrollable body container', () => {
-    // The body is the scrollable middle (form + grid live here, cmd/footer
-    // do not). Asserting structural containment keeps the spec coupled to
-    // the layout contract, not to specific CSS values.
+  it('groups cmd, form, and grid inside the scrollable body; footer outside', () => {
+    // The body holds the left pane (cmd + form stacked) and the grid pane
+    // side-by-side. The footer is a sibling of the body, not inside it,
+    // because it spans the full board width. Asserting structural
+    // containment keeps the spec coupled to the layout contract, not to
+    // specific CSS values.
     const body = fixture.debugElement.query(By.css('.engine-sim-board__body'));
     expect(body).toBeTruthy();
+    expect(body.nativeElement.querySelector('.engine-sim-board__cmd')).toBeTruthy();
     expect(body.nativeElement.querySelector('.engine-sim-board__form')).toBeTruthy();
     expect(body.nativeElement.querySelector('.engine-sim-board__grid')).toBeTruthy();
-    expect(body.nativeElement.querySelector('.engine-sim-board__cmd')).toBeNull();
     expect(body.nativeElement.querySelector('.engine-sim-board__footer')).toBeNull();
+  });
+
+  it('stacks cmd above form inside the left pane (sharing width)', () => {
+    // CMD width = form width is the whole point of the left-pane shape —
+    // assert the structural fact that drives the visual outcome.
+    const left = fixture.debugElement.query(By.css('.engine-sim-board__left'));
+    expect(left).toBeTruthy();
+    expect(left.nativeElement.querySelector('.engine-sim-board__cmd')).toBeTruthy();
+    expect(left.nativeElement.querySelector('.engine-sim-board__form')).toBeTruthy();
+    expect(left.nativeElement.querySelector('.engine-sim-board__grid')).toBeNull();
   });
 });

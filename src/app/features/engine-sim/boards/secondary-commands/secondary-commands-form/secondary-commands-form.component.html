@@ -1,0 +1,26 @@
+<form [formGroup]="formGroup" class="secondary-commands-form dropdown-stretch">
+  <div class="secondary-commands-form__rows">
+    <div *ngFor="let field of fields; trackBy: trackByKey"
+         class="secondary-commands-form__row">
+      <label class="secondary-commands-form__label">{{ field.label }}</label>
+
+      <ng-container [ngSwitch]="field.type">
+        <app-dropdown
+          *ngSwitchCase="'single'"
+          class="secondary-commands-form__control"
+          [options]="field.options"
+          [formControlName]="field.key"
+          [testId]="'form-' + boardId + '-' + field.key">
+        </app-dropdown>
+
+        <app-multi-dropdown
+          *ngSwitchCase="'multi'"
+          class="secondary-commands-form__control"
+          [options]="field.options"
+          [formControlName]="field.key"
+          [testId]="'form-' + boardId + '-' + field.key">
+        </app-multi-dropdown>
+      </ng-container>
+    </div>
+  </div>
+</form>

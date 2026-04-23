@@ -1,0 +1,86 @@
+// Engine-sim color palette (mirrors `src/styles/_dropdowns.scss`):
+//   text on dark surface  → #e6e6e6
+// Hardcoded inline below — duplication is deliberate. The host system
+// this feature migrates into has its own design tokens; replacing colors
+// is a one-pass find/replace per hex, no shared partial needed.
+
+// Component-internal layout values. Sized for the ~460px form pane the
+// board layout reserves on the left side of the 1150 × 550 shell. If the
+// host gives us a wider envelope, retune these here.
+//
+// The Secondary form intentionally duplicates this row vocabulary in its
+// own SCSS (per the project's "don't generalize until the third use case"
+// rule). When a third form lands AND it actually shares the pattern, lift
+// to a shared partial — not before.
+$row-pad-y:        4px;
+$row-gap:          12px;
+$rows-gap:         2px;
+$label-col-width:  150px;
+$control-col-min:  140px;
+$sub-header-mt:    14px;
+$sub-header-pad-y: 6px;
+$sub-header-pad-x: 8px;
+$sub-header-fs:    12px;
+$control-radius:   2px;
+
+:host {
+  display: block;
+  height: 100%;
+  // Form pane has its own internal padding so rows don't crash into the
+  // board layout's borders. Top/bottom padding leaves room for the sub-
+  // header to breathe at the section boundary.
+  padding: 8px 12px 12px;
+  color: #e6e6e6;
+}
+
+.primary-commands-form {
+  display: block;
+
+  &__rows {
+    display: flex;
+    flex-direction: column;
+    gap: $rows-gap;
+  }
+
+  &__row {
+    display: grid;
+    // Fixed label column + flexible control column. `minmax(0, 1fr)` on
+    // the control side lets `min-width: 0` work for nested mat-form-fields
+    // — without it, mat-form-field's intrinsic width would push past the
+    // pane and break the layout on narrow shells.
+    grid-template-columns: $label-col-width minmax($control-col-min, 1fr);
+    align-items: center;
+    column-gap: $row-gap;
+    padding: $row-pad-y 0;
+  }
+
+  &__label {
+    font-size: 12px;
+    line-height: 1.3;
+    color: #e6e6e6;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__control {
+    display: block;
+    min-width: 0;
+  }
+
+  // Boxed sub-section header for the "Cmd to GS" group. Styled to match
+  // the cmd-section title so the two boxed pills read as one visual
+  // family. Only Primary uses this — Secondary's form is flat.
+  &__sub-header {
+    margin: $sub-header-mt 0 0;
+    padding: $sub-header-pad-y $sub-header-pad-x;
+    font-size: $sub-header-fs;
+    font-weight: 600;
+    line-height: 1;
+    color: #e6e6e6;
+    border: 1px solid currentColor;
+    border-radius: $control-radius;
+    align-self: flex-start;
+    width: max-content;
+  }
+}

@@ -1,7 +1,12 @@
-@import 'engine-sim-tokens';
-
-// Component-internal layout values. Kept here (not in the tokens partial)
-// because they describe one component's design and aren't reused elsewhere.
+// Engine-sim color palette (mirrors `src/styles/_dropdowns.scss`):
+//   control surface       → #1a2942
+//   control border        → #2d3f5e
+//   text on dark surface  → #e6e6e6
+//   accent (hover)        → #1e88e5
+//   control radius        → 2px
+// Hardcoded inline below — duplication is deliberate. The host system
+// this feature migrates into has its own design tokens; replacing values
+// is a one-pass find/replace, no shared partial needed.
 $btn-min-width:        80px;
 $btn-line-height:      28px;
 $btn-disabled-opacity: 0.5;
@@ -29,16 +34,16 @@ $pad-x:                12px;
   // same accent hover treatment.
   &__btn {
     min-width: $btn-min-width;
-    background: $color-control-bg;
-    color: $color-text-on-dark;
-    border: 1px solid $color-control-border;
-    border-radius: $control-radius;
+    background: #1a2942;
+    color: #e6e6e6;
+    border: 1px solid #2d3f5e;
+    border-radius: 2px;
     line-height: $btn-line-height;
   }
 
   &__btn:hover:not([disabled]) {
-    background: $color-accent;
-    border-color: $color-accent;
+    background: #1e88e5;
+    border-color: #1e88e5;
   }
 
   &__btn[disabled] {

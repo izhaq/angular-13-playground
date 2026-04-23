@@ -20,6 +20,7 @@
       <li><a href="#engine-footer">EngineSim — BoardFooterComponent</a></li>
       <li><a href="#engine-grid-primary">EngineSim — StatusGridComponent (8 cols)</a></li>
       <li><a href="#engine-grid-secondary">EngineSim — StatusGridComponent (11 cols)</a></li>
+      <li><a href="#engine-board">EngineSim — EngineSimBoardComponent (full layout)</a></li>
     </ul>
   </nav>
 
@@ -245,6 +246,52 @@ form.status = {{ form.status }}</pre>
         [columns]="secondaryGridColumns"
         [rows]="secondaryGridRows">
       </engine-sim-status-grid>
+    </div>
+  </section>
+
+  <section class="demo-section" id="engine-board">
+    <h2>EngineSim — EngineSimBoardComponent (full layout)</h2>
+    <p class="demo-section__desc">
+      The Phase 4 layout primitive, wired with every Phase 3 component projected
+      into its slot: <code>[boardCmd]</code>, <code>[boardForm]</code>,
+      <code>[boardGrid]</code>, <code>[boardFooter]</code>. The form column
+      is intentionally tall to prove the body scrolls while the cmd row and
+      footer stay pinned. Resize the window to see the 4 : 6 form / grid
+      split shrink proportionally.
+    </p>
+
+    <div class="demo-section__example demo-section__example--engine-sim demo-section__example--board">
+      <engine-sim-board>
+        <engine-sim-cmd-section
+          boardCmd
+          [selection]="cmdSelection"
+          [disabled]="cmdDisabled"
+          (selectionChange)="onCmdSelectionChange($event)">
+        </engine-sim-cmd-section>
+
+        <div boardForm class="demo-board__form-stub">
+          <div class="demo-board__form-row" *ngFor="let row of boardFormStubRows">
+            <span class="demo-board__form-row-label">{{ row.label }}</span>
+            <span class="demo-board__form-row-value">{{ row.value }}</span>
+          </div>
+        </div>
+
+        <engine-sim-status-grid
+          boardGrid
+          [boardId]="boardIds.secondary"
+          [columns]="secondaryGridColumns"
+          [rows]="secondaryGridRows">
+        </engine-sim-status-grid>
+
+        <engine-sim-board-footer
+          boardFooter
+          [boardId]="boardIds.primary"
+          [disabled]="footerDisabled"
+          (defaults)="onFooterEvent('defaults')"
+          (cancel)="onFooterEvent('cancel')"
+          (apply)="onFooterEvent('apply')">
+        </engine-sim-board-footer>
+      </engine-sim-board>
     </div>
   </section>
 </main>

@@ -1,0 +1,57 @@
+@import 'engine-sim-tokens';
+
+// Component-internal layout values. Sized for the 1150 × 550 shell envelope:
+// after the cmd row (~50px) and footer row (~50px), the body lands at ~450px.
+//
+// Form / grid horizontal split is 4 : 6 — gives the 11-column secondary grid
+// the ~640px pane it needs (90 + 11 × 44 = 574px minimum), leaving ~460px
+// for the form rows. If the host gives us a different envelope or a wider
+// form, retune this ratio here.
+$body-form-fr: 4;
+$body-grid-fr: 6;
+
+:host {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.engine-sim-board {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+// CMD and footer rows do not shrink — they own their natural height and
+// the body absorbs whatever's left. Combined with the body's `overflow`
+// they read as "sticky" without using `position: sticky` (cleaner: no
+// stacking-context games, no scroll-container assumptions).
+.engine-sim-board__cmd,
+.engine-sim-board__footer {
+  flex: 0 0 auto;
+}
+
+.engine-sim-board__body {
+  flex: 1 1 auto;
+
+  // `min-height: 0` is the flex-shrink override that lets a flex child be
+  // smaller than its content (default `min-height: auto` would push the
+  // body to its full intrinsic height and break the scroll behavior).
+  min-height: 0;
+
+  display: grid;
+  grid-template-columns:
+    minmax(0, #{$body-form-fr}fr)
+    minmax(0, #{$body-grid-fr}fr);
+}
+
+.engine-sim-board__form,
+.engine-sim-board__grid {
+  // `min-width: 0` is the grid equivalent of `min-height: 0` above —
+  // without it, grid children refuse to shrink below their intrinsic
+  // content width and the layout overflows on narrow shells.
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}

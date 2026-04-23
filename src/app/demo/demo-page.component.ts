@@ -97,6 +97,26 @@ export class DemoPageComponent {
     },
   ];
 
+  // Form-column stub for the EngineSimBoardComponent preview. Enough rows to
+  // overflow the body so the scroll behavior (and the sticky cmd / footer)
+  // is observable. Real form components arrive in Phase 5.
+  readonly boardFormStubRows: { label: string; value: string }[] = [
+    { label: 'TFF',                  value: 'NA' },
+    { label: 'MLM transmit',         value: 'No' },
+    { label: 'Video rec',            value: 'Internal' },
+    { label: 'Video Rec Type',       value: 'No' },
+    { label: 'Mtr Rec',              value: 'No' },
+    { label: 'PWR On/Off',           value: 'On' },
+    { label: 'Force',                value: 'Normal' },
+    { label: 'Wheel Critical Fail',  value: 'No' },
+    { label: 'Wheel Warning Fail',   value: 'Normal' },
+    { label: 'TL Critical Fail',     value: 'No' },
+    { label: 'Master TL Fail',       value: 'On' },
+    { label: 'GDL Fail',             value: 'Normal' },
+    { label: 'Ant Transmit Pwr',     value: 'Auto' },
+    { label: 'UUU Ant Select',       value: 'Normal' },
+  ];
+
   // Status grid — 11-col preview using SECONDARY_COMMANDS_COLUMNS
   readonly secondaryGridColumns: GridColumn[] = SECONDARY_COMMANDS_COLUMNS;
   readonly secondaryGridRows: GridRow[] = [

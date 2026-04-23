@@ -493,16 +493,22 @@ All three are OnPush, declared and exported by `EngineSimModule`, and live under
 - `StatusGridComponent` re-exports the SCSS sizing tokens as CSS custom properties on `:host` (`--grid-label-col-min`, `--grid-data-col-min`). The TS-built `gridTemplateColumns` string references them via `var(--…)` so SCSS stays the single source of truth — changing the sizing budget is a one-line edit in the tokens partial, no TS change required. **Caveat:** if a future edit moves the `--grid-…` declarations off `:host`, the TS template silently falls back to CSS Grid defaults. A pixel-width regression test would catch this; deferred until needed.
 - `readonly` audit applied: `@Output()` emitters, injected services (`private readonly`), instance constants (`labels`, options), and `trackBy` arrow functions are all `readonly`. `@Input()` properties intentionally are **not** marked readonly — Angular rebinds them, so the modifier would mislead. Mutable view state (`hoveredColId`, `selectedCellId`, `gridTemplateColumns`) is not readonly because it's reassigned at runtime.
 
-### Phase 4: Board Layout Component (S)
+### Phase 4: Board Layout Component (S) — ✅ Complete
 
 - `EngineSimBoardComponent` — sticky header/footer layout with `ng-content` slots
 - SCSS for the two-column (form + grid) split, sticky behavior, scroll
 
 **Acceptance criteria:** Content projection works. Sticky header/footer verified. Resize shrinks proportionally.
 
-**Tests:**
-- `engine-sim-board.component.spec.ts` — projects content into `boardCmd`, `boardForm`, `boardGrid`, `boardFooter` slots in the right place (assert with a host test component)
-- (Layout/sticky behavior is verified visually in Phase 7 — not unit tested)
+**Tests delivered (6 specs, all green):**
+- `engine-sim-board.component.spec.ts` — four structural slot containers render (`__cmd`, `__form`, `__grid`, `__footer`); each marker (`[boardCmd]`, `[boardForm]`, `[boardGrid]`, `[boardFooter]`) projects into the matching container; form + grid live inside the scrollable body container while cmd + footer do not (containment assertion — couples the spec to the layout contract, not specific CSS values)
+
+**Notes from Phase 4 implementation:**
+- Zero inputs, zero outputs, zero logic. The board is pure layout: 4 `ng-content` slots wrapped in flex/grid containers. The shell wires data and events directly to the projected children — `[disabled]` flows from shell to `<primary-commands-form [disabled]="…" boardForm>`, not through the board. Spec table mention of "Receives `disabled` from test/live mode" describes data flow, not a literal `@Input` on the board.
+- "Sticky" behavior is implemented via flex-column layout (cmd + footer = `flex: 0 0 auto`, body = `flex: 1 1 auto` with `overflow` on its grid children) rather than `position: sticky`. Cleaner: no stacking-context games, no scroll-container assumptions, no need for the parent to be the scroll root. The user-visible behavior (cmd row pinned at top, footer pinned at bottom, middle scrolls) is identical.
+- Form / grid horizontal split is **4 : 6** — gives the 11-column secondary grid the ~640px pane it needs (90 + 11 × 44 = 574px minimum), leaving ~460px for form rows. Documented as a token at the top of the SCSS so it's tunable in one place.
+- `min-height: 0` on the body and `min-width: 0` / `min-height: 0` on form/grid columns are critical — without them, flex/grid children refuse to shrink below their intrinsic content size and the layout overflows on narrow shells. Comments in the SCSS explain why each one is needed.
+- Slot markers use plain attribute selectors (`[boardCmd]`, `[boardForm]`, `[boardGrid]`, `[boardFooter]`) so consumers can attach them to any element or component without coupling the layout to a specific child class. CamelCase chosen to match the rest of Angular's directive / projection conventions.
 
 ### Phase 5: Form Components (M)
 

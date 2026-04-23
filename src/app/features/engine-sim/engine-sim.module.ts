@@ -7,6 +7,7 @@ import { webSocket } from 'rxjs/webSocket';
 import { AppMultiDropdownModule } from '../../components/app-multi-dropdown/app-multi-dropdown.module';
 import { BoardFooterComponent } from './components/board-footer/board-footer.component';
 import { CmdSectionComponent } from './components/cmd-section/cmd-section.component';
+import { EngineSimBoardComponent } from './components/engine-sim-board/engine-sim-board.component';
 import { StatusGridComponent } from './components/status-grid/status-grid.component';
 import { EngineSimResponse } from './shared/engine-sim.api-contract';
 import { ENGINE_SIM_WS_FACTORY, EngineSimWebSocketFactory } from './shared/engine-sim.tokens';
@@ -28,6 +29,7 @@ const defaultWebSocketFactory: EngineSimWebSocketFactory =
   declarations: [
     BoardFooterComponent,
     CmdSectionComponent,
+    EngineSimBoardComponent,
     StatusGridComponent,
   ],
   imports: [
@@ -39,6 +41,7 @@ const defaultWebSocketFactory: EngineSimWebSocketFactory =
   exports: [
     BoardFooterComponent,
     CmdSectionComponent,
+    EngineSimBoardComponent,
     StatusGridComponent,
   ],
   providers: [

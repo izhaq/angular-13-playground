@@ -464,7 +464,7 @@ Foundation layer — no components, no services. Just TypeScript.
 - `column-ids.ts` is the single source for column ids — both `*.columns.ts` files and `normalizeResponse` import from it, so renaming a column id is a one-line change.
 - `ENGINE_SIM_API_CONFIG` is intentionally NOT provided by `EngineSimModule` — the host project supplies its own URLs at module-setup time, keeping the feature URL-agnostic for migration.
 
-### Phase 3: Dumb Components — Grid + Footer + CMD (S-M)
+### Phase 3: Dumb Components — Grid + Footer + CMD (S-M) — ✅ Complete
 
 Build the three reusable dumb components that have no board-specific knowledge:
 
@@ -472,12 +472,21 @@ Build the three reusable dumb components that have no board-specific knowledge:
 - `BoardFooterComponent` — 3 buttons with outputs and test IDs
 - `CmdSectionComponent` — 2 multi-dropdowns with shared selection model
 
+All three are OnPush, declared and exported by `EngineSimModule`, and live under `features/engine-sim/components/<name>/`.
+
 **Acceptance criteria:** Each component renders in isolation with mock inputs. Test IDs present. Column hover works. `ng test` passes.
 
-**Tests:**
-- `status-grid.component.spec.ts` — renders `columns.length + 1` columns (label col + data cols); each cell has `data-test-id="grid-{boardId}-{fieldKey}-{colId}"`; column header has `grid-header-{boardId}-{colId}`; row label has `grid-label-{boardId}-{fieldKey}`; cell click sets `selectedCellId`; column hover sets `hoveredColId`
-- `board-footer.component.spec.ts` — emits `defaults`, `cancel`, `apply` on the corresponding button clicks; buttons have `data-test-id="footer-{boardId}-{action}"`
-- `cmd-section.component.spec.ts` — emits `selectionChange` with `{ sides, wheels }` when either dropdown changes; respects `disabled` input
+**Tests delivered (17 specs, all green):**
+- `board-footer.component.spec.ts` (5 specs) — three namespaced buttons render; centralized labels; per-button output emission; `disabled` flag disables all buttons; boardId namespacing produces unique secondary ids
+- `cmd-section.component.spec.ts` (6 specs) — Side and Wheel dropdowns rendered with stable test ids; `selection` seeds initial value; `selectionChange` merges new sides with existing wheels and vice versa; `disabled` propagates to both dropdowns
+- `status-grid.component.spec.ts` (7 specs) — `gridTemplateColumns` precomputed in `ngOnChanges` (`minmax(120px, max-content) repeat(N, minmax(48px, 1fr))`); column headers, row labels, and cells get namespaced ids; cell text equals `row.values[col.id]`; `mouseenter`/`mouseleave` toggle `hoveredColId`; cell click sets `selectedCellId="{fieldKey}|{colId}"`; boardId namespacing carries through every test-id prefix
+
+**Notes from Phase 3 implementation:**
+- All three component specs use a host wrapper component (not direct property mutation). Setting `@Input()`s straight on the OnPush child does not dirty its view and does not fire `ngOnChanges`, so `gridTemplateColumns` would stay empty and `[disabled]` bindings would not propagate. The wrapper makes inputs flow through Angular's binding system, matching how the shell will wire them in Phases 5–6.
+- `StatusGridComponent` writes `gridTemplateColumns` from `ngOnChanges` rather than a getter — keeps the string out of the change-detection hot path.
+- `[style.grid-template-columns]` requires the kebab-case binding name; the component property stays `gridTemplateColumns` (camelCase) per Angular's style binding convention.
+- `OnChanges` in `StatusGridComponent` reads `changes['columns']` (bracket access) instead of `.columns` to satisfy `noPropertyAccessFromIndexSignature` enforced by Karma's `tsconfig.spec.json` (the production `tsconfig.json` is more lenient, which is why `ng build` passed first time but `ng test` did not).
+- No `markForCheck()` anywhere — `(click)` and `(mouseenter)`/`(mouseleave)` already trigger CD for OnPush components since they fire inside the Angular zone.
 
 ### Phase 4: Board Layout Component (S)
 

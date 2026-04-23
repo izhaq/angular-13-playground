@@ -1,0 +1,23 @@
+<div class="cmd-section">
+  <div class="cmd-section__title">{{ labels.cmd }}</div>
+
+  <div class="cmd-section__controls">
+    <app-multi-dropdown
+      class="cmd-section__field"
+      testId="cmd-side-select"
+      [options]="sideOptions"
+      [value]="selection.sides"
+      [disabled]="disabled"
+      (changed)="onSidesChange($event)">
+    </app-multi-dropdown>
+
+    <app-multi-dropdown
+      class="cmd-section__field"
+      testId="cmd-wheel-select"
+      [options]="wheelOptions"
+      [value]="selection.wheels"
+      [disabled]="disabled"
+      (changed)="onWheelsChange($event)">
+    </app-multi-dropdown>
+  </div>
+</div>

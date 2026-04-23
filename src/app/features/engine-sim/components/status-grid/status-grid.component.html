@@ -1,0 +1,36 @@
+<div
+  class="status-grid"
+  [style.grid-template-columns]="gridTemplateColumns">
+
+  <div class="status-grid__corner" aria-hidden="true"></div>
+
+  <div
+    *ngFor="let col of columns; let i = index; trackBy: trackByColId"
+    class="status-grid__col-header"
+    [class.status-grid__col-header--first-col]="i === 0"
+    [class.status-grid__col-header--hovered]="hoveredColId === col.id"
+    [attr.data-test-id]="'grid-header-' + boardId + '-' + col.id">
+    {{ col.label }}
+  </div>
+
+  <ng-container *ngFor="let row of rows; trackBy: trackByFieldKey">
+    <div
+      class="status-grid__row-label"
+      [attr.data-test-id]="'grid-label-' + boardId + '-' + row.fieldKey">
+      {{ row.label }}
+    </div>
+
+    <div
+      *ngFor="let col of columns; let i = index; trackBy: trackByColId"
+      class="status-grid__cell"
+      [class.status-grid__cell--first-col]="i === 0"
+      [class.status-grid__cell--col-hovered]="hoveredColId === col.id"
+      [class.status-grid__cell--selected]="isSelected(row.fieldKey, col.id)"
+      [attr.data-test-id]="'grid-' + boardId + '-' + row.fieldKey + '-' + col.id"
+      (mouseenter)="onEnterColumn(col.id)"
+      (mouseleave)="onLeaveColumn()"
+      (click)="onCellClick(row.fieldKey, col.id)">
+      {{ row.values[col.id] }}
+    </div>
+  </ng-container>
+</div>

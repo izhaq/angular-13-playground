@@ -5,6 +5,7 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { AppDropdownModule } from '../components/app-dropdown/app-dropdown.module';
 import { AppMultiDropdownModule } from '../components/app-multi-dropdown/app-multi-dropdown.module';
 import { AppDropdownCvaModule } from '../components/app-dropdown-cva/app-dropdown-cva.module';
+import { EngineSimModule } from '../features/engine-sim/engine-sim.module';
 
 import { DemoPageComponent } from './demo-page.component';
 
@@ -17,6 +18,7 @@ import { DemoPageComponent } from './demo-page.component';
     AppDropdownModule,
     AppMultiDropdownModule,
     AppDropdownCvaModule,
+    EngineSimModule,
   ],
   exports: [DemoPageComponent],
 })

@@ -1,0 +1,39 @@
+@import 'engine-sim-tokens';
+
+:host {
+  display: block;
+}
+
+.cmd-section {
+  display: flex;
+  align-items: center;
+  gap: $cmd-gap;
+  padding: $grid-cell-pad-y ($grid-cell-pad-x - 2);
+
+  // Boxed "Cmd." label — matches the design's outlined section header.
+  // Uses currentColor so it inherits the consumer's text color (light on
+  // a dark shell, dark on a light demo, etc.) without baking in a theme.
+  &__title {
+    flex: 0 0 auto;
+    font-weight: 600;
+    font-size: $grid-font-size;
+    line-height: 1;
+    padding: 4px $cmd-controls-gap;
+    border: 1px solid currentColor;
+    border-radius: $btn-radius;
+  }
+
+  &__controls {
+    display: flex;
+    align-items: center;
+    gap: $cmd-controls-gap;
+  }
+
+  // Override the dropdown host's `width: 100%` (set in
+  // app-multi-dropdown.component.scss for layouts where it should fill).
+  // In CMD we want narrow, fixed-width fields sitting next to the label.
+  &__field {
+    flex: 0 0 auto;
+    width: $cmd-field-width;
+  }
+}

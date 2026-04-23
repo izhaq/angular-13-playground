@@ -1,0 +1,33 @@
+<div class="board-footer">
+  <button
+    mat-stroked-button
+    type="button"
+    class="board-footer__btn board-footer__btn--defaults"
+    [disabled]="disabled"
+    [attr.data-test-id]="'footer-' + boardId + '-defaults'"
+    (click)="defaults.emit()">
+    {{ labels.defaults }}
+  </button>
+
+  <span class="board-footer__spacer"></span>
+
+  <button
+    mat-stroked-button
+    type="button"
+    class="board-footer__btn board-footer__btn--cancel"
+    [disabled]="disabled"
+    [attr.data-test-id]="'footer-' + boardId + '-cancel'"
+    (click)="cancel.emit()">
+    {{ labels.cancel }}
+  </button>
+
+  <button
+    mat-flat-button
+    type="button"
+    class="board-footer__btn board-footer__btn--apply"
+    [disabled]="disabled"
+    [attr.data-test-id]="'footer-' + boardId + '-apply'"
+    (click)="apply.emit()">
+    {{ labels.apply }}
+  </button>
+</div>

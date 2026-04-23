@@ -16,6 +16,10 @@
       <li><a href="#multi-standalone">AppMultiDropdown — standalone</a></li>
       <li><a href="#multi-reactive">AppMultiDropdown — Reactive Forms (formControl)</a></li>
       <li><a href="#test-id">data-test-id (native attribute)</a></li>
+      <li><a href="#engine-cmd">EngineSim — CmdSectionComponent</a></li>
+      <li><a href="#engine-footer">EngineSim — BoardFooterComponent</a></li>
+      <li><a href="#engine-grid-primary">EngineSim — StatusGridComponent (8 cols)</a></li>
+      <li><a href="#engine-grid-secondary">EngineSim — StatusGridComponent (11 cols)</a></li>
     </ul>
   </nav>
 
@@ -151,6 +155,96 @@ form.status = {{ form.status }}</pre>
       <div class="demo-test-id-target" data-test-id="demo-test-id-target">
         Inspect me — should have <code>data-test-id="demo-test-id-target"</code>
       </div>
+    </div>
+  </section>
+
+  <section class="demo-section" id="engine-cmd">
+    <h2>EngineSim — CmdSectionComponent</h2>
+    <p class="demo-section__desc">
+      Sticky CMD header used at the top of each board. Two multi-select
+      dropdowns (Side, Wheel) emitting a fresh <code>CmdSelection</code>
+      whenever either changes. Stateless — the shell owns the selection.
+    </p>
+
+    <div class="demo-section__example demo-section__example--engine-sim">
+      <engine-sim-cmd-section
+        [selection]="cmdSelection"
+        [disabled]="cmdDisabled"
+        (selectionChange)="onCmdSelectionChange($event)">
+      </engine-sim-cmd-section>
+    </div>
+
+    <div class="demo-section__actions">
+      <button type="button" (click)="cmdDisabled = !cmdDisabled">
+        Toggle disabled (currently {{ cmdDisabled ? 'true' : 'false' }})
+      </button>
+    </div>
+
+    <pre class="demo-section__state">selection = {{ cmdSelection | json }}</pre>
+  </section>
+
+  <section class="demo-section" id="engine-footer">
+    <h2>EngineSim — BoardFooterComponent</h2>
+    <p class="demo-section__desc">
+      Sticky board footer with Defaults / Cancel / Apply. Each button stamps
+      a namespaced <code>data-test-id</code> via the <code>boardId</code>
+      input so primary and secondary footers stay unique even when both
+      tabs are mounted at the same time.
+    </p>
+
+    <div class="demo-section__example demo-section__example--engine-sim">
+      <engine-sim-board-footer
+        [boardId]="boardIds.primary"
+        [disabled]="footerDisabled"
+        (defaults)="onFooterEvent('defaults')"
+        (cancel)="onFooterEvent('cancel')"
+        (apply)="onFooterEvent('apply')">
+      </engine-sim-board-footer>
+    </div>
+
+    <div class="demo-section__actions">
+      <button type="button" (click)="footerDisabled = !footerDisabled">
+        Toggle disabled (currently {{ footerDisabled ? 'true' : 'false' }})
+      </button>
+      <button type="button" (click)="footerEvents = []">Clear log</button>
+    </div>
+
+    <pre class="demo-section__state">recent events:
+{{ footerEvents.length ? (footerEvents | json) : '(none yet — click a button above)' }}</pre>
+  </section>
+
+  <section class="demo-section" id="engine-grid-primary">
+    <h2>EngineSim — StatusGridComponent (8 cols)</h2>
+    <p class="demo-section__desc">
+      Primary board's grid: row labels in the leading column, then 8 data
+      columns (L1-L4 + R1-R4). Hover a cell for column highlight; click a
+      cell to select it. Inspect any cell to see
+      <code>grid-primary-{{ '{' }}fieldKey{{ '}' }}-{{ '{' }}colId{{ '}' }}</code>.
+    </p>
+
+    <div class="demo-section__example demo-section__example--engine-sim demo-section__example--grid">
+      <engine-sim-status-grid
+        [boardId]="boardIds.primary"
+        [columns]="primaryGridColumns"
+        [rows]="primaryGridRows">
+      </engine-sim-status-grid>
+    </div>
+  </section>
+
+  <section class="demo-section" id="engine-grid-secondary">
+    <h2>EngineSim — StatusGridComponent (11 cols)</h2>
+    <p class="demo-section__desc">
+      Secondary board's grid: same component, just 11 columns this time
+      (L1-L4 + R1-R4 + TLL + TLR + GDL). Sparse rows are fine — cells with
+      no value render empty.
+    </p>
+
+    <div class="demo-section__example demo-section__example--engine-sim demo-section__example--grid">
+      <engine-sim-status-grid
+        [boardId]="boardIds.secondary"
+        [columns]="secondaryGridColumns"
+        [rows]="secondaryGridRows">
+      </engine-sim-status-grid>
     </div>
   </section>
 </main>

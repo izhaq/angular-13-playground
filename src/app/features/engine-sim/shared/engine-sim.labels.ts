@@ -20,9 +20,9 @@ export const ENGINE_SIM_LABELS = {
   tabSecondaryCommands: 'Failure & Antenna',
 
   // -- CMD Section -----------------------------------------------------------
-  cmd: 'Cmd.',
-  cmdSide: 'Selected Side',
-  cmdWheel: 'Selected Wheel',
+  // No "Selected Side" / "Selected Wheel" labels — the design renders the
+  // dropdowns without visible labels (just the placeholder).
+  cmd: 'Cmd',
   sideLeft: 'Left',
   sideRight: 'Right',
 

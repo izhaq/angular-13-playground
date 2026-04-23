@@ -1,0 +1,90 @@
+@import 'engine-sim-tokens';
+
+:host {
+  display: block;
+  height: 100%;
+  overflow: auto;
+
+  // Re-export the SCSS sizing tokens as CSS custom properties so the
+  // TS-built `gridTemplateColumns` string references the same values
+  // the SCSS uses (single source of truth — see _tokens.scss).
+  --grid-label-col-min: #{$grid-label-col-min};
+  --grid-data-col-min:  #{$grid-data-col-min};
+}
+
+// Layout note (matches the design):
+//   - Row labels live on the dark page background — no fill, no borders.
+//   - The data area (header row + data cells) is its own self-bordered card.
+//   - The corner cell (where the label column meets the header row) is empty.
+//
+// Rather than draw an outer border on the grid container (which would wrap
+// the label column too), each data cell carries its own borders and the
+// first data column (`--first-col`) adds a `border-left` so the data area
+// reads as a closed rectangle.
+.status-grid {
+  display: grid;
+  font-size: $grid-font-size;
+
+  &__corner,
+  &__col-header,
+  &__row-label,
+  &__cell {
+    padding: $grid-cell-pad-y $grid-cell-pad-x;
+    min-height: $grid-cell-min-h;
+    box-sizing: border-box;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  // Borderless / transparent: lets the dark page background show through.
+  &__corner {
+    background: transparent;
+  }
+
+  &__row-label {
+    background: transparent;
+    color: $color-text-on-dark;
+    font-weight: 500;
+    text-align: left;
+    padding-left: 0;
+  }
+
+  // Data cells (header + body) form the bordered card.
+  &__col-header,
+  &__cell {
+    background: $color-grid-card-bg;
+    color: $color-text-on-light;
+  }
+
+  &__col-header {
+    font-weight: 600;
+    text-align: center;
+    border-top: $grid-border-width solid $color-grid-border;
+    border-right: $grid-border-width solid $color-grid-border;
+    border-bottom: $grid-border-width solid $color-grid-border;
+  }
+
+  &__cell {
+    text-align: center;
+    cursor: pointer;
+    border-right: $grid-border-width solid $color-grid-border;
+    border-bottom: $grid-border-width solid $color-grid-border;
+  }
+
+  // Closes the left edge of the bordered card.
+  &__col-header--first-col,
+  &__cell--first-col {
+    border-left: $grid-border-width solid $color-grid-border;
+  }
+
+  &__col-header--hovered,
+  &__cell--col-hovered {
+    background: $color-grid-hover-bg;
+  }
+
+  &__cell--selected {
+    outline: 2px solid $color-grid-selected;
+    outline-offset: -2px;
+  }
+}

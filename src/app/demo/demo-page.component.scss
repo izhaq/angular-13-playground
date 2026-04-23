@@ -91,6 +91,27 @@
     border-radius: 6px;
   }
 
+  // Engine-sim previews: drop the demo chrome so the components sit on
+  // the actual surface they'll live on in the shell — directly on a dark
+  // page background. Intentionally darker than the dropdowns' navy from
+  // `_dropdowns.scss` (#1a2942) so the dropdowns visibly stand out.
+  &__example--engine-sim {
+    padding: 16px 20px;
+    border: none;
+    background: #0d1626;
+    color: #e6e6e6;
+  }
+
+  // Demo-only sizer for the status-grid preview: gives the host a finite
+  // height so its internal scroll behavior is observable. Extra vertical
+  // padding so the bordered grid card has the same breathing room around
+  // it as in the design.
+  &__example--grid {
+    height: 240px;
+    overflow: hidden;
+    padding: 24px;
+  }
+
   &__actions {
     display: flex;
     gap: 8px;

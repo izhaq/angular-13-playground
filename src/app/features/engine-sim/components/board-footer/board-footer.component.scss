@@ -1,0 +1,39 @@
+@import 'engine-sim-tokens';
+
+:host {
+  display: block;
+}
+
+.board-footer {
+  display: flex;
+  align-items: center;
+  gap: $footer-gap;
+  padding: $footer-pad-y $footer-pad-x;
+
+  &__spacer {
+    flex: 1 1 auto;
+  }
+
+  // Component-scoped attribute selectors give us higher specificity than
+  // `.mat-stroked-button` / `.mat-flat-button` without `!important`.
+  // All three buttons share the same dark navy resting style and the
+  // same accent hover treatment.
+  &__btn {
+    min-width: $btn-min-width;
+    background: $color-control-bg;
+    color: $color-text-on-dark;
+    border: 1px solid $color-control-border;
+    border-radius: $btn-radius;
+    line-height: $btn-line-height;
+  }
+
+  &__btn:hover:not([disabled]) {
+    background: $color-accent;
+    border-color: $color-accent;
+  }
+
+  &__btn[disabled] {
+    opacity: $btn-disabled-opacity;
+    cursor: not-allowed;
+  }
+}

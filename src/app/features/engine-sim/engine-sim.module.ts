@@ -1,7 +1,13 @@
+import { CommonModule } from '@angular/common';
 import { HttpClientModule } from '@angular/common/http';
 import { NgModule } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
 import { webSocket } from 'rxjs/webSocket';
 
+import { AppMultiDropdownModule } from '../../components/app-multi-dropdown/app-multi-dropdown.module';
+import { BoardFooterComponent } from './components/board-footer/board-footer.component';
+import { CmdSectionComponent } from './components/cmd-section/cmd-section.component';
+import { StatusGridComponent } from './components/status-grid/status-grid.component';
 import { EngineSimResponse } from './shared/engine-sim.api-contract';
 import { ENGINE_SIM_WS_FACTORY, EngineSimWebSocketFactory } from './shared/engine-sim.tokens';
 import { EngineSimApiService } from './services/engine-sim-api.service';
@@ -19,7 +25,22 @@ const defaultWebSocketFactory: EngineSimWebSocketFactory =
   (url: string) => webSocket<EngineSimResponse>(url).asObservable();
 
 @NgModule({
-  imports: [HttpClientModule],
+  declarations: [
+    BoardFooterComponent,
+    CmdSectionComponent,
+    StatusGridComponent,
+  ],
+  imports: [
+    CommonModule,
+    HttpClientModule,
+    MatButtonModule,
+    AppMultiDropdownModule,
+  ],
+  exports: [
+    BoardFooterComponent,
+    CmdSectionComponent,
+    StatusGridComponent,
+  ],
   providers: [
     EngineSimApiService,
     EngineSimDataService,

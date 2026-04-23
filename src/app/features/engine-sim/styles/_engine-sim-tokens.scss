@@ -1,0 +1,68 @@
+// Engine-sim — feature-scoped design tokens.
+//
+// Centralizing colors and the few sizing values that have layout impact
+// keeps the host project re-skinning to a single edit (no hunting through
+// component SCSS) and keeps the TS-side grid template in sync with what
+// the SCSS thinks the cell minimums are (see status-grid).
+//
+// Imported as `@import 'engine-sim-tokens';` from any consuming SCSS.
+// The flat path is resolved via `stylePreprocessorOptions.includePaths`
+// in `angular.json` (this folder is on the search path). When migrating
+// to the host project, add this folder to the host's includePaths too.
+//
+// IMPORTANT — sizing budget:
+//   The dashboard renders inside a fixed 1150 × 550px shell container.
+//   Vertical:   tabs (~48) + cmd (~50) + footer (~50)  ≈ 150  →  form/grid scroll area ≈ 400px
+//   Horizontal: form pane + grid pane = 1150 (split tbd in board layout phase)
+//
+//   The grid minimums below are tuned so an 11-column grid + the row-label
+//   column never forces a horizontal scrollbar inside a ~640px right pane.
+//   If the host gives us a different envelope, retune here only.
+
+// ---------------------------------------------------------------------------
+// Colors
+// ---------------------------------------------------------------------------
+
+// Surfaces — dark navy theme. Mirrors `src/styles/_dropdowns.scss` so the
+// engine-sim controls read as one family with the rest of the app shell.
+$color-page-bg:        #0d1626;  // page surface behind boards
+$color-control-bg:     #1a2942;  // dropdown/button surface
+$color-control-border: #2d3f5e;  // dropdown/button border
+$color-accent:         #1e88e5;  // primary action / hover
+
+// Text
+$color-text-on-dark:   #e6e6e6;
+$color-text-on-light:  #1f1f1f;
+
+// Status grid (light card on dark page)
+$color-grid-card-bg:   #ffffff;
+$color-grid-border:    #cccccc;
+$color-grid-hover-bg:  #eef4ff;
+$color-grid-selected:  #1976d2;
+
+// ---------------------------------------------------------------------------
+// Sizing — sized for the 1150 × 550 shell envelope (see note above).
+// ---------------------------------------------------------------------------
+
+// Status grid
+$grid-label-col-min: 90px;   // fits the longest label ("Critical Fail" et al.)
+$grid-data-col-min:  44px;   // 11 cols × 44 + 90 = 574px → fits ~640px right pane
+$grid-cell-min-h:    28px;
+$grid-cell-pad-y:    6px;
+$grid-cell-pad-x:    10px;
+$grid-font-size:     12px;
+$grid-border-width:  1px;
+
+// CMD section
+$cmd-field-width:    120px;
+$cmd-gap:            12px;
+$cmd-controls-gap:   8px;
+
+// Board footer
+$btn-min-width:      80px;
+$btn-line-height:    28px;
+$btn-radius:         2px;
+$footer-gap:         8px;
+$footer-pad-y:       8px;
+$footer-pad-x:       12px;
+$btn-disabled-opacity: 0.5;

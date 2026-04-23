@@ -476,17 +476,22 @@ All three are OnPush, declared and exported by `EngineSimModule`, and live under
 
 **Acceptance criteria:** Each component renders in isolation with mock inputs. Test IDs present. Column hover works. `ng test` passes.
 
-**Tests delivered (17 specs, all green):**
+**Tests delivered (18 specs, all green):**
 - `board-footer.component.spec.ts` (5 specs) — three namespaced buttons render; centralized labels; per-button output emission; `disabled` flag disables all buttons; boardId namespacing produces unique secondary ids
 - `cmd-section.component.spec.ts` (6 specs) — Side and Wheel dropdowns rendered with stable test ids; `selection` seeds initial value; `selectionChange` merges new sides with existing wheels and vice versa; `disabled` propagates to both dropdowns
-- `status-grid.component.spec.ts` (7 specs) — `gridTemplateColumns` precomputed in `ngOnChanges` (`minmax(120px, max-content) repeat(N, minmax(48px, 1fr))`); column headers, row labels, and cells get namespaced ids; cell text equals `row.values[col.id]`; `mouseenter`/`mouseleave` toggle `hoveredColId`; cell click sets `selectedCellId="{fieldKey}|{colId}"`; boardId namespacing carries through every test-id prefix
+- `status-grid.component.spec.ts` (7 specs) — `gridTemplateColumns` precomputed in `ngOnInit` as `minmax(var(--grid-label-col-min), max-content) repeat(N, minmax(var(--grid-data-col-min), 1fr))`; column headers, row labels, and cells get namespaced ids; cell text equals `row.values[col.id]`; `mouseenter`/`mouseleave` toggle `hoveredColId`; cell click sets `selectedCellId="{fieldKey}|{colId}"`; boardId namespacing carries through every test-id prefix
 
 **Notes from Phase 3 implementation:**
-- All three component specs use a host wrapper component (not direct property mutation). Setting `@Input()`s straight on the OnPush child does not dirty its view and does not fire `ngOnChanges`, so `gridTemplateColumns` would stay empty and `[disabled]` bindings would not propagate. The wrapper makes inputs flow through Angular's binding system, matching how the shell will wire them in Phases 5–6.
-- `StatusGridComponent` writes `gridTemplateColumns` from `ngOnChanges` rather than a getter — keeps the string out of the change-detection hot path.
+- All three component specs use a host wrapper component (not direct property mutation). Setting `@Input()`s straight on the OnPush child does not dirty its view and does not propagate down through bindings — `[disabled]` would not flow to children, and any `ngOnChanges`-derived view state would never recompute. The wrapper makes inputs flow through Angular's binding system, matching how the shell will wire them in Phases 5–6.
+- `StatusGridComponent` writes `gridTemplateColumns` from `ngOnInit` (not a getter, not `ngOnChanges`) — `columns` is a set-once input per board, and a getter would recompute on every change-detection tick. The doc comment flags `ngOnChanges` as the escape hatch if `columns` ever becomes reactive (e.g. dynamic column toggles).
 - `[style.grid-template-columns]` requires the kebab-case binding name; the component property stays `gridTemplateColumns` (camelCase) per Angular's style binding convention.
-- `OnChanges` in `StatusGridComponent` reads `changes['columns']` (bracket access) instead of `.columns` to satisfy `noPropertyAccessFromIndexSignature` enforced by Karma's `tsconfig.spec.json` (the production `tsconfig.json` is more lenient, which is why `ng build` passed first time but `ng test` did not).
 - No `markForCheck()` anywhere — `(click)` and `(mouseenter)`/`(mouseleave)` already trigger CD for OnPush components since they fire inside the Angular zone.
+
+**Follow-up cleanup (post-Phase 3 review):**
+- Centralized colors and layout-impacting sizing into `src/app/features/engine-sim/styles/_engine-sim-tokens.scss`. All three component SCSS files import it via `@import 'engine-sim-tokens';` — the flat path is resolved through `stylePreprocessorOptions.includePaths` in `angular.json` (added to both `build` and `test` targets). When migrating the feature, the host project's `angular.json` needs the same `includePaths` entry pointing at `src/app/features/engine-sim/styles`.
+- Sizing tokens are tuned for the 1150×550 shell envelope: `$grid-label-col-min: 90px`, `$grid-data-col-min: 44px` (down from 120/56). Math: 11 cols × 44 + 90 = 574px, fits a ~640px right pane without horizontal scroll. Retune in `_engine-sim-tokens.scss` if the host gives us a different envelope.
+- `StatusGridComponent` re-exports the SCSS sizing tokens as CSS custom properties on `:host` (`--grid-label-col-min`, `--grid-data-col-min`). The TS-built `gridTemplateColumns` string references them via `var(--…)` so SCSS stays the single source of truth — changing the sizing budget is a one-line edit in the tokens partial, no TS change required. **Caveat:** if a future edit moves the `--grid-…` declarations off `:host`, the TS template silently falls back to CSS Grid defaults. A pixel-width regression test would catch this; deferred until needed.
+- `readonly` audit applied: `@Output()` emitters, injected services (`private readonly`), instance constants (`labels`, options), and `trackBy` arrow functions are all `readonly`. `@Input()` properties intentionally are **not** marked readonly — Angular rebinds them, so the modifier would mislead. Mutable view state (`hoveredColId`, `selectedCellId`, `gridTemplateColumns`) is not readonly because it's reassigned at runtime.
 
 ### Phase 4: Board Layout Component (S)
 

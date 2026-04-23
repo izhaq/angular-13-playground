@@ -1,5 +1,14 @@
 @import 'engine-sim-tokens';
 
+// Component-internal layout values. Kept here (not in the tokens partial)
+// because they describe one component's design and aren't reused elsewhere.
+$btn-min-width:        80px;
+$btn-line-height:      28px;
+$btn-disabled-opacity: 0.5;
+$gap:                  8px;
+$pad-y:                8px;
+$pad-x:                12px;
+
 :host {
   display: block;
 }
@@ -7,8 +16,8 @@
 .board-footer {
   display: flex;
   align-items: center;
-  gap: $footer-gap;
-  padding: $footer-pad-y $footer-pad-x;
+  gap: $gap;
+  padding: $pad-y $pad-x;
 
   &__spacer {
     flex: 1 1 auto;
@@ -23,7 +32,7 @@
     background: $color-control-bg;
     color: $color-text-on-dark;
     border: 1px solid $color-control-border;
-    border-radius: $btn-radius;
+    border-radius: $control-radius;
     line-height: $btn-line-height;
   }
 

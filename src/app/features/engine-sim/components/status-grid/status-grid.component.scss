@@ -1,15 +1,32 @@
 @import 'engine-sim-tokens';
 
+// Component-internal layout values. Kept here (not in the tokens partial)
+// because they describe one component's design and aren't reused elsewhere.
+//
+// Sizing budget — sized for the 1150 × 550 shell envelope:
+//   The grid lives in the right pane (~640px wide). With an 11-column
+//   secondary grid + the row-label column we need to fit inside that
+//   without horizontal scroll: 11 × 44 + 90 = 574px ✓.
+//   If the host gives us a different envelope, retune $label-col-min and
+//   $data-col-min here (TS reads them via CSS custom properties on :host).
+$label-col-min: 90px;   // fits the longest label ("Critical Fail" et al.)
+$data-col-min:  44px;
+$cell-min-h:    28px;
+$cell-pad-y:    6px;
+$cell-pad-x:    10px;
+$font-size:     12px;
+$border-width:  1px;
+
 :host {
   display: block;
   height: 100%;
   overflow: auto;
 
-  // Re-export the SCSS sizing tokens as CSS custom properties so the
-  // TS-built `gridTemplateColumns` string references the same values
-  // the SCSS uses (single source of truth — see _tokens.scss).
-  --grid-label-col-min: #{$grid-label-col-min};
-  --grid-data-col-min:  #{$grid-data-col-min};
+  // Re-export the cell minimums as CSS custom properties so the TS-built
+  // `gridTemplateColumns` string can reference them via `var(--…)` —
+  // single source of truth between SCSS and TS. (See StatusGridComponent.)
+  --grid-label-col-min: #{$label-col-min};
+  --grid-data-col-min:  #{$data-col-min};
 }
 
 // Layout note (matches the design):
@@ -23,14 +40,14 @@
 // reads as a closed rectangle.
 .status-grid {
   display: grid;
-  font-size: $grid-font-size;
+  font-size: $font-size;
 
   &__corner,
   &__col-header,
   &__row-label,
   &__cell {
-    padding: $grid-cell-pad-y $grid-cell-pad-x;
-    min-height: $grid-cell-min-h;
+    padding: $cell-pad-y $cell-pad-x;
+    min-height: $cell-min-h;
     box-sizing: border-box;
     white-space: nowrap;
     overflow: hidden;
@@ -60,22 +77,22 @@
   &__col-header {
     font-weight: 600;
     text-align: center;
-    border-top: $grid-border-width solid $color-grid-border;
-    border-right: $grid-border-width solid $color-grid-border;
-    border-bottom: $grid-border-width solid $color-grid-border;
+    border-top: $border-width solid $color-grid-border;
+    border-right: $border-width solid $color-grid-border;
+    border-bottom: $border-width solid $color-grid-border;
   }
 
   &__cell {
     text-align: center;
     cursor: pointer;
-    border-right: $grid-border-width solid $color-grid-border;
-    border-bottom: $grid-border-width solid $color-grid-border;
+    border-right: $border-width solid $color-grid-border;
+    border-bottom: $border-width solid $color-grid-border;
   }
 
   // Closes the left edge of the bordered card.
   &__col-header--first-col,
   &__cell--first-col {
-    border-left: $grid-border-width solid $color-grid-border;
+    border-left: $border-width solid $color-grid-border;
   }
 
   &__col-header--hovered,

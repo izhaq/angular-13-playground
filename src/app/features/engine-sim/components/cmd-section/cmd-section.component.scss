@@ -1,5 +1,16 @@
 @import 'engine-sim-tokens';
 
+// Component-internal layout values. Kept here (not in the tokens partial)
+// because they describe one component's design and aren't reused elsewhere.
+$field-width:     120px;
+$gap:             12px;   // outer flex gap (label ↔ controls)
+$controls-gap:    8px;    // inter-dropdown gap inside controls
+$pad-y:           6px;
+$pad-x:           8px;
+$title-pad-y:     4px;
+$title-pad-x:     8px;
+$title-font-size: 12px;
+
 :host {
   display: block;
 }
@@ -7,8 +18,8 @@
 .cmd-section {
   display: flex;
   align-items: center;
-  gap: $cmd-gap;
-  padding: $grid-cell-pad-y ($grid-cell-pad-x - 2);
+  gap: $gap;
+  padding: $pad-y $pad-x;
 
   // Boxed "Cmd." label — matches the design's outlined section header.
   // Uses currentColor so it inherits the consumer's text color (light on
@@ -16,17 +27,17 @@
   &__title {
     flex: 0 0 auto;
     font-weight: 600;
-    font-size: $grid-font-size;
+    font-size: $title-font-size;
     line-height: 1;
-    padding: 4px $cmd-controls-gap;
+    padding: $title-pad-y $title-pad-x;
     border: 1px solid currentColor;
-    border-radius: $btn-radius;
+    border-radius: $control-radius;
   }
 
   &__controls {
     display: flex;
     align-items: center;
-    gap: $cmd-controls-gap;
+    gap: $controls-gap;
   }
 
   // Override the dropdown host's `width: 100%` (set in
@@ -34,6 +45,6 @@
   // In CMD we want narrow, fixed-width fields sitting next to the label.
   &__field {
     flex: 0 0 auto;
-    width: $cmd-field-width;
+    width: $field-width;
   }
 }

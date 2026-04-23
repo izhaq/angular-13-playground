@@ -51,9 +51,9 @@ export class StatusGridComponent implements OnInit {
 
   ngOnInit(): void {
     // Cell minimums come from `--grid-label-col-min` / `--grid-data-col-min`,
-    // which the host's SCSS sets from the engine-sim tokens partial. Keeping
-    // them in CSS (not duplicating literals here) means changing the sizing
-    // budget is a one-line edit in `_engine-sim-tokens.scss`.
+    // which the host's SCSS exposes (see status-grid.component.scss). Keeping
+    // the literals out of TS means changing the sizing budget is a one-line
+    // edit in this component's SCSS.
     this.gridTemplateColumns =
       'minmax(var(--grid-label-col-min), max-content) ' +
       `repeat(${this.columns.length}, minmax(var(--grid-data-col-min), 1fr))`;

@@ -1,5 +1,5 @@
-import { buildDefaultValues } from './build-defaults.util';
-import { FieldConfig, LabeledOption } from './engine-sim.models';
+import { buildDefaultValues } from './build-defaults';
+import { FieldConfig, LabeledOption } from '../shared/models';
 
 describe('buildDefaultValues', () => {
 

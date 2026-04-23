@@ -6,12 +6,12 @@ import { retry, shareReplay } from 'rxjs/operators';
 import {
   EngineSimApiConfig,
   EngineSimResponse,
-} from '../shared/engine-sim.api-contract';
+} from './api-contract';
 import {
   ENGINE_SIM_API_CONFIG,
   ENGINE_SIM_WS_FACTORY,
   EngineSimWebSocketFactory,
-} from '../shared/engine-sim.tokens';
+} from './api-tokens';
 
 /**
  * Single source of truth for the right-hand grid data.

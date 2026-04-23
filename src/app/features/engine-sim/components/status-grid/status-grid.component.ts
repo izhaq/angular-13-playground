@@ -5,9 +5,8 @@ import {
   OnInit,
 } from '@angular/core';
 
-import { BoardId } from '../../shared/board-ids';
-import { GridColId } from '../../shared/column-ids';
-import { GridColumn, GridRow } from '../../shared/engine-sim.models';
+import { BoardId, GridColId } from '../../shared/ids';
+import { GridColumn, GridRow } from '../../shared/models';
 
 /**
  * Dumb, presentational read-only grid. Data shape is dictated by the

@@ -1,6 +1,6 @@
-import { ENGINE_SIM_LABELS as L } from '../../shared/engine-sim.labels';
-import { FieldConfig } from '../../shared/engine-sim.models';
-import { buildDefaultValues } from '../../shared/build-defaults.util';
+import { ENGINE_SIM_LABELS as L } from '../../shared/labels';
+import { FieldConfig } from '../../shared/models';
+import { buildDefaultValues } from '../build-defaults';
 import {
   AUTO_MANUAL,
   NORMAL_FORCED,

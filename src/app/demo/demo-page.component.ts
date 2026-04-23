@@ -6,10 +6,9 @@ import { PRIMARY_COMMANDS_ALL_FIELDS } from '../features/engine-sim/boards/prima
 import { PRIMARY_COMMANDS_COLUMNS } from '../features/engine-sim/boards/primary-commands/primary-commands.columns';
 import { SECONDARY_COMMANDS_ALL_FIELDS } from '../features/engine-sim/boards/secondary-commands/secondary-commands.fields';
 import { SECONDARY_COMMANDS_COLUMNS } from '../features/engine-sim/boards/secondary-commands/secondary-commands.columns';
-import { BOARD_IDS } from '../features/engine-sim/shared/board-ids';
-import { buildFormGroup } from '../features/engine-sim/shared/build-form-group.util';
-import { COL_IDS } from '../features/engine-sim/shared/column-ids';
-import { CmdSelection, GridColumn, GridRow } from '../features/engine-sim/shared/engine-sim.models';
+import { BOARD_IDS, COL_IDS } from '../features/engine-sim/shared/ids';
+import { buildFormGroup } from '../features/engine-sim/boards/build-form-group';
+import { CmdSelection, GridColumn, GridRow } from '../features/engine-sim/shared/models';
 
 @Component({
   selector: 'app-demo-page',

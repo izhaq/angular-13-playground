@@ -1,6 +1,6 @@
-import { DropdownOption } from '../../../components/app-dropdown/app-dropdown.models';
-import { ENGINE_SIM_LABELS as L } from './engine-sim.labels';
-import { SIDE, WHEEL } from './option-values';
+import { DropdownOption } from '../../../../components/app-dropdown/app-dropdown.models';
+import { ENGINE_SIM_LABELS as L } from '../../shared/labels';
+import { SIDE, WHEEL } from '../../shared/option-values';
 
 /** Truly shared between both boards (the Cmd. section is identical). */
 

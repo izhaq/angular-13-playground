@@ -1,4 +1,4 @@
-import { COL_IDS } from '../shared/column-ids';
+import { COL_IDS } from '../shared/ids';
 import {
   ACommandsData,
   EngineSimResponse,
@@ -6,11 +6,11 @@ import {
   MCommandItem,
   PrimaryStandardFields,
   SecondaryAdditionalFields,
-} from '../shared/engine-sim.api-contract';
-import { FieldConfig, GridColumn, LabeledOption } from '../shared/engine-sim.models';
+} from './api-contract';
+import { FieldConfig, GridColumn, LabeledOption } from '../shared/models';
 import { PRIMARY_COMMANDS_COLUMNS } from '../boards/primary-commands/primary-commands.columns';
 import { SECONDARY_COMMANDS_COLUMNS } from '../boards/secondary-commands/secondary-commands.columns';
-import { buildRows, normalizeResponse } from './grid-data.utils';
+import { buildRows, normalizeResponse } from './grid-normalizer';
 
 // ---------------------------------------------------------------------------
 // Test helpers — keep response building DAMP and intent-revealing.

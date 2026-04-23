@@ -14,10 +14,10 @@ import { BoardFooterComponent } from './components/board-footer/board-footer.com
 import { CmdSectionComponent } from './components/cmd-section/cmd-section.component';
 import { EngineSimBoardComponent } from './components/engine-sim-board/engine-sim-board.component';
 import { StatusGridComponent } from './components/status-grid/status-grid.component';
-import { EngineSimResponse } from './shared/engine-sim.api-contract';
-import { ENGINE_SIM_WS_FACTORY, EngineSimWebSocketFactory } from './shared/engine-sim.tokens';
-import { EngineSimApiService } from './services/engine-sim-api.service';
-import { EngineSimDataService } from './services/engine-sim-data.service';
+import { EngineSimResponse } from './api/api-contract';
+import { ENGINE_SIM_WS_FACTORY, EngineSimWebSocketFactory } from './api/api-tokens';
+import { EngineSimApiService } from './api/engine-sim-api.service';
+import { EngineSimDataService } from './api/engine-sim-data.service';
 
 /**
  * Default factory used in production. Tests override via TestBed providers.

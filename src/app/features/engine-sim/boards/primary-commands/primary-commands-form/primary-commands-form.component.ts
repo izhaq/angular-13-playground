@@ -1,9 +1,9 @@
 import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 import { FormGroup } from '@angular/forms';
 
-import { BOARD_IDS } from '../../../shared/board-ids';
-import { ENGINE_SIM_LABELS as L } from '../../../shared/engine-sim.labels';
-import { FieldConfig } from '../../../shared/engine-sim.models';
+import { BOARD_IDS } from '../../../shared/ids';
+import { ENGINE_SIM_LABELS as L } from '../../../shared/labels';
+import { FieldConfig } from '../../../shared/models';
 import {
   PRIMARY_COMMANDS_CMD_TO_GS_FIELDS,
   PRIMARY_COMMANDS_MAIN_FIELDS,

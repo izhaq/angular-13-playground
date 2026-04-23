@@ -5,8 +5,8 @@ import { Observable } from 'rxjs';
 import {
   BoardPostPayload,
   EngineSimApiConfig,
-} from '../shared/engine-sim.api-contract';
-import { ENGINE_SIM_API_CONFIG } from '../shared/engine-sim.tokens';
+} from './api-contract';
+import { ENGINE_SIM_API_CONFIG } from './api-tokens';
 
 /**
  * POST endpoint for each board. URLs come from the injected `ENGINE_SIM_API_CONFIG`

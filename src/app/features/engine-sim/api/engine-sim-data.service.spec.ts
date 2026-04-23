@@ -8,12 +8,12 @@ import { Subject } from 'rxjs';
 import {
   EngineSimApiConfig,
   EngineSimResponse,
-} from '../shared/engine-sim.api-contract';
+} from './api-contract';
 import {
   ENGINE_SIM_API_CONFIG,
   ENGINE_SIM_WS_FACTORY,
   EngineSimWebSocketFactory,
-} from '../shared/engine-sim.tokens';
+} from './api-tokens';
 import { EngineSimDataService } from './engine-sim-data.service';
 
 const TEST_API_CONFIG: EngineSimApiConfig = {

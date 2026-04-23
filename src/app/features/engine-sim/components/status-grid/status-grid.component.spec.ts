@@ -2,9 +2,8 @@ import { Component, ViewChild } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 
-import { BOARD_IDS, BoardId } from '../../shared/board-ids';
-import { COL_IDS } from '../../shared/column-ids';
-import { GridColumn, GridRow } from '../../shared/engine-sim.models';
+import { BOARD_IDS, BoardId, COL_IDS } from '../../shared/ids';
+import { GridColumn, GridRow } from '../../shared/models';
 import { StatusGridComponent } from './status-grid.component';
 
 const COLUMNS: GridColumn[] = [

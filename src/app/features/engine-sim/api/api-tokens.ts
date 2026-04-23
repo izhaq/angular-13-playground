@@ -1,6 +1,6 @@
 import { InjectionToken } from '@angular/core';
 import { Observable } from 'rxjs';
-import { EngineSimApiConfig, EngineSimResponse } from './engine-sim.api-contract';
+import { EngineSimApiConfig, EngineSimResponse } from './api-contract';
 
 /**
  * Backend URL configuration (POST endpoints, GET endpoint, WS URL).

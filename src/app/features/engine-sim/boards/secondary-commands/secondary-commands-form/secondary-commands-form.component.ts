@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 import { FormGroup } from '@angular/forms';
 
-import { BOARD_IDS } from '../../../shared/board-ids';
-import { FieldConfig } from '../../../shared/engine-sim.models';
+import { BOARD_IDS } from '../../../shared/ids';
+import { FieldConfig } from '../../../shared/models';
 import { SECONDARY_COMMANDS_ALL_FIELDS } from '../secondary-commands.fields';
 
 /**

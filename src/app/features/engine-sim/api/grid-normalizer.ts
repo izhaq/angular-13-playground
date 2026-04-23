@@ -1,6 +1,6 @@
-import { COL_IDS, GridColId } from '../shared/column-ids';
-import { EngineSimResponse } from '../shared/engine-sim.api-contract';
-import { FieldConfig, GridColumn, GridRow } from '../shared/engine-sim.models';
+import { COL_IDS, GridColId } from '../shared/ids';
+import { EngineSimResponse } from './api-contract';
+import { FieldConfig, GridColumn, GridRow } from '../shared/models';
 
 /**
  * Two-step pipeline that turns a wire response into rendered grid rows:

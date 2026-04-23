@@ -1,4 +1,4 @@
-import { FieldConfig } from './engine-sim.models';
+import { FieldConfig } from '../shared/models';
 
 /**
  * Reduce a field config list into a `{ [key]: defaultValue }` map.

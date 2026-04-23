@@ -1,6 +1,6 @@
-import { COL_IDS } from '../../shared/column-ids';
-import { ENGINE_SIM_LABELS as L } from '../../shared/engine-sim.labels';
-import { GridColumn } from '../../shared/engine-sim.models';
+import { COL_IDS } from '../../shared/ids';
+import { ENGINE_SIM_LABELS as L } from '../../shared/labels';
+import { GridColumn } from '../../shared/models';
 import { PRIMARY_COMMANDS_COLUMNS } from '../primary-commands/primary-commands.columns';
 
 /**

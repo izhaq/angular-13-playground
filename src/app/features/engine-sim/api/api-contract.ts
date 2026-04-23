@@ -1,4 +1,4 @@
-import { Side, Wheel } from './option-values';
+import { Side, Wheel } from '../shared/option-values';
 
 /**
  * Wire format — what the backend dictates.
@@ -10,7 +10,7 @@ import { Side, Wheel } from './option-values';
  *
  * Rule of thumb: if a type's shape would change because the backend
  * changed, it lives here. If it changes because we changed our UI, it
- * lives in `engine-sim.models.ts`.
+ * lives in `shared/models.ts`.
  */
 
 // ---------------------------------------------------------------------------

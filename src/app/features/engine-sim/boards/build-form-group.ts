@@ -1,6 +1,6 @@
 import { FormControl, FormGroup } from '@angular/forms';
 
-import { FieldConfig } from './engine-sim.models';
+import { FieldConfig } from '../shared/models';
 
 /**
  * Build a `FormGroup` whose controls match a board's `FieldConfig[]`, each

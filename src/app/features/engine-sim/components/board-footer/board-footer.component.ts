@@ -6,8 +6,8 @@ import {
   Output,
 } from '@angular/core';
 
-import { ENGINE_SIM_LABELS as L } from '../../shared/engine-sim.labels';
-import { BoardId } from '../../shared/board-ids';
+import { ENGINE_SIM_LABELS as L } from '../../shared/labels';
+import { BoardId } from '../../shared/ids';
 
 /**
  * Sticky footer for a board. Stateless: emits one event per button.

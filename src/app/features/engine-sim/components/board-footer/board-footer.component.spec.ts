@@ -4,8 +4,8 @@ import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { MatButtonModule } from '@angular/material/button';
 import { By } from '@angular/platform-browser';
 
-import { BOARD_IDS, BoardId } from '../../shared/board-ids';
-import { ENGINE_SIM_LABELS as L } from '../../shared/engine-sim.labels';
+import { BOARD_IDS, BoardId } from '../../shared/ids';
+import { ENGINE_SIM_LABELS as L } from '../../shared/labels';
 import { BoardFooterComponent } from './board-footer.component';
 
 /**

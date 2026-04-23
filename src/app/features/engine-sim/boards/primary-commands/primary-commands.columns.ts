@@ -1,6 +1,6 @@
-import { COL_IDS } from '../../shared/column-ids';
-import { ENGINE_SIM_LABELS as L } from '../../shared/engine-sim.labels';
-import { GridColumn } from '../../shared/engine-sim.models';
+import { COL_IDS } from '../../shared/ids';
+import { ENGINE_SIM_LABELS as L } from '../../shared/labels';
+import { GridColumn } from '../../shared/models';
 
 const LEFT_LABELS  = [L.colL1, L.colL2, L.colL3, L.colL4];
 const RIGHT_LABELS = [L.colR1, L.colR2, L.colR3, L.colR4];

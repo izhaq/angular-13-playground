@@ -7,9 +7,9 @@ import { By } from '@angular/platform-browser';
 import { AppDropdownCvaModule } from '../../../../../components/app-dropdown-cva/app-dropdown-cva.module';
 import { AppDropdownModule } from '../../../../../components/app-dropdown/app-dropdown.module';
 import { AppMultiDropdownModule } from '../../../../../components/app-multi-dropdown/app-multi-dropdown.module';
-import { BOARD_IDS } from '../../../shared/board-ids';
-import { ENGINE_SIM_LABELS as L } from '../../../shared/engine-sim.labels';
-import { buildFormGroup } from '../../../shared/build-form-group.util';
+import { BOARD_IDS } from '../../../shared/ids';
+import { ENGINE_SIM_LABELS as L } from '../../../shared/labels';
+import { buildFormGroup } from '../../build-form-group';
 import {
   PRIMARY_COMMANDS_ALL_FIELDS,
   PRIMARY_COMMANDS_CMD_TO_GS_FIELDS,

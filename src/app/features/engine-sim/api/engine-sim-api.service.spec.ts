@@ -7,8 +7,8 @@ import {
 import {
   BoardPostPayload,
   EngineSimApiConfig,
-} from '../shared/engine-sim.api-contract';
-import { ENGINE_SIM_API_CONFIG } from '../shared/engine-sim.tokens';
+} from './api-contract';
+import { ENGINE_SIM_API_CONFIG } from './api-tokens';
 import { EngineSimApiService } from './engine-sim-api.service';
 
 const TEST_API_CONFIG: EngineSimApiConfig = {

@@ -6,9 +6,9 @@ import {
   Output,
 } from '@angular/core';
 
-import { CMD_SIDE_OPTIONS, CMD_WHEEL_OPTIONS } from '../../shared/cmd-options';
-import { ENGINE_SIM_LABELS as L } from '../../shared/engine-sim.labels';
-import { CmdSelection } from '../../shared/engine-sim.models';
+import { CMD_SIDE_OPTIONS, CMD_WHEEL_OPTIONS } from './cmd-options';
+import { ENGINE_SIM_LABELS as L } from '../../shared/labels';
+import { CmdSelection } from '../../shared/models';
 import { Side, Wheel } from '../../shared/option-values';
 
 /**

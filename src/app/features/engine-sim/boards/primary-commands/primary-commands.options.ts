@@ -1,5 +1,5 @@
-import { ENGINE_SIM_LABELS as L } from '../../shared/engine-sim.labels';
-import { LabeledOption } from '../../shared/engine-sim.models';
+import { ENGINE_SIM_LABELS as L } from '../../shared/labels';
+import { LabeledOption } from '../../shared/models';
 import {
   INT_EXT,
   NORMAL_FORCED,

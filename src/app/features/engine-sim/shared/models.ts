@@ -1,11 +1,11 @@
 import { DropdownOption } from '../../../components/app-dropdown/app-dropdown.models';
-import { GridColId } from './column-ids';
+import { GridColId } from './ids';
 import { Side, Wheel } from './option-values';
 
 /**
  * Internal view models and configuration shapes — what we own.
  *
- * Anything that flows over the network lives in `engine-sim.api-contract.ts`.
+ * Anything that flows over the network lives in `api/api-contract.ts`.
  * This file is for types that exist only inside the feature.
  */
 

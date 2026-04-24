@@ -5,6 +5,7 @@ import { WebSocket, WebSocketServer } from 'ws';
 import path from 'path';
 import { DashboardState, FieldUpdate, RareDashboardState } from './models';
 import { processConfig, processRareConfig } from './simulation-engine';
+import { registerEngineSimRoutes } from './engine-sim/routes';
 
 const PORT = Number(process.env['PORT'] || 3000);
 const WS_UPDATE_DELAY_MS = Number(process.env['WS_UPDATE_DELAY_MS'] || 300);
@@ -15,7 +16,27 @@ app.use(express.json());
 
 const server = http.createServer(app);
 
-const wss = new WebSocketServer({ server, path: '/api/ws' });
+// `noServer` mode (was: `{ server, path: '/api/ws' }`) so that multiple WS
+// endpoints on the same HTTP server can coexist. A path-restricted WSS
+// aborts non-matching upgrades with 400 (per the `ws` library), which
+// would shoot down our engine-sim socket. The dispatcher below routes
+// upgrades by path; behavior on `/api/ws` is identical to before.
+const wss = new WebSocketServer({ noServer: true });
+
+server.on('upgrade', (request, socket, head) => {
+  let pathname: string;
+  try {
+    pathname = new URL(request.url ?? '', `http://${request.headers.host}`).pathname;
+  } catch {
+    socket.destroy();
+    return;
+  }
+  if (pathname === '/api/ws') {
+    wss.handleUpgrade(request, socket, head, (ws) => wss.emit('connection', ws, request));
+  }
+  // Other paths (e.g. `/api/engine-sim/ws`) are handled by their own
+  // upgrade listeners registered elsewhere — see `registerEngineSimRoutes`.
+});
 
 const clients = new Set<WebSocket>();
 
@@ -119,6 +140,10 @@ app.get('/api/rare-config', (_req, res) => {
   }
 });
 
+// Engine Sim feature endpoints (POST /primary, POST /secondary, GET /get,
+// WS /api/engine-sim/ws). Self-contained — does not touch the routes above.
+registerEngineSimRoutes(app, server);
+
 app.get('/api/health', (_req, res) => {
   res.json({
     status: 'ok',
@@ -144,6 +169,10 @@ server.listen(PORT, () => {
 ║   API:   GET  /api/config                        ║
 ║   API:   POST /api/rare-config                   ║
 ║   API:   GET  /api/rare-config                   ║
+║   API:   POST /api/engine-sim/primary            ║
+║   API:   POST /api/engine-sim/secondary          ║
+║   API:   GET  /api/engine-sim/get                ║
+║   API:   WS   /api/engine-sim/ws                 ║
 ║   API:   GET  /api/health                        ║
 ╚══════════════════════════════════════════════════╝
   `);

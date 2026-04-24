@@ -1,6 +1,6 @@
-# Engine Simulator Dashboard — Implementation Plan
+# System Experiments Dashboard — Implementation Plan
 
-**Feature**: engine-sim-dashboard
+**Feature**: system-experiments-dashboard
 **Spec**: [spec.md](./spec.md)
 **Field Definitions**: [field-definitions.md](./field-definitions.md)
 **Date**: 2026-04-21
@@ -10,19 +10,19 @@
 
 ## 1. Architecture Overview
 
-A single self-contained feature module (`EngineSimModule`) with one smart component (shell) orchestrating six dumb components. Data flows down via `@Input`, events flow up via `@Output`. No NgRx, no third-party libs beyond Material.
+A single self-contained feature module (`SystemExperimentsModule`) with one smart component (shell) orchestrating six dumb components. Data flows down via `@Input`, events flow up via `@Output`. No NgRx, no third-party libs beyond Material.
 
 ```mermaid
 graph TD
-    Shell["EngineSimShellComponent (smart)"]
-    DataSvc["EngineSimDataService"]
-    ApiSvc["EngineSimApiService"]
+    Shell["SystemExperimentsShellComponent (smart)"]
+    DataSvc["SystemExperimentsDataService"]
+    ApiSvc["SystemExperimentsApiService"]
     
     Shell -->|"subscribe"| DataSvc
     Shell -->|"POST on Apply"| ApiSvc
     
     subgraph tab1 [Tab 1 — Primary: System Commands]
-        Primary["EngineSimBoardComponent"]
+        Primary["SystemExperimentsBoardComponent"]
         Cmd1["CmdSectionComponent"]
         Form1["PrimaryCommandsFormComponent"]
         Grid1["StatusGridComponent (8 cols)"]
@@ -34,7 +34,7 @@ graph TD
     end
     
     subgraph tab2 [Tab 2 — Secondary: Failure and Antenna]
-        Secondary["EngineSimBoardComponent"]
+        Secondary["SystemExperimentsBoardComponent"]
         Cmd2["CmdSectionComponent"]
         Form2["SecondaryCommandsFormComponent"]
         Grid2["StatusGridComponent (11 cols)"]
@@ -85,21 +85,21 @@ No new dependencies.
 
 ## 3. File Structure
 
-All files live under `src/app/features/engine-sim/`:
+All files live under `src/app/features/system-experiments/`:
 
 ```
-engine-sim/
-├── engine-sim.module.ts                   # Declares all components + provides services + WS factory token
+system-experiments/
+├── system-experiments.module.ts                   # Declares all components + provides services + WS factory token
 ├── api/                                   # Wire-facing layer (everything network-shaped)
-│   ├── api-contract.ts                    # Wire types: EngineSimResponse, EntityData, MCommandItem, BoardPostPayload, EngineSimApiConfig
-│   ├── api-tokens.ts                      # ENGINE_SIM_API_CONFIG + ENGINE_SIM_WS_FACTORY injection tokens
-│   ├── engine-sim-api.service.ts          # POST for each board
-│   ├── engine-sim-data.service.ts         # GET + WebSocket → Observable<EngineSimResponse>
+│   ├── api-contract.ts                    # Wire types: SystemExperimentsResponse, EntityData, MCommandItem, BoardPostPayload, SystemExperimentsApiConfig
+│   ├── api-tokens.ts                      # SYSTEM_EXPERIMENTS_API_CONFIG + SYSTEM_EXPERIMENTS_WS_FACTORY injection tokens
+│   ├── system-experiments-api.service.ts          # POST for each board
+│   ├── system-experiments-data.service.ts         # GET + WebSocket → Observable<SystemExperimentsResponse>
 │   └── grid-normalizer.ts                 # normalizeResponse() + generic buildRows() — single board-agnostic pipeline
 ├── shared/                                # Cross-board primitives (no UI, no wire shape)
 │   ├── ids.ts                             # BOARD_IDS / COL_IDS const maps + BoardId / GridColId derived types
 │   ├── models.ts                          # Free-standing view models: CmdSelection, GridColumn, GridRow, FieldConfig, LabeledOption
-│   ├── labels.ts                          # ENGINE_SIM_LABELS centralized translation map
+│   ├── labels.ts                          # SYSTEM_EXPERIMENTS_LABELS centralized translation map
 │   └── option-values.ts                   # Canonical value maps + derived types (YES_NO, ON_OFF, SIDE, WHEEL, TFF, …)
 ├── boards/                                # One folder per dashboard tab — self-contained
 │   ├── build-defaults.ts                  # buildDefaultValues() — board-construction helper over FieldConfig[]
@@ -115,8 +115,8 @@ engine-sim/
 │       ├── secondary-commands.columns.ts  # 11-column grid (reuses Primary's 8)
 │       └── secondary-commands-form/       # Form component (14 fields)
 └── components/                            # Cross-board / shell-level UI
-    ├── engine-sim-shell/                  # Smart: tabs, Test Mode toggle, CMD state, snapshots, grid subscription, Apply/Cancel/Defaults wiring
-    ├── engine-sim-board/                  # Dumb layout: sticky CMD + scroll body + sticky footer (4 ng-content slots)
+    ├── system-experiments-shell/                  # Smart: tabs, Test Mode toggle, CMD state, snapshots, grid subscription, Apply/Cancel/Defaults wiring
+    ├── system-experiments-board/                  # Dumb layout: sticky CMD + scroll body + sticky footer (4 ng-content slots)
     ├── cmd-section/                       # Dumb: 2 multi-dropdowns (side, wheel) — also owns CMD_SIDE_OPTIONS / CMD_WHEEL_OPTIONS
     ├── board-footer/                      # Dumb: Defaults, Cancel, Apply buttons
     └── status-grid/                       # Dumb: dynamic grid with row labels, column hover, cell click
@@ -124,20 +124,20 @@ engine-sim/
 
 Each `boards/<board>/` folder is the **migration unit** — self-contained, depends only on `api/`, `shared/`, and the small `boards/build-*.ts` helpers. Form components live inside their board folder so the whole dashboard moves as one piece.
 
-**One global SCSS partial supports the feature** — `src/styles/_dropdowns.scss` (Material dropdown overrides) and `src/styles/_engine-sim-shell.scss` (Material tab body sizing). Both are scoped under unique component class names so they can never leak. Loaded once from `styles.scss`.
+**One global SCSS partial supports the feature** — `src/styles/_dropdowns.scss` (Material dropdown overrides) and `src/styles/_system-experiments-shell.scss` (Material tab body sizing). Both are scoped under unique component class names so they can never leak. Loaded once from `styles.scss`.
 
 ---
 
 ## 4. Data Model
 
-### Wire format (in `engine-sim.api-contract.ts`)
+### Wire format (in `system-experiments.api-contract.ts`)
 
 The types below cross the network boundary — they are dictated by the backend. Quarantined from the internal view models so a backend change is a one-file question.
 
 ```typescript
 type EntityId = 'left' | 'right';
 
-interface EngineSimResponse {
+interface SystemExperimentsResponse {
   // Always 2 entities. entities[0] = left side, entities[1] = right side.
   entities: [EntityData, EntityData];
 }
@@ -194,7 +194,7 @@ type GdlFieldKey =
 
 **Why named props over `Record<string, …>`:** every grid cell traces back to a field key the UI knows about. Naming the props lets the compiler catch wire-format drift (a typo'd backend field shows up as a TS error in `grid-data.utils.ts`, not as a blank cell discovered in QA). It's the same "types over tests" stance from Phase 1.
 
-### Grid view models (in `engine-sim.models.ts`)
+### Grid view models (in `system-experiments.models.ts`)
 
 ```typescript
 interface GridColumn {
@@ -204,7 +204,7 @@ interface GridColumn {
 
 interface GridRow {
   fieldKey: string;                    // matches form field key
-  label: string;                      // from ENGINE_SIM_LABELS
+  label: string;                      // from SYSTEM_EXPERIMENTS_LABELS
   values: Record<string, string>;     // colId → abbreviation string
 }
 ```
@@ -234,7 +234,7 @@ export const PRIMARY_COMMANDS_MAIN_FIELDS: FieldConfig[] = [
 
 `FieldConfig` carries no "appears in grid" metadata. Form-only fields (Primary's "Cmd to GS" sub-section) are kept in their own array (`PRIMARY_COMMANDS_CMD_TO_GS_FIELDS`) and just not passed to the grid row builder. The form renders `*_ALL_FIELDS`; the grid renders the subset with wire data behind it.
 
-### Label map (in `engine-sim.labels.ts`)
+### Label map (in `system-experiments.labels.ts`)
 
 Flat `const` object. Every user-visible string — field names, option labels, button text, section headers, grid headers — is keyed here. Templates reference `LABELS.fieldKey`, never a raw string.
 
@@ -242,7 +242,7 @@ Flat `const` object. Every user-visible string — field names, option labels, b
 
 ## 5. Component Design
 
-### `EngineSimShellComponent` (Smart)
+### `SystemExperimentsShellComponent` (Smart)
 
 **Owns:**
 - `testMode: boolean` (toggle)
@@ -250,18 +250,18 @@ Flat `const` object. Every user-visible string — field names, option labels, b
 - `cmdSaved: CmdSelection` (persisted on Apply)
 - `primaryFormGroup` and `secondaryFormGroup` (created here, passed down)
 - `primarySnapshot` / `secondarySnapshot` (for Cancel — last saved state)
-- `gridData$: Observable<EngineSimResponse>` via `EngineSimDataService`
+- `gridData$: Observable<SystemExperimentsResponse>` via `SystemExperimentsDataService`
 - `primaryRows` / `secondaryRows` — precomputed from `gridData$` using pure util functions
 
 **Key logic:**
-- On Apply (from either tab): merge CMD + form values into payload, call `EngineSimApiService`, snapshot form state on success
+- On Apply (from either tab): merge CMD + form values into payload, call `SystemExperimentsApiService`, snapshot form state on success
 - On Cancel: `formGroup.reset(snapshot)`
 - On Defaults: `formGroup.reset(DEFAULTS)`
 - On tab change: no special action for CMD (it persists). Form state is lost if not applied (per spec — the `FormGroup` is per-tab but lives at shell level, so Angular handles this naturally via the tab component lifecycle)
 
-**Template:** `mat-tab-group` with two `mat-tab`, each containing `<engine-sim-board>`. Test/live toggle is `mat-slide-toggle` above tabs.
+**Template:** `mat-tab-group` with two `mat-tab`, each containing `<system-experiments-board>`. Test/live toggle is `mat-slide-toggle` above tabs.
 
-### `EngineSimBoardComponent` (Dumb Layout)
+### `SystemExperimentsBoardComponent` (Dumb Layout)
 
 **Purpose:** Provides the sticky CMD (top) + scrollable form+grid (middle) + sticky footer (bottom) structure using flexbox.
 
@@ -328,10 +328,10 @@ Same pattern, 14 fields from `SECONDARY_COMMANDS_ALL_FIELDS` (composed of `SECON
 
 ## 6. Services
 
-### `EngineSimDataService`
+### `SystemExperimentsDataService`
 
 ```typescript
-connect(): Observable<EngineSimResponse>
+connect(): Observable<SystemExperimentsResponse>
 ```
 
 - Calls GET once on subscribe (seed data)
@@ -339,14 +339,14 @@ connect(): Observable<EngineSimResponse>
 - WebSocket wrapped in Observable with `share()` and `retry({ delay: 3000 })` for reconnect
 - Single connection shared across both tabs (called once in shell `ngOnInit`)
 
-### `EngineSimApiService`
+### `SystemExperimentsApiService`
 
 ```typescript
 postPrimary(payload: BoardPostPayload): Observable<void>
 postSecondary(payload: BoardPostPayload): Observable<void>
 ```
 
-- Two POST endpoints (URLs from `ENGINE_SIM_API_CONFIG.primaryPostUrl` / `.secondaryPostUrl`), injected via `ENGINE_SIM_API_CONFIG` token for migration portability
+- Two POST endpoints (URLs from `SYSTEM_EXPERIMENTS_API_CONFIG.primaryPostUrl` / `.secondaryPostUrl`), injected via `SYSTEM_EXPERIMENTS_API_CONFIG` token for migration portability
 
 ---
 
@@ -355,7 +355,7 @@ postSecondary(payload: BoardPostPayload): Observable<void>
 Two-step pipeline. Pure functions, no service:
 
 ```typescript
-function normalizeResponse(response: EngineSimResponse): FlatGrid;
+function normalizeResponse(response: SystemExperimentsResponse): FlatGrid;
 function buildRows(fields: FieldConfig[], grid: FlatGrid, columns: GridColumn[]): GridRow[];
 ```
 
@@ -364,7 +364,7 @@ function buildRows(fields: FieldConfig[], grid: FlatGrid, columns: GridColumn[])
 
 Cell rendering rule (`abbrFor`): missing/empty → `''`; known value → its `abbr`; unknown but present → first 3 chars of the raw value (so QA can spot wire drift instead of staring at silent empty cells).
 
-Called in `EngineSimShellComponent` whenever `gridData$` emits — once per frame, then both boards' rows derived from the same `FlatGrid`.
+Called in `SystemExperimentsShellComponent` whenever `gridData$` emits — once per frame, then both boards' rows derived from the same `FlatGrid`.
 
 ---
 
@@ -372,13 +372,13 @@ Called in `EngineSimShellComponent` whenever `gridData$` emits — once per fram
 
 | State | Where | Mechanism |
 |-------|-------|-----------|
-| CMD draft | `EngineSimShellComponent.cmdDraft` | Local property, updated on `CmdSectionComponent` output |
-| CMD saved | `EngineSimShellComponent.cmdSaved` | Updated on Apply |
+| CMD draft | `SystemExperimentsShellComponent.cmdDraft` | Local property, updated on `CmdSectionComponent` output |
+| CMD saved | `SystemExperimentsShellComponent.cmdSaved` | Updated on Apply |
 | Form state (Primary) | `FormGroup` created in shell | Passed to `PrimaryCommandsFormComponent` |
 | Form state (Secondary) | `FormGroup` created in shell | Passed to `SecondaryCommandsFormComponent` |
 | Form snapshots | Plain objects | For Cancel restore |
 | Test/Live mode | Shell boolean | Passed as `disabled` input |
-| Grid data | `async` pipe on `gridData$` | From `EngineSimDataService` |
+| Grid data | `async` pipe on `gridData$` | From `SystemExperimentsDataService` |
 | Grid rows | Precomputed in shell | From `gridData$` emissions |
 
 No shared services for state. No BehaviorSubjects. All state is component-local in the shell.
@@ -388,7 +388,7 @@ No shared services for state. No BehaviorSubjects. All state is component-local 
 ## 9. Styling Strategy
 
 - Reuse existing `_dropdowns.scss` global overrides (same dropdown look)
-- Add new `_engine-sim.scss` partial for dashboard-specific styles (imported in `styles.scss`)
+- Add new `_system-experiments.scss` partial for dashboard-specific styles (imported in `styles.scss`)
 - Grid uses CSS Grid (not `<table>`) with dynamic `grid-template-columns`
 - Sticky layout via flexbox (matching the angular-engineering skill pattern)
 - Container: parent provides `1150px x 550px`; internals use `%` and `fr` for resize
@@ -416,16 +416,16 @@ Test-after, not strict TDD — the spec is stable enough that tests document wha
 
 Foundation layer — no components, no services. Just TypeScript.
 
-- `shared/engine-sim.api-contract.ts` — wire-format types (response, payload, config) with named props per board (`PrimaryStandardFields`, `SecondaryAdditionalFields`, `ACommandsData`, `GdlFieldKey`)
-- `shared/engine-sim.models.ts` — internal view models (CmdSelection, GridColumn, GridRow, FieldConfig)
-- `shared/engine-sim.labels.ts` — centralized translation map
-- `shared/engine-sim.tokens.ts` — `ENGINE_SIM_API_CONFIG` injection token
+- `shared/system-experiments.api-contract.ts` — wire-format types (response, payload, config) with named props per board (`PrimaryStandardFields`, `SecondaryAdditionalFields`, `ACommandsData`, `GdlFieldKey`)
+- `shared/system-experiments.models.ts` — internal view models (CmdSelection, GridColumn, GridRow, FieldConfig)
+- `shared/system-experiments.labels.ts` — centralized translation map
+- `shared/system-experiments.tokens.ts` — `SYSTEM_EXPERIMENTS_API_CONFIG` injection token
 - `shared/option-values.ts` — canonical `as const` value maps + derived literal-union types
 - `shared/cmd-options.ts` — `CMD_SIDE_OPTIONS`, `CMD_WHEEL_OPTIONS`
 - `shared/build-defaults.util.ts` — `buildDefaultValues()` helper
 - `boards/primary-commands/{options,fields,columns}.ts` — Primary's 14 fields (11 main + 3 "Cmd to GS")
 - `boards/secondary-commands/{options,fields,columns}.ts` — Secondary's 14 fields (3 `additionalFields` + 5 `aCommands` + 6 `gdl`)
-- `engine-sim.module.ts` — empty shell module
+- `system-experiments.module.ts` — empty shell module
 
 **Acceptance criteria:** `ng build` passes. All types/configs importable.
 
@@ -442,10 +442,10 @@ Foundation layer — no components, no services. Just TypeScript.
 
 - `shared/column-ids.ts` — `COL_IDS` const + `GridColId` literal-union (single source for column ids)
 - `utils/grid-data.utils.ts` — two-step pipeline: `normalizeResponse` (wire-aware) + generic `buildRows` (board-agnostic)
-- `services/engine-sim-api.service.ts` — `postPrimary` / `postSecondary`
-- `services/engine-sim-data.service.ts` — `connect()`: GET seed → WS stream, auto-reconnect, multicast
-- `shared/engine-sim.tokens.ts` — added `ENGINE_SIM_WS_FACTORY` token + `EngineSimWebSocketFactory` type so tests can swap in a fake socket
-- `engine-sim.module.ts` — provides both services + the default `webSocket()`-backed factory; imports `HttpClientModule`
+- `services/system-experiments-api.service.ts` — `postPrimary` / `postSecondary`
+- `services/system-experiments-data.service.ts` — `connect()`: GET seed → WS stream, auto-reconnect, multicast
+- `shared/system-experiments.tokens.ts` — added `SYSTEM_EXPERIMENTS_WS_FACTORY` token + `SystemExperimentsWebSocketFactory` type so tests can swap in a fake socket
+- `system-experiments.module.ts` — provides both services + the default `webSocket()`-backed factory; imports `HttpClientModule`
 
 **Acceptance criteria:** Services injectable. `normalizeResponse` + `buildRows` produce correct `GridRow[]` from mock response data. `ng test` passes (49/49 green).
 
@@ -453,16 +453,16 @@ Foundation layer — no components, no services. Just TypeScript.
 - `utils/grid-data.utils.spec.ts` (11)
   - `normalizeResponse` (5): routes `left.mCommands[i]` (standard + additional merged) → `left{i+1}`; same for right; `left.aCommands` → `tll`, `right.aCommands` → `tlr`; left entity flat GDL props → `gdl` (right entity duplicate ignored); `entityId` / `mCommands` / `aCommands` never leak into the gdl cell.
   - `buildRows` (6): emits one row per field in given order; per-field abbreviation lookup per column; missing wire values render empty; **unknown values fall back to first 3 chars of the raw value** (so wire drift is visible to QA, not silently swallowed); only writes to columns it is given (Primary 8 vs Secondary 11); fields not passed in are absent from the rows (form-only fields are filtered by *not* passing them, no metadata flag).
-- `services/engine-sim-api.service.spec.ts` (3) — `postPrimary` / `postSecondary` POST to the URLs from the injected `ENGINE_SIM_API_CONFIG` token with the exact `BoardPostPayload` body; no network call until subscribe.
-- `services/engine-sim-data.service.spec.ts` (4) — emits GET seed first, then merges WS frames; opens the WS once per stream against `wsUrl`; reconnects after WS error with a 3 s delay (verified via `fakeAsync` + `tick`); multiple subscribers share one upstream connection.
+- `services/system-experiments-api.service.spec.ts` (3) — `postPrimary` / `postSecondary` POST to the URLs from the injected `SYSTEM_EXPERIMENTS_API_CONFIG` token with the exact `BoardPostPayload` body; no network call until subscribe.
+- `services/system-experiments-data.service.spec.ts` (4) — emits GET seed first, then merges WS frames; opens the WS once per stream against `wsUrl`; reconnects after WS error with a 3 s delay (verified via `fakeAsync` + `tick`); multiple subscribers share one upstream connection.
 
 **Design notes:**
-- `EngineSimDataService` uses `concat(get$, ws$)` (not `merge`) so a stale WS frame never beats the GET seed onto the screen; `defer` + `retry({ delay })` makes the WS factory re-invoke on every reconnect; `shareReplay({ bufferSize: 1, refCount: true })` keeps the connection single while letting late subscribers see the latest frame.
-- The 3 s reconnect delay is a private static constant; if it ever needs to be configurable, lift it to `EngineSimApiConfig`.
+- `SystemExperimentsDataService` uses `concat(get$, ws$)` (not `merge`) so a stale WS frame never beats the GET seed onto the screen; `defer` + `retry({ delay })` makes the WS factory re-invoke on every reconnect; `shareReplay({ bufferSize: 1, refCount: true })` keeps the connection single while letting late subscribers see the latest frame.
+- The 3 s reconnect delay is a private static constant; if it ever needs to be configurable, lift it to `SystemExperimentsApiConfig`.
 - **Grid pipeline split**: `normalizeResponse` is the only place that knows the wire shape. `buildRows` is fully generic — same function for both boards, no per-board variants, no `gridColGroup` routing flag on `FieldConfig`. To exclude a field from the grid (e.g. Primary's "Cmd to GS"), the shell just doesn't pass it to `buildRows`. This shrank the utility from ~120 LoC of board-specific helpers to ~70 LoC of one wire mapper + one row builder, and removed `GridColGroup` from the type system.
 - `abbrFor` falls back to `value.slice(0, 3)` when the wire value isn't a known option — surfaces backend drift in the UI instead of rendering blank cells QA can't distinguish from "no data".
 - `column-ids.ts` is the single source for column ids — both `*.columns.ts` files and `normalizeResponse` import from it, so renaming a column id is a one-line change.
-- `ENGINE_SIM_API_CONFIG` is intentionally NOT provided by `EngineSimModule` — the host project supplies its own URLs at module-setup time, keeping the feature URL-agnostic for migration.
+- `SYSTEM_EXPERIMENTS_API_CONFIG` is intentionally NOT provided by `SystemExperimentsModule` — the host project supplies its own URLs at module-setup time, keeping the feature URL-agnostic for migration.
 
 ### Phase 3: Dumb Components — Grid + Footer + CMD (S-M) — ✅ Complete
 
@@ -472,7 +472,7 @@ Build the three reusable dumb components that have no board-specific knowledge:
 - `BoardFooterComponent` — 3 buttons with outputs and test IDs
 - `CmdSectionComponent` — 2 multi-dropdowns with shared selection model
 
-All three are OnPush, declared and exported by `EngineSimModule`, and live under `features/engine-sim/components/<name>/`.
+All three are OnPush, declared and exported by `SystemExperimentsModule`, and live under `features/system-experiments/components/<name>/`.
 
 **Acceptance criteria:** Each component renders in isolation with mock inputs. Test IDs present. Column hover works. `ng test` passes.
 
@@ -488,20 +488,20 @@ All three are OnPush, declared and exported by `EngineSimModule`, and live under
 - No `markForCheck()` anywhere — `(click)` and `(mouseenter)`/`(mouseleave)` already trigger CD for OnPush components since they fire inside the Angular zone.
 
 **Follow-up cleanup (post-Phase 3 review):**
-- Centralized colors and layout-impacting sizing into `src/app/features/engine-sim/styles/_engine-sim-tokens.scss`. All three component SCSS files import it via `@import 'engine-sim-tokens';` — the flat path is resolved through `stylePreprocessorOptions.includePaths` in `angular.json` (added to both `build` and `test` targets). When migrating the feature, the host project's `angular.json` needs the same `includePaths` entry pointing at `src/app/features/engine-sim/styles`.
-- Sizing tokens are tuned for the 1150×550 shell envelope: `$grid-label-col-min: 90px`, `$grid-data-col-min: 44px` (down from 120/56). Math: 11 cols × 44 + 90 = 574px, fits a ~640px right pane without horizontal scroll. Retune in `_engine-sim-tokens.scss` if the host gives us a different envelope.
+- Centralized colors and layout-impacting sizing into `src/app/features/system-experiments/styles/_system-experiments-tokens.scss`. All three component SCSS files import it via `@import 'system-experiments-tokens';` — the flat path is resolved through `stylePreprocessorOptions.includePaths` in `angular.json` (added to both `build` and `test` targets). When migrating the feature, the host project's `angular.json` needs the same `includePaths` entry pointing at `src/app/features/system-experiments/styles`.
+- Sizing tokens are tuned for the 1150×550 shell envelope: `$grid-label-col-min: 90px`, `$grid-data-col-min: 44px` (down from 120/56). Math: 11 cols × 44 + 90 = 574px, fits a ~640px right pane without horizontal scroll. Retune in `_system-experiments-tokens.scss` if the host gives us a different envelope.
 - `StatusGridComponent` re-exports the SCSS sizing tokens as CSS custom properties on `:host` (`--grid-label-col-min`, `--grid-data-col-min`). The TS-built `gridTemplateColumns` string references them via `var(--…)` so SCSS stays the single source of truth — changing the sizing budget is a one-line edit in the tokens partial, no TS change required. **Caveat:** if a future edit moves the `--grid-…` declarations off `:host`, the TS template silently falls back to CSS Grid defaults. A pixel-width regression test would catch this; deferred until needed.
 - `readonly` audit applied: `@Output()` emitters, injected services (`private readonly`), instance constants (`labels`, options), and `trackBy` arrow functions are all `readonly`. `@Input()` properties intentionally are **not** marked readonly — Angular rebinds them, so the modifier would mislead. Mutable view state (`hoveredColId`, `selectedCellId`, `gridTemplateColumns`) is not readonly because it's reassigned at runtime.
 
 ### Phase 4: Board Layout Component (S) — ✅ Complete
 
-- `EngineSimBoardComponent` — sticky header/footer layout with `ng-content` slots
+- `SystemExperimentsBoardComponent` — sticky header/footer layout with `ng-content` slots
 - SCSS for the two-column (form + grid) split, sticky behavior, scroll
 
 **Acceptance criteria:** Content projection works. Sticky header/footer verified. Resize shrinks proportionally.
 
 **Tests delivered (6 specs, all green):**
-- `engine-sim-board.component.spec.ts` — four structural slot containers render (`__cmd`, `__form`, `__grid`, `__footer`); each marker (`[boardCmd]`, `[boardForm]`, `[boardGrid]`, `[boardFooter]`) projects into the matching container; form + grid live inside the scrollable body container while cmd + footer do not (containment assertion — couples the spec to the layout contract, not specific CSS values)
+- `system-experiments-board.component.spec.ts` — four structural slot containers render (`__cmd`, `__form`, `__grid`, `__footer`); each marker (`[boardCmd]`, `[boardForm]`, `[boardGrid]`, `[boardFooter]`) projects into the matching container; form + grid live inside the scrollable body container while cmd + footer do not (containment assertion — couples the spec to the layout contract, not specific CSS values)
 
 **Notes from Phase 4 implementation:**
 - Zero inputs, zero outputs, zero logic. The board is pure layout: 4 `ng-content` slots wrapped in flex/grid containers. The shell wires data and events directly to the projected children — `[disabled]` flows from shell to `<primary-commands-form [disabled]="…" boardForm>`, not through the board. Spec table mention of "Receives `disabled` from test/live mode" describes data flow, not a literal `@Input` on the board.
@@ -530,18 +530,18 @@ Both consume `FormGroup` + `disabled` as inputs. All dropdowns use `formControlN
 - **Form components own enable/disable on the FormGroup** via `ngOnChanges` watching either `disabled` or `formGroup` input changes. Uses `{ emitEvent: false }` because toggling test/live mode is a UI concern, not a value change — downstream `valueChanges` subscribers should not see a phantom event when the user flips the mode toggle.
 - **Each row uses CSS Grid (`label-col + minmax(0, 1fr) control-col`)** so the control side can shrink with the form pane on narrow shells. `min-width: 0` on the control wrapper is the must-have — without it, `mat-form-field`'s intrinsic width pushes past the pane and breaks the layout.
 - **Primary's "Cmd to GS" sub-header** uses a boxed pill style that mirrors the cmd-section title — both are bordered with `currentColor` + `$control-radius` from the shared tokens partial, so they read as one visual family.
-- **`disabled` input intentionally lives on the form component, not on the board layout.** The shell wires the `[disabled]` directly: `<engine-sim-primary-commands-form [disabled]="!testMode" boardForm>`. The board (Phase 4) is pure layout and doesn't pass anything through.
+- **`disabled` input intentionally lives on the form component, not on the board layout.** The shell wires the `[disabled]` directly: `<system-experiments-primary-commands-form [disabled]="!testMode" boardForm>`. The board (Phase 4) is pure layout and doesn't pass anything through.
 - **Demo page wired with both standalone form previews + a real Primary form inside the full board layout** (replacing the Phase 4 form stub). Each standalone preview has a "Toggle disabled" button so the test/live mode behavior is observable end-to-end.
 
 ### Phase 6: Shell Component — Integration (M-L) — ✅ Complete
 
-- `EngineSimShellComponent` — smart orchestrator: tabs, Test Mode toggle, CMD state, both form groups, snapshots, grid data subscription, Apply/Cancel/Defaults wiring
-- `MatTabsModule` + `MatSlideToggleModule` added to `EngineSimModule`; shell declared and exported
+- `SystemExperimentsShellComponent` — smart orchestrator: tabs, Test Mode toggle, CMD state, both form groups, snapshots, grid data subscription, Apply/Cancel/Defaults wiring
+- `MatTabsModule` + `MatSlideToggleModule` added to `SystemExperimentsModule`; shell declared and exported
 
 **Acceptance criteria:** ✅ `ng test` 96/96 green · `ng build` clean (no warnings, no errors) · full demo dashboard renders with mock data + console-logged Apply.
 
 **Tests delivered (12 specs, all green):**
-- `engine-sim-shell.component.spec.ts` — initial state (testMode on, forms enabled, CMD empty); both form groups seeded with their canonical defaults; Apply on Primary calls `postPrimary` with `{ sides, wheels, fields }` (full form snapshot, not just edits); Apply on Secondary calls `postSecondary`, not `postPrimary`; Apply commits both the form snapshot and `cmdDraft → cmdSaved` on success (verified via subsequent Cancel reverting to the just-applied state); Cancel restores form to snapshot; Defaults resets to `buildPrimaryCommandsDefaults()` independent of snapshot; tab switch preserves `cmdSaved` and `cmdDraft` (CMD is shared); tab switch discards unapplied form edits on the leaving tab; test-mode-off disables both form groups + CMD; test-mode-on re-enables them. Uses TestBed-provided `EngineSimApiService` spy and a stubbed `EngineSimDataService.connect()` that returns a manual `Subject` so frame timing is deterministic.
+- `system-experiments-shell.component.spec.ts` — initial state (testMode on, forms enabled, CMD empty); both form groups seeded with their canonical defaults; Apply on Primary calls `postPrimary` with `{ sides, wheels, fields }` (full form snapshot, not just edits); Apply on Secondary calls `postSecondary`, not `postPrimary`; Apply commits both the form snapshot and `cmdDraft → cmdSaved` on success (verified via subsequent Cancel reverting to the just-applied state); Cancel restores form to snapshot; Defaults resets to `buildPrimaryCommandsDefaults()` independent of snapshot; tab switch preserves `cmdSaved` and `cmdDraft` (CMD is shared); tab switch discards unapplied form edits on the leaving tab; test-mode-off disables both form groups + CMD; test-mode-on re-enables them. Uses TestBed-provided `SystemExperimentsApiService` spy and a stubbed `SystemExperimentsDataService.connect()` that returns a manual `Subject` so frame timing is deterministic.
 
 **Notes from Phase 6 implementation:**
 - **CMD draft and saved are separate properties on the shell.** Apply commits `cmdDraft → cmdSaved` *after* the POST resolves. Cancel does NOT revert `cmdDraft` — CMD is shared across tabs, so per-tab Cancel only owns the tab's form. To revert CMD, the user re-selects (or future iteration can add a CMD-specific revert affordance if the spec asks for it).
@@ -550,8 +550,8 @@ Both consume `FormGroup` + `disabled` as inputs. All dropdowns use `formControlN
 - **Apply payload uses `formGroup.getRawValue()`.** That already merges per-field defaults with edits — `getRawValue()` returns every control's current value regardless of disabled state. No explicit `{ ...defaults, ...edits }` merge in the shell.
 - **Grid stream subscribed once in `ngOnInit`, normalized + built once per emission, with both boards' rows derived from the same `FlatGrid`.** `takeUntil(destroy$)` for unsubscribe; `cdr.markForCheck()` because OnPush + async assignment.
 - **Test Mode disables CMD + both forms; the grid stays alive.** Footer buttons are bound to `[disabled]="!testMode"` (so Apply/Cancel/Defaults can't fire while controls are read-only). The Test Mode toggle itself stays interactive.
-- **Mat Tabs styling needs to fill height** (so the projected `<engine-sim-board>` can run its own flex layout against a real height). Material's `.mat-tab-body-wrapper` sits behind the shell's encapsulation boundary, and the project rule is no `::ng-deep` — handled by adding `src/styles/_engine-sim-shell.scss` (a tiny global partial scoped under `.engine-sim-shell`, same pattern as `_dropdowns.scss`). Imported once in `styles.scss`.
-- **Demo wiring (`src/app/demo/engine-sim-demo.providers.ts`):** stubs `EngineSimDataService` and `EngineSimApiService` for the playground so the shell renders a canned `EngineSimResponse` and Apply logs to the console instead of POSTing. `DemoPageModule` providers override `EngineSimModule`'s real services via Angular's last-provider-wins rule for eager modules. The host project for the migration target is expected to provide its own `ENGINE_SIM_API_CONFIG` and use the real services.
+- **Mat Tabs styling needs to fill height** (so the projected `<system-experiments-board>` can run its own flex layout against a real height). Material's `.mat-tab-body-wrapper` sits behind the shell's encapsulation boundary, and the project rule is no `::ng-deep` — handled by adding `src/styles/_system-experiments-shell.scss` (a tiny global partial scoped under `.system-experiments-shell`, same pattern as `_dropdowns.scss`). Imported once in `styles.scss`.
+- **Demo wiring (`src/app/demo/system-experiments-demo.providers.ts`):** stubs `SystemExperimentsDataService` and `SystemExperimentsApiService` for the playground so the shell renders a canned `SystemExperimentsResponse` and Apply logs to the console instead of POSTing. `DemoPageModule` providers override `SystemExperimentsModule`'s real services via Angular's last-provider-wins rule for eager modules. The host project for the migration target is expected to provide its own `SYSTEM_EXPERIMENTS_API_CONFIG` and use the real services.
 - **Build budgets bumped** in `angular.json` (`initial: 500kb → 600kb`, `anyComponentStyle: 2kb → 3kb`) to absorb `MatTabsModule` + `MatSlideToggleModule` and the slightly larger demo SCSS. Both are compatible with the migration target — bundle still well under the 1 MB error ceiling.
 
 ### Phase 7: Polish and Verify (S)
@@ -566,7 +566,7 @@ Both consume `FormGroup` + `disabled` as inputs. All dropdowns use `formControlN
 
 ### Phase 8: Shell Decomposition — Per-Board Controllers (M) — pending
 
-`EngineSimShellComponent` accreted multiple responsibilities by Phase 6:
+`SystemExperimentsShellComponent` accreted multiple responsibilities by Phase 6:
 
 | Concern | Owns | Approx LoC |
 |---------|------|----|
@@ -682,7 +682,7 @@ These adjustments landed after the initial Phase 5 build, in response to demo-pa
 
 ### 14.2 Board layout — CMD inside the left pane
 
-**Where**: `src/app/features/engine-sim/components/engine-sim-board/engine-sim-board.component.{html,scss,spec.ts}`.
+**Where**: `src/app/features/system-experiments/components/system-experiments-board/system-experiments-board.component.{html,scss,spec.ts}`.
 
 **Before**: CMD was a top row spanning the full board width (CMD → body → footer, vertical stack).
 

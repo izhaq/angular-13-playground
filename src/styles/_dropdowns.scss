@@ -151,7 +151,7 @@ $row-selected: rgba(255, 255, 255, 0.14);
 
 // Opt-in stretch utility: any container marked with `.dropdown-stretch`
 // makes its descendant dropdowns fill the available width instead of
-// shrinking to content. Used by engine-sim form rows so every row's
+// shrinking to content. Used by system-experiments form rows so every row's
 // control reads the same width regardless of selected text length.
 //
 // Lives in the global dropdown overrides file (rather than in a component

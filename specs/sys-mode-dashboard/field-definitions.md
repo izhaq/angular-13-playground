@@ -1,4 +1,4 @@
-# Engine Simulator Dashboard — Field Definitions
+# System Experiments Dashboard — Field Definitions
 
 Referenced from [spec.md](./spec.md). This document defines every field per board, its dropdown type, options, default value, and grid mapping.
 

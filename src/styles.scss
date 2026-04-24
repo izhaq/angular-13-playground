@@ -1,34 +1,34 @@
 @use '@angular/material' as mat;
 
-// Engine Sim is theme-agnostic — it ships only structural CSS and reads
+// System Experiments is theme-agnostic — it ships only structural CSS and reads
 // colors from its component-level palettes. The PLAYGROUND (this app) is
 // the host, so it supplies the Material palette + per-component themes
 // the dashboard needs (tabs indicator, slide-toggle thumb, button ripples).
 //
 // Migration: the host project will replace this with its own theme file.
-// Engine Sim picks up whatever the host registers.
+// System Experiments picks up whatever the host registers.
 @include mat.core();
 
-// Custom palette tuned to the engine-sim navy/accent so the Material
+// Custom palette tuned to the system-experiments navy/accent so the Material
 // primitives (tab indicator, slide-toggle accent, ripple) sit naturally
 // against the dashboard's dark surface.
-$engine-sim-primary: mat.define-palette(mat.$blue-palette, 500, 300, 700);
-$engine-sim-accent:  mat.define-palette(mat.$blue-palette, 400, 200, 600);
-$engine-sim-warn:    mat.define-palette(mat.$red-palette);
+$system-experiments-primary: mat.define-palette(mat.$blue-palette, 500, 300, 700);
+$system-experiments-accent:  mat.define-palette(mat.$blue-palette, 400, 200, 600);
+$system-experiments-warn:    mat.define-palette(mat.$red-palette);
 
-$engine-sim-theme: mat.define-light-theme((
+$system-experiments-theme: mat.define-light-theme((
   color: (
-    primary: $engine-sim-primary,
-    accent:  $engine-sim-accent,
-    warn:    $engine-sim-warn,
+    primary: $system-experiments-primary,
+    accent:  $system-experiments-accent,
+    warn:    $system-experiments-warn,
   ),
 ));
 
 // Theme only the components we actually mount — keeps the bundle lean
 // vs `mat.all-component-themes(...)` (which costs 100+ kB).
-@include mat.tabs-theme($engine-sim-theme);
-@include mat.slide-toggle-theme($engine-sim-theme);
-@include mat.button-theme($engine-sim-theme);
+@include mat.tabs-theme($system-experiments-theme);
+@include mat.slide-toggle-theme($system-experiments-theme);
+@include mat.button-theme($system-experiments-theme);
 
 @import './styles/dropdowns';
 @import './styles/app-dashboard-tabs';
@@ -40,7 +40,7 @@ body {
 
 body {
   margin: 0;
-  // Match the engine-sim host page — the playground is one screen and
+  // Match the system-experiments host page — the playground is one screen and
   // both routes look better against the same dark surface.
   background: #1a1a1a;
 }

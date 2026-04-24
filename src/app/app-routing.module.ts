@@ -6,25 +6,25 @@ import { DemoPageComponent } from './demo/demo-page.component';
 /**
  * Top-level routes for the playground.
  *
- *   /              → redirects to /engine-sim (the headline screen)
+ *   /              → redirects to /system-experiments (the headline screen)
  *   /demo          → component playground (DemoPageComponent, eager)
- *   /engine-sim    → SYS Mode dashboard host page (lazy-loaded)
+ *   /system-experiments    → SYS Mode dashboard host page (lazy-loaded)
  *
- * Engine Sim is lazy-loaded so its mock-backend providers and the page
+ * System Experiments is lazy-loaded so its mock-backend providers and the page
  * module's RouterModule.forChild route scope to the page injector — no
  * leakage into the demo page or the root app, and mirrors what a real
  * host project would do (lazy feature route + per-page providers).
  */
 const routes: Routes = [
-  { path: '', redirectTo: '/engine-sim', pathMatch: 'full' },
+  { path: '', redirectTo: '/system-experiments', pathMatch: 'full' },
   { path: 'demo', component: DemoPageComponent },
   {
-    path: 'engine-sim',
+    path: 'system-experiments',
     loadChildren: () =>
-      import('./pages/engine-sim/engine-sim-page.module')
-        .then((m) => m.EngineSimPageModule),
+      import('./pages/system-experiments/system-experiments-page.module')
+        .then((m) => m.SystemExperimentsPageModule),
   },
-  { path: '**', redirectTo: '/engine-sim' },
+  { path: '**', redirectTo: '/system-experiments' },
 ];
 
 @NgModule({

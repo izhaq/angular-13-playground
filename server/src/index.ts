@@ -5,7 +5,7 @@ import { WebSocket, WebSocketServer } from 'ws';
 import path from 'path';
 import { DashboardState, FieldUpdate, RareDashboardState } from './models';
 import { processConfig, processRareConfig } from './simulation-engine';
-import { registerEngineSimRoutes } from './engine-sim/routes';
+import { registerSystemExperimentsRoutes } from './system-experiments/routes';
 
 const PORT = Number(process.env['PORT'] || 3000);
 const WS_UPDATE_DELAY_MS = Number(process.env['WS_UPDATE_DELAY_MS'] || 300);
@@ -19,7 +19,7 @@ const server = http.createServer(app);
 // `noServer` mode (was: `{ server, path: '/api/ws' }`) so that multiple WS
 // endpoints on the same HTTP server can coexist. A path-restricted WSS
 // aborts non-matching upgrades with 400 (per the `ws` library), which
-// would shoot down our engine-sim socket. The dispatcher below routes
+// would shoot down our system-experiments socket. The dispatcher below routes
 // upgrades by path; behavior on `/api/ws` is identical to before.
 const wss = new WebSocketServer({ noServer: true });
 
@@ -34,8 +34,8 @@ server.on('upgrade', (request, socket, head) => {
   if (pathname === '/api/ws') {
     wss.handleUpgrade(request, socket, head, (ws) => wss.emit('connection', ws, request));
   }
-  // Other paths (e.g. `/api/engine-sim/ws`) are handled by their own
-  // upgrade listeners registered elsewhere — see `registerEngineSimRoutes`.
+  // Other paths (e.g. `/api/system-experiments/ws`) are handled by their own
+  // upgrade listeners registered elsewhere — see `registerSystemExperimentsRoutes`.
 });
 
 const clients = new Set<WebSocket>();
@@ -140,9 +140,9 @@ app.get('/api/rare-config', (_req, res) => {
   }
 });
 
-// Engine Sim feature endpoints (POST /primary, POST /secondary, GET /get,
-// WS /api/engine-sim/ws). Self-contained — does not touch the routes above.
-registerEngineSimRoutes(app, server);
+// System Experiments feature endpoints (POST /primary, POST /secondary, GET /get,
+// WS /api/system-experiments/ws). Self-contained — does not touch the routes above.
+registerSystemExperimentsRoutes(app, server);
 
 app.get('/api/health', (_req, res) => {
   res.json({
@@ -160,20 +160,20 @@ app.get('*', (_req, res) => {
 
 server.listen(PORT, () => {
   console.log(`
-╔══════════════════════════════════════════════════╗
-║   Driving Simulation Server                      ║
-║──────────────────────────────────────────────────║
-║   HTTP:  http://localhost:${PORT}                    ║
-║   WS:    ws://localhost:${PORT}/api/ws                ║
-║   API:   POST /api/config                        ║
-║   API:   GET  /api/config                        ║
-║   API:   POST /api/rare-config                   ║
-║   API:   GET  /api/rare-config                   ║
-║   API:   POST /api/engine-sim/primary            ║
-║   API:   POST /api/engine-sim/secondary          ║
-║   API:   GET  /api/engine-sim/get                ║
-║   API:   WS   /api/engine-sim/ws                 ║
-║   API:   GET  /api/health                        ║
-╚══════════════════════════════════════════════════╝
+╔══════════════════════════════════════════════════════════╗
+║   Driving Simulation Server                              ║
+║──────────────────────────────────────────────────────────║
+║   HTTP:  http://localhost:${PORT}                            ║
+║   WS:    ws://localhost:${PORT}/api/ws                        ║
+║   API:   POST /api/config                                ║
+║   API:   GET  /api/config                                ║
+║   API:   POST /api/rare-config                           ║
+║   API:   GET  /api/rare-config                           ║
+║   API:   POST /api/system-experiments/primary            ║
+║   API:   POST /api/system-experiments/secondary          ║
+║   API:   GET  /api/system-experiments/get                ║
+║   API:   WS   /api/system-experiments/ws                 ║
+║   API:   GET  /api/health                                ║
+╚══════════════════════════════════════════════════════════╝
   `);
 });

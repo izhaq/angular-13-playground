@@ -1,0 +1,20 @@
+<div class="board">
+  <div class="board__body">
+    <div class="board__left">
+      <div class="board__cmd">
+        <ng-content select="[boardCmd]"></ng-content>
+      </div>
+      <div class="board__form">
+        <ng-content select="[boardForm]"></ng-content>
+      </div>
+    </div>
+
+    <div class="board__grid">
+      <ng-content select="[boardGrid]"></ng-content>
+    </div>
+  </div>
+
+  <div class="board__footer">
+    <ng-content select="[boardFooter]"></ng-content>
+  </div>
+</div>

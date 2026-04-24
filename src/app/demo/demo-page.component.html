@@ -16,13 +16,13 @@
       <li><a href="#multi-standalone">AppMultiDropdown — standalone</a></li>
       <li><a href="#multi-reactive">AppMultiDropdown — Reactive Forms (formControl)</a></li>
       <li><a href="#test-id">data-test-id (native attribute)</a></li>
-      <li><a href="#engine-cmd">EngineSim — CmdSectionComponent</a></li>
-      <li><a href="#engine-footer">EngineSim — BoardFooterComponent</a></li>
-      <li><a href="#engine-grid-primary">EngineSim — StatusGridComponent (8 cols)</a></li>
-      <li><a href="#engine-grid-secondary">EngineSim — StatusGridComponent (11 cols)</a></li>
-      <li><a href="#engine-form-primary">EngineSim — PrimaryCommandsFormComponent</a></li>
-      <li><a href="#engine-form-secondary">EngineSim — SecondaryCommandsFormComponent</a></li>
-      <li><a href="#engine-board">EngineSim — EngineSimBoardComponent (full layout)</a></li>
+      <li><a href="#engine-cmd">SystemExperiments — CmdSectionComponent</a></li>
+      <li><a href="#engine-footer">SystemExperiments — BoardFooterComponent</a></li>
+      <li><a href="#engine-grid-primary">SystemExperiments — StatusGridComponent (8 cols)</a></li>
+      <li><a href="#engine-grid-secondary">SystemExperiments — StatusGridComponent (11 cols)</a></li>
+      <li><a href="#engine-form-primary">SystemExperiments — PrimaryCommandsFormComponent</a></li>
+      <li><a href="#engine-form-secondary">SystemExperiments — SecondaryCommandsFormComponent</a></li>
+      <li><a href="#engine-board">SystemExperiments — BoardComponent (full layout)</a></li>
     </ul>
   </nav>
 
@@ -162,19 +162,19 @@ form.status = {{ form.status }}</pre>
   </section>
 
   <section class="demo-section" id="engine-cmd">
-    <h2>EngineSim — CmdSectionComponent</h2>
+    <h2>SystemExperiments — CmdSectionComponent</h2>
     <p class="demo-section__desc">
       Sticky CMD header used at the top of each board. Two multi-select
       dropdowns (Side, Wheel) emitting a fresh <code>CmdSelection</code>
       whenever either changes. Stateless — the shell owns the selection.
     </p>
 
-    <div class="demo-section__example demo-section__example--engine-sim">
-      <engine-sim-cmd-section
+    <div class="demo-section__example demo-section__example--system-experiments">
+      <system-experiments-cmd-section
         [selection]="cmdSelection"
         [disabled]="cmdDisabled"
         (selectionChange)="onCmdSelectionChange($event)">
-      </engine-sim-cmd-section>
+      </system-experiments-cmd-section>
     </div>
 
     <div class="demo-section__actions">
@@ -187,7 +187,7 @@ form.status = {{ form.status }}</pre>
   </section>
 
   <section class="demo-section" id="engine-footer">
-    <h2>EngineSim — BoardFooterComponent</h2>
+    <h2>SystemExperiments — BoardFooterComponent</h2>
     <p class="demo-section__desc">
       Sticky board footer with Defaults / Cancel / Apply. Each button stamps
       a namespaced <code>data-test-id</code> via the <code>boardId</code>
@@ -195,14 +195,14 @@ form.status = {{ form.status }}</pre>
       tabs are mounted at the same time.
     </p>
 
-    <div class="demo-section__example demo-section__example--engine-sim">
-      <engine-sim-board-footer
+    <div class="demo-section__example demo-section__example--system-experiments">
+      <system-experiments-board-footer
         [boardId]="boardIds.primary"
         [disabled]="footerDisabled"
         (defaults)="onFooterEvent('defaults')"
         (cancel)="onFooterEvent('cancel')"
         (apply)="onFooterEvent('apply')">
-      </engine-sim-board-footer>
+      </system-experiments-board-footer>
     </div>
 
     <div class="demo-section__actions">
@@ -217,7 +217,7 @@ form.status = {{ form.status }}</pre>
   </section>
 
   <section class="demo-section" id="engine-grid-primary">
-    <h2>EngineSim — StatusGridComponent (8 cols)</h2>
+    <h2>SystemExperiments — StatusGridComponent (8 cols)</h2>
     <p class="demo-section__desc">
       Primary board's grid: row labels in the leading column, then 8 data
       columns (L1-L4 + R1-R4). Hover a cell for column highlight; click a
@@ -225,34 +225,34 @@ form.status = {{ form.status }}</pre>
       <code>grid-primary-{{ '{' }}fieldKey{{ '}' }}-{{ '{' }}colId{{ '}' }}</code>.
     </p>
 
-    <div class="demo-section__example demo-section__example--engine-sim demo-section__example--grid">
-      <engine-sim-status-grid
+    <div class="demo-section__example demo-section__example--system-experiments demo-section__example--grid">
+      <system-experiments-status-grid
         [boardId]="boardIds.primary"
         [columns]="primaryGridColumns"
         [rows]="primaryGridRows">
-      </engine-sim-status-grid>
+      </system-experiments-status-grid>
     </div>
   </section>
 
   <section class="demo-section" id="engine-grid-secondary">
-    <h2>EngineSim — StatusGridComponent (11 cols)</h2>
+    <h2>SystemExperiments — StatusGridComponent (11 cols)</h2>
     <p class="demo-section__desc">
       Secondary board's grid: same component, just 11 columns this time
       (L1-L4 + R1-R4 + TLL + TLR + GDL). Sparse rows are fine — cells with
       no value render empty.
     </p>
 
-    <div class="demo-section__example demo-section__example--engine-sim demo-section__example--grid">
-      <engine-sim-status-grid
+    <div class="demo-section__example demo-section__example--system-experiments demo-section__example--grid">
+      <system-experiments-status-grid
         [boardId]="boardIds.secondary"
         [columns]="secondaryGridColumns"
         [rows]="secondaryGridRows">
-      </engine-sim-status-grid>
+      </system-experiments-status-grid>
     </div>
   </section>
 
   <section class="demo-section" id="engine-form-primary">
-    <h2>EngineSim — PrimaryCommandsFormComponent</h2>
+    <h2>SystemExperiments — PrimaryCommandsFormComponent</h2>
     <p class="demo-section__desc">
       11 main fields plus the boxed "Cmd to GS" sub-section (3 fields).
       All controls are bound through Reactive Forms; the
@@ -260,9 +260,9 @@ form.status = {{ form.status }}</pre>
       shell's test/live mode contract.
     </p>
 
-    <div class="demo-section__example demo-section__example--engine-sim demo-section__example--form">
-      <engine-sim-primary-commands-form [formGroup]="primaryFormGroup">
-      </engine-sim-primary-commands-form>
+    <div class="demo-section__example demo-section__example--system-experiments demo-section__example--form">
+      <system-experiments-primary-commands-form [formGroup]="primaryFormGroup">
+      </system-experiments-primary-commands-form>
     </div>
 
     <div class="demo-section__actions">
@@ -275,15 +275,15 @@ form.status = {{ form.status }}</pre>
   </section>
 
   <section class="demo-section" id="engine-form-secondary">
-    <h2>EngineSim — SecondaryCommandsFormComponent</h2>
+    <h2>SystemExperiments — SecondaryCommandsFormComponent</h2>
     <p class="demo-section__desc">
       14 fields, flat list, no sub-section. Same row pattern and same
       enable/disable contract as Primary.
     </p>
 
-    <div class="demo-section__example demo-section__example--engine-sim demo-section__example--form">
-      <engine-sim-secondary-commands-form [formGroup]="secondaryFormGroup">
-      </engine-sim-secondary-commands-form>
+    <div class="demo-section__example demo-section__example--system-experiments demo-section__example--form">
+      <system-experiments-secondary-commands-form [formGroup]="secondaryFormGroup">
+      </system-experiments-secondary-commands-form>
     </div>
 
     <div class="demo-section__actions">
@@ -296,7 +296,7 @@ form.status = {{ form.status }}</pre>
   </section>
 
   <section class="demo-section" id="engine-board">
-    <h2>EngineSim — EngineSimBoardComponent (full layout)</h2>
+    <h2>SystemExperiments — BoardComponent (full layout)</h2>
     <p class="demo-section__desc">
       The Phase 4 layout primitive, wired with every Phase 3 + Phase 5 piece
       projected into its slot: <code>[boardCmd]</code>,
@@ -306,36 +306,36 @@ form.status = {{ form.status }}</pre>
       grid split shrink proportionally.
     </p>
 
-    <div class="demo-section__example demo-section__example--engine-sim demo-section__example--board">
-      <engine-sim-board>
-        <engine-sim-cmd-section
+    <div class="demo-section__example demo-section__example--system-experiments demo-section__example--board">
+      <system-experiments-board>
+        <system-experiments-cmd-section
           boardCmd
           [selection]="cmdSelection"
           [disabled]="cmdDisabled"
           (selectionChange)="onCmdSelectionChange($event)">
-        </engine-sim-cmd-section>
+        </system-experiments-cmd-section>
 
-        <engine-sim-primary-commands-form
+        <system-experiments-primary-commands-form
           boardForm
           [formGroup]="primaryFormGroup">
-        </engine-sim-primary-commands-form>
+        </system-experiments-primary-commands-form>
 
-        <engine-sim-status-grid
+        <system-experiments-status-grid
           boardGrid
           [boardId]="boardIds.primary"
           [columns]="primaryGridColumns"
           [rows]="primaryGridRows">
-        </engine-sim-status-grid>
+        </system-experiments-status-grid>
 
-        <engine-sim-board-footer
+        <system-experiments-board-footer
           boardFooter
           [boardId]="boardIds.primary"
           [disabled]="footerDisabled"
           (defaults)="onFooterEvent('defaults')"
           (cancel)="onFooterEvent('cancel')"
           (apply)="onFooterEvent('apply')">
-        </engine-sim-board-footer>
-      </engine-sim-board>
+        </system-experiments-board-footer>
+      </system-experiments-board>
     </div>
   </section>
 </main>

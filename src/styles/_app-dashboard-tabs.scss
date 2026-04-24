@@ -10,7 +10,7 @@
 //   3. Dark-surface label colors (muted gray inactive, white active).
 //   4. 2px accent ink bar that reads on a dark background.
 //
-// All four travel as a set today because the only consumer (engine-sim
+// All four travel as a set today because the only consumer (system-experiments
 // shell) wants them all. If a future use case wants only some of them,
 // split the partial then — not before. (See: "don't generalize until
 // the third use case".)

@@ -2,13 +2,13 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { FormControl, FormGroup } from '@angular/forms';
 
 import { DropdownOption } from '../components/app-dropdown/app-dropdown.models';
-import { PRIMARY_COMMANDS_ALL_FIELDS } from '../features/engine-sim/boards/primary-commands/primary-commands.fields';
-import { PRIMARY_COMMANDS_COLUMNS } from '../features/engine-sim/boards/primary-commands/primary-commands.columns';
-import { SECONDARY_COMMANDS_ALL_FIELDS } from '../features/engine-sim/boards/secondary-commands/secondary-commands.fields';
-import { SECONDARY_COMMANDS_COLUMNS } from '../features/engine-sim/boards/secondary-commands/secondary-commands.columns';
-import { BOARD_IDS, COL_IDS } from '../features/engine-sim/shared/ids';
-import { buildFormGroup } from '../features/engine-sim/boards/build-form-group';
-import { CmdSelection, GridColumn, GridRow } from '../features/engine-sim/shared/models';
+import { PRIMARY_COMMANDS_ALL_FIELDS } from '../features/system-experiments/boards/primary-commands/primary-commands.fields';
+import { PRIMARY_COMMANDS_COLUMNS } from '../features/system-experiments/boards/primary-commands/primary-commands.columns';
+import { SECONDARY_COMMANDS_ALL_FIELDS } from '../features/system-experiments/boards/secondary-commands/secondary-commands.fields';
+import { SECONDARY_COMMANDS_COLUMNS } from '../features/system-experiments/boards/secondary-commands/secondary-commands.columns';
+import { BOARD_IDS, COL_IDS } from '../features/system-experiments/shared/ids';
+import { buildFormGroup } from '../features/system-experiments/boards/build-form-group';
+import { CmdSelection, GridColumn, GridRow } from '../features/system-experiments/shared/models';
 
 @Component({
   selector: 'app-demo-page',
@@ -49,7 +49,7 @@ export class DemoPageComponent {
   }
 
   // ---------------------------------------------------------------------------
-  // Engine Sim — Phase 3 dumb-component previews
+  // System Experiments — Phase 3 dumb-component previews
   // ---------------------------------------------------------------------------
 
   readonly boardIds = BOARD_IDS;
@@ -100,7 +100,7 @@ export class DemoPageComponent {
   ];
 
   // ---------------------------------------------------------------------------
-  // Engine Sim — Phase 5 form components
+  // System Experiments — Phase 5 form components
   // ---------------------------------------------------------------------------
   //
   // Each form gets its own FormGroup seeded from the canonical defaults so

@@ -110,13 +110,13 @@ The payload contains the CMD selection + all form field values (changed values m
 ## Component Architecture
 
 ```
-src/app/features/engine-sim/
-├── engine-sim.module.ts                        # Feature module
+src/app/features/system-experiments/
+├── system-experiments.module.ts                        # Feature module
 ├── shared/                                     # Cross-board primitives (no UI)
-│   ├── engine-sim.api-contract.ts              # Wire format — what the backend dictates (response, payload, config)
-│   ├── engine-sim.models.ts                    # Internal view models — what we own (CmdSelection, GridRow, FieldConfig, …)
-│   ├── engine-sim.labels.ts                    # ENGINE_SIM_LABELS centralized translation map
-│   ├── engine-sim.tokens.ts                    # ENGINE_SIM_API_CONFIG injection token
+│   ├── system-experiments.api-contract.ts              # Wire format — what the backend dictates (response, payload, config)
+│   ├── system-experiments.models.ts                    # Internal view models — what we own (CmdSelection, GridRow, FieldConfig, …)
+│   ├── system-experiments.labels.ts                    # SYSTEM_EXPERIMENTS_LABELS centralized translation map
+│   ├── system-experiments.tokens.ts                    # SYSTEM_EXPERIMENTS_API_CONFIG injection token
 │   ├── option-values.ts                        # Canonical value maps + derived types (YES_NO, ON_OFF, SIDE, WHEEL, …)
 │   ├── cmd-options.ts                          # CMD_SIDE_OPTIONS, CMD_WHEEL_OPTIONS (reused by both boards)
 │   └── build-defaults.util.ts                  # buildDefaultValues() helper
@@ -138,19 +138,19 @@ src/app/features/engine-sim/
 │           ├── secondary-commands-form.component.html
 │           └── secondary-commands-form.component.scss
 ├── services/
-│   ├── engine-sim-api.service.ts               # POST calls (one per board)
-│   └── engine-sim-data.service.ts              # GET + WebSocket → Observable<EngineSimResponse>
+│   ├── system-experiments-api.service.ts               # POST calls (one per board)
+│   └── system-experiments-data.service.ts              # GET + WebSocket → Observable<SystemExperimentsResponse>
 ├── utils/
 │   └── grid-data.utils.ts                      # Pure functions: response → GridRow[] (per board)
 └── components/                                 # Cross-board / shell-level UI
-    ├── engine-sim-shell/                       # Tabs + test/live mode toggle
-    │   ├── engine-sim-shell.component.ts
-    │   ├── engine-sim-shell.component.html
-    │   └── engine-sim-shell.component.scss
-    ├── engine-sim-board/                       # Reusable layout: sticky CMD + scroll form + sticky footer
-    │   ├── engine-sim-board.component.ts
-    │   ├── engine-sim-board.component.html
-    │   └── engine-sim-board.component.scss
+    ├── system-experiments-shell/                       # Tabs + test/live mode toggle
+    │   ├── system-experiments-shell.component.ts
+    │   ├── system-experiments-shell.component.html
+    │   └── system-experiments-shell.component.scss
+    ├── system-experiments-board/                       # Reusable layout: sticky CMD + scroll form + sticky footer
+    │   ├── system-experiments-board.component.ts
+    │   ├── system-experiments-board.component.html
+    │   └── system-experiments-board.component.scss
     ├── cmd-section/                            # Shared CMD dropdowns (side + wheel)
     │   ├── cmd-section.component.ts
     │   ├── cmd-section.component.html
@@ -171,8 +171,8 @@ src/app/features/engine-sim/
 
 | Component | Smart / Dumb | Role |
 |-----------|-------------|------|
-| `EngineSimShellComponent` | **Smart** | Holds `mat-tab-group`, test/live mode toggle, manages CMD shared state, owns the WebSocket subscription, passes grid data down. |
-| `EngineSimBoardComponent` | **Dumb (layout)** | Two-column layout: Form (left) + Status Grid (right). Sticky CMD row at top, sticky footer at bottom, scrollable middle. Receives `disabled` from test/live mode. |
+| `SystemExperimentsShellComponent` | **Smart** | Holds `mat-tab-group`, test/live mode toggle, manages CMD shared state, owns the WebSocket subscription, passes grid data down. |
+| `SystemExperimentsBoardComponent` | **Dumb (layout)** | Two-column layout: Form (left) + Status Grid (right). Sticky CMD row at top, sticky footer at bottom, scrollable middle. Receives `disabled` from test/live mode. |
 | `CmdSectionComponent` | **Dumb** | CMD row: label + two multi-dropdowns (sides, wheels). `@Input` value, `@Output` changed. |
 | `BoardFooterComponent` | **Dumb** | Three buttons: Defaults, Cancel, Apply. `@Output` for defaults / cancel / apply. |
 | `PrimaryCommandsFormComponent` | **Dumb** | Primary form fields (left column). All dropdowns, includes "Cmd to GS" sub-section. `@Input` formGroup + disabled. No API calls. |
@@ -182,14 +182,14 @@ src/app/features/engine-sim/
 ### Data Flow
 
 ```
-EngineSimShellComponent
+SystemExperimentsShellComponent
   │
-  ├── EngineSimDataService.connect() → Observable<EngineSimResponse>
+  ├── SystemExperimentsDataService.connect() → Observable<SystemExperimentsResponse>
   │     (GET on init, then WebSocket stream, same shape)
   │
   ├── cmdSelection: CmdSelection (shared across tabs, persisted on Apply)
   │
-  ├── Tab 1 — Primary ("System Commands"): EngineSimBoardComponent (two-column layout)
+  ├── Tab 1 — Primary ("System Commands"): SystemExperimentsBoardComponent (two-column layout)
   │     │
   │     ├── CMD row (sticky top):
   │     │     └── CmdSectionComponent  ← [selection] / (changed) →
@@ -201,9 +201,9 @@ EngineSimShellComponent
   │     │
   │     └── Footer (sticky bottom):
   │           BoardFooterComponent → (defaults) (cancel) (apply)
-  │              apply → EngineSimApiService.postPrimary(payload)
+  │              apply → SystemExperimentsApiService.postPrimary(payload)
   │
-  └── Tab 2 — Secondary ("Failure & Antenna"): EngineSimBoardComponent (two-column layout)
+  └── Tab 2 — Secondary ("Failure & Antenna"): SystemExperimentsBoardComponent (two-column layout)
         │
         ├── CMD row (sticky top):
         │     └── CmdSectionComponent  ← [selection] (same saved value) / (changed) →
@@ -214,7 +214,7 @@ EngineSimShellComponent
         │
         └── Footer (sticky bottom):
               BoardFooterComponent → (defaults) (cancel) (apply)
-                 apply → EngineSimApiService.postSecondary(payload)
+                 apply → SystemExperimentsApiService.postSecondary(payload)
 ```
 
 ---
@@ -311,31 +311,31 @@ Following the Angular state management ladder (**no NgRx**):
 
 | State | Where | Mechanism |
 |-------|-------|-----------|
-| CMD selection (unsaved draft) | `EngineSimShellComponent` | Component property |
-| CMD selection (saved) | `EngineSimShellComponent` | Component property, updated on Apply |
+| CMD selection (unsaved draft) | `SystemExperimentsShellComponent` | Component property |
+| CMD selection (saved) | `SystemExperimentsShellComponent` | Component property, updated on Apply |
 | Primary form values | `PrimaryCommandsFormComponent` | Reactive `FormGroup` |
 | Secondary form values | `SecondaryCommandsFormComponent` | Reactive `FormGroup` |
-| Test/Live mode | `EngineSimShellComponent` | Component property, passed as `@Input` disabled |
-| Grid data (live) | `EngineSimShellComponent` | `EngineSimDataService` Observable, piped with `async` |
-| Last saved form state (for Cancel) | `EngineSimShellComponent` | Snapshot object, updated on successful Apply |
+| Test/Live mode | `SystemExperimentsShellComponent` | Component property, passed as `@Input` disabled |
+| Grid data (live) | `SystemExperimentsShellComponent` | `SystemExperimentsDataService` Observable, piped with `async` |
+| Last saved form state (for Cancel) | `SystemExperimentsShellComponent` | Snapshot object, updated on successful Apply |
 
 ---
 
 ## Services
 
-### `EngineSimDataService`
+### `SystemExperimentsDataService`
 
-- Connects GET + WebSocket into a single `Observable<EngineSimResponse>`.
+- Connects GET + WebSocket into a single `Observable<SystemExperimentsResponse>`.
 - GET on init → seed data.
 - WebSocket → live updates (same shape), merged via `merge`.
 - Single connection, shared across both boards.
 - Reconnect logic on WebSocket disconnect.
 
-### `EngineSimApiService`
+### `SystemExperimentsApiService`
 
 - `postPrimary(payload: BoardPostPayload): Observable<void>`
 - `postSecondary(payload: BoardPostPayload): Observable<void>`
-- Two separate endpoints (URLs come from `ENGINE_SIM_API_CONFIG.primaryPostUrl` / `.secondaryPostUrl`), two separate methods.
+- Two separate endpoints (URLs come from `SYSTEM_EXPERIMENTS_API_CONFIG.primaryPostUrl` / `.secondaryPostUrl`), two separate methods.
 
 **No dedicated grid service.** Column hover, cell selection, and data-to-cell mapping are UI concerns handled by `StatusGridComponent` itself (CSS for hover, component property for selection). Data transformation from the WebSocket response to grid rows is a pure function in the shell component or a utility — not a service.
 
@@ -364,7 +364,7 @@ export const YES_NO_OPTIONS: LabeledOption[] = [
 **No hardcoded labels in templates.** All user-visible text (field labels, dropdown option labels, grid row labels, button text, section headers) must come from a centralized label map keyed by a constant — translation-style.
 
 ```typescript
-const ENGINE_SIM_LABELS = {
+const SYSTEM_EXPERIMENTS_LABELS = {
   tff: 'TFF',
   mlmTransmit: 'MLM transmit',
   videoRec: 'Video rec',
@@ -492,7 +492,7 @@ ng lint           # Lint (if configured)
 
 This feature will be migrated to an existing project. Keep in mind:
 
-- **Self-contained module**: `EngineSimModule` imports everything it needs; no implicit dependencies on `AppModule`.
+- **Self-contained module**: `SystemExperimentsModule` imports everything it needs; no implicit dependencies on `AppModule`.
 - **No global state**: All state lives in the feature module's components/services.
 - **Reusable building blocks** (`app-dropdown`, `app-multi-dropdown`, directives) will also be migrated — keep them decoupled.
 - **No project-specific assumptions**: API URLs should be configurable (environment files or injection tokens).

@@ -1,0 +1,85 @@
+<div class="system-experiments-shell">
+
+  <header class="system-experiments-shell__chrome">
+    <mat-slide-toggle
+      class="system-experiments-shell__test-mode"
+      data-test-id="shell-test-mode-toggle"
+      [checked]="testMode"
+      (change)="onTestModeChange($event.checked)">
+      {{ labels.testMode }}
+    </mat-slide-toggle>
+  </header>
+
+  <mat-tab-group
+    class="system-experiments-shell__tabs app-dashboard-tabs"
+    [selectedIndex]="selectedTabIndex"
+    (selectedIndexChange)="onTabChange($event)"
+    [animationDuration]="'0ms'">
+
+    <mat-tab [label]="labels.tabPrimaryCommands">
+      <system-experiments-board>
+        <system-experiments-cmd-section
+          boardCmd
+          [selection]="cmdDraft"
+          [disabled]="cmdDisabled"
+          (selectionChange)="onCmdSelectionChange($event)">
+        </system-experiments-cmd-section>
+
+        <system-experiments-primary-commands-form
+          boardForm
+          [formGroup]="primaryFormGroup">
+        </system-experiments-primary-commands-form>
+
+        <system-experiments-status-grid
+          boardGrid
+          [boardId]="boardIds.primary"
+          [columns]="primaryColumns"
+          [rows]="(primaryRows$ | async) ?? []">
+        </system-experiments-status-grid>
+
+        <system-experiments-board-footer
+          boardFooter
+          [boardId]="boardIds.primary"
+          [disabled]="!testMode"
+          (defaults)="onPrimaryDefaults()"
+          (cancel)="onPrimaryCancel()"
+          (apply)="onPrimaryApply()">
+        </system-experiments-board-footer>
+      </system-experiments-board>
+    </mat-tab>
+
+    <mat-tab [label]="labels.tabSecondaryCommands">
+      <system-experiments-board>
+        <system-experiments-cmd-section
+          boardCmd
+          [selection]="cmdDraft"
+          [disabled]="cmdDisabled"
+          (selectionChange)="onCmdSelectionChange($event)">
+        </system-experiments-cmd-section>
+
+        <system-experiments-secondary-commands-form
+          boardForm
+          [formGroup]="secondaryFormGroup">
+        </system-experiments-secondary-commands-form>
+
+        <system-experiments-status-grid
+          boardGrid
+          [boardId]="boardIds.secondary"
+          [columns]="secondaryColumns"
+          [rows]="(secondaryRows$ | async) ?? []">
+        </system-experiments-status-grid>
+
+        <system-experiments-board-footer
+          boardFooter
+          [boardId]="boardIds.secondary"
+          [disabled]="!testMode"
+          (defaults)="onSecondaryDefaults()"
+          (cancel)="onSecondaryCancel()"
+          (apply)="onSecondaryApply()">
+        </system-experiments-board-footer>
+      </system-experiments-board>
+    </mat-tab>
+
+  </mat-tab-group>
+
+</div>

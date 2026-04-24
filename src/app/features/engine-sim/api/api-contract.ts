@@ -62,8 +62,13 @@ export interface PrimaryStandardFields {
   tff: string;
   mlmTransmit: string;
   videoRec: string;
-  /** Multi-select on the form. The wire carries a single display value per cell. */
-  videoRecType: string;
+  /**
+   * Multi-select on the form — the wire carries the user's full picked
+   * set per cell. The grid joins the values into one comma-separated
+   * string in the normalizer (see grid-normalizer.ts → `abbrFor`); the
+   * cell template stays single-string so nothing else has to change.
+   */
+  videoRecType: string | string[];
   mtrRec: string;
   speedPwrOnOff: string;
   forceTtl: string;

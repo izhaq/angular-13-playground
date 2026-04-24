@@ -10,13 +10,19 @@
 // Tokens
 $font-size: 12px;
 $line-height: 16px;
-$pad-y: 4px;
+// Very tight vertical padding so 14 form rows + sub-header fit inside the
+// 1120 × 500 shell envelope without scroll. The control reads at ~18px
+// tall total which matches the design's row density.
+$pad-y: 1px;
 $pad-x: 10px;
 $radius: 2px;
 
-$bg: #1a2942;
-$border: #2d3f5e;
-$border-focused: #4a5f80;
+// Neutral dark-gray control surface — sits one elevation above the shell
+// (`#242424`) so dropdowns read as interactive controls without competing
+// for color attention with the data grid or button accents.
+$bg: #2d2d2d;
+$border: #3a3a3a;
+$border-focused: #5a5a5a;
 $text: #ffffff;
 $text-muted: rgba(255, 255, 255, 0.55);
 $row-hover: rgba(255, 255, 255, 0.08);

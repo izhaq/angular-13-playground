@@ -1,0 +1,54 @@
+// Top-level shell chrome — a slim sticky nav above the routed page so the
+// playground's two screens (dashboard + component demo) are one click apart.
+// The nav is the only piece of the playground that lives in the root app;
+// everything else belongs to the page modules.
+
+.app-nav {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 10px 24px;
+  background: #141414;
+  color: #e6e6e6;
+  border-bottom: 1px solid #2d2d2d;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  &__brand {
+    font-weight: 600;
+    color: inherit;
+    text-decoration: none;
+    letter-spacing: 0.2px;
+  }
+
+  &__links {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    gap: 4px;
+
+    a {
+      display: inline-block;
+      padding: 6px 12px;
+      border-radius: 4px;
+      color: rgba(230, 230, 230, 0.78);
+      text-decoration: none;
+      font-size: 14px;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.06);
+        color: #fff;
+      }
+
+      // Active route link — selector raised to `.app-nav__links a` so it
+      // wins over the generic `a` rule above without needing `!important`.
+      &.app-nav__link--active {
+        background: rgba(255, 255, 255, 0.12);
+        color: #fff;
+      }
+    }
+  }
+}

@@ -17,8 +17,12 @@
 //   $data-col-min here (TS reads them via CSS custom properties on :host).
 $label-col-min: 90px;   // fits the longest label ("Critical Fail" et al.)
 $data-col-min:  44px;
-$cell-min-h:    28px;
-$cell-pad-y:    6px;
+// Tight cell height so the Secondary grid (header + 14 data rows = 15
+// rows total) fits in the 1120 × 500 envelope's ~380px grid pane height
+// without vertical scroll. Primary (header + 11 = 12 rows) gets even
+// more breathing room.
+$cell-min-h:    24px;
+$cell-pad-y:    3px;
 $cell-pad-x:    10px;
 $font-size:     12px;
 $border-width:  1px;
@@ -46,12 +50,25 @@ $border-width:  1px;
 // reads as a closed rectangle.
 .status-grid {
   display: grid;
+  // Fill the host so `1fr` rows have a real height to distribute. Without
+  // this the grid would size to its intrinsic content (≈ rows × cell-min-h)
+  // and the rows could never grow.
+  height: 100%;
+  // Each row is at least `$cell-min-h` (so Secondary's 15 rows always fit
+  // in the ~380px pane without scroll), and each row gets a `1fr` share
+  // when the pane has slack — Primary's 12 rows each grow to ~32px,
+  // visually using the whole vertical budget instead of leaving dead space.
+  grid-auto-rows: minmax($cell-min-h, 1fr);
   font-size: $font-size;
 
   &__corner,
   &__col-header,
   &__row-label,
   &__cell {
+    // Flexbox lets the text stay vertically centered when the row grows
+    // taller than its intrinsic content height (1fr distribution).
+    display: flex;
+    align-items: center;
     padding: $cell-pad-y $cell-pad-x;
     min-height: $cell-min-h;
     box-sizing: border-box;
@@ -69,7 +86,6 @@ $border-width:  1px;
     background: transparent;
     color: #e6e6e6;
     font-weight: 500;
-    text-align: left;
     padding-left: 0;
   }
 
@@ -78,18 +94,17 @@ $border-width:  1px;
   &__cell {
     background: #ffffff;
     color: #1f1f1f;
+    justify-content: center;
   }
 
   &__col-header {
     font-weight: 600;
-    text-align: center;
     border-top: $border-width solid #cccccc;
     border-right: $border-width solid #cccccc;
     border-bottom: $border-width solid #cccccc;
   }
 
   &__cell {
-    text-align: center;
     cursor: pointer;
     border-right: $border-width solid #cccccc;
     border-bottom: $border-width solid #cccccc;

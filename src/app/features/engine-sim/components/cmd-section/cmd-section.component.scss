@@ -3,13 +3,16 @@
 // Hardcoded inline below — duplication is deliberate. The host system
 // this feature migrates into has its own design tokens; replacing values
 // is a one-pass find/replace, no shared partial needed.
-$field-width:     120px;
+// Matches the form's `$control-col-width` (100px) so the CMD dropdowns
+// read at the same width as the rows below them on the left pane.
+$field-width:     100px;
 $gap:             12px;   // outer flex gap (label ↔ controls)
 $controls-gap:    8px;    // inter-dropdown gap inside controls
+// Symmetric vertical padding inside the panel — outer top/bottom balance
+// (vs the body padding above and the divider below) is handled by the
+// board's `.engine-sim-board__cmd { padding-bottom: ... }` rule.
 $pad-y:           6px;
-$pad-x:           8px;
-$title-pad-y:     4px;
-$title-pad-x:     8px;
+$pad-x:           0;      // horizontal alignment is owned by the form below
 $title-font-size: 12px;
 
 :host {
@@ -22,17 +25,15 @@ $title-font-size: 12px;
   gap: $gap;
   padding: $pad-y $pad-x;
 
-  // Boxed "Cmd." label — matches the design's outlined section header.
-  // Uses currentColor so it inherits the consumer's text color (light on
-  // a dark shell, dark on a light demo, etc.) without baking in a theme.
+  // Plain text label — the boxed pill style is gone; the entire CMD
+  // panel now reads as a section thanks to the horizontal divider added
+  // in `engine-sim-board.component.scss` (.engine-sim-board__cmd::after).
   &__title {
     flex: 0 0 auto;
     font-weight: 600;
     font-size: $title-font-size;
     line-height: 1;
-    padding: $title-pad-y $title-pad-x;
-    border: 1px solid currentColor;
-    border-radius: 2px;
+    color: #e6e6e6;
   }
 
   &__controls {

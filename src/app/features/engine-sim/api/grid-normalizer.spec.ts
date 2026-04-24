@@ -26,6 +26,10 @@ function singleField(key: string, options: LabeledOption[] = ABCD_OPTIONS): Fiel
   return { key, label: key, type: 'single', options, defaultValue: 'a' };
 }
 
+function multiField(key: string, options: LabeledOption[] = ABCD_OPTIONS): FieldConfig {
+  return { key, label: key, type: 'multi', options, defaultValue: [] };
+}
+
 function emptyMItem(): MCommandItem {
   return {
     standardFields:   {} as PrimaryStandardFields,
@@ -230,6 +234,79 @@ describe('buildRows', () => {
 
     expect(rows.map((r) => r.fieldKey)).toEqual(['tff']);
     expect(rows.find((r) => r.fieldKey === formOnly.key)).toBeUndefined();
+  });
+
+  // -------------------------------------------------------------------------
+  // Multi-select cells — backend sends `string[]`, normalizer joins on ','
+  // -------------------------------------------------------------------------
+
+  it('joins multi-select array values into a comma-separated abbr string', () => {
+    const left = entity('left', {
+      mCommands: [
+        mItemWith({ videoRecType: ['a', 'b', 'c'] } as any), // → 'A,B,C'
+        mItemWith({ videoRecType: ['a'] } as any),           // single-element array → 'A'
+        emptyMItem(),
+        emptyMItem(),
+      ],
+    });
+
+    const grid = normalizeResponse(response(left, entity('right')));
+    const [row] = buildRows([multiField('videoRecType')], grid, PRIMARY_COMMANDS_COLUMNS);
+
+    expect(row.values['left1']).toBe('A,B,C');
+    expect(row.values['left2']).toBe('A');
+  });
+
+  it('renders an empty cell for an empty multi-select array', () => {
+    const left = entity('left', {
+      mCommands: [
+        mItemWith({ videoRecType: [] } as any),
+        emptyMItem(),
+        emptyMItem(),
+        emptyMItem(),
+      ],
+    });
+
+    const grid = normalizeResponse(response(left, entity('right')));
+    const [row] = buildRows([multiField('videoRecType')], grid, PRIMARY_COMMANDS_COLUMNS);
+
+    expect(row.values['left1']).toBe('');
+  });
+
+  it('mixes known and unknown values in a multi-select using the same fallback rule', () => {
+    const left = entity('left', {
+      mCommands: [
+        // 'a' → 'A' (known); 'unexpected' → 'une' (unknown, sliced to 3)
+        mItemWith({ videoRecType: ['a', 'unexpected'] } as any),
+        emptyMItem(),
+        emptyMItem(),
+        emptyMItem(),
+      ],
+    });
+
+    const grid = normalizeResponse(response(left, entity('right')));
+    const [row] = buildRows([multiField('videoRecType')], grid, PRIMARY_COMMANDS_COLUMNS);
+
+    expect(row.values['left1']).toBe('A,une');
+  });
+
+  it('handles array shape on a single-select field defensively (still joins)', () => {
+    // Defensive case: backend drift sends an array for a `single` field.
+    // We render rather than crash — the comma-joined output makes the
+    // drift visible to QA without breaking the grid.
+    const left = entity('left', {
+      mCommands: [
+        mItemWith({ tff: ['a', 'b'] } as any),
+        emptyMItem(),
+        emptyMItem(),
+        emptyMItem(),
+      ],
+    });
+
+    const grid = normalizeResponse(response(left, entity('right')));
+    const [row] = buildRows([singleField('tff')], grid, PRIMARY_COMMANDS_COLUMNS);
+
+    expect(row.values['left1']).toBe('A,B');
   });
 
 });

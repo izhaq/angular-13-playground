@@ -1,0 +1,50 @@
+// Host page chrome — dark navy backdrop matching the SYS Mode dashboard
+// design. The page owns the page-wide background and the title; the shell
+// owns its own surface within the 1150 × 550 envelope.
+
+:host {
+  display: block;
+  min-height: 100%;
+  padding: 24px;
+  background: #1a1a1a;
+  color: #e6e6e6;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+.engine-sim-page {
+  // Centered to the dashboard width so the title aligns with the shell.
+  max-width: 1150px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.engine-sim-page__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.engine-sim-page__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  color: #ffffff;
+}
+
+// Production envelope: 1120 × 500 total
+// (chrome 32 + tab header 36 + tab body 432 = 500).
+// Width is hard because the grid + form column math depends on it;
+// height is hard so the sticky footer anchors at the bottom rather
+// than floating against shorter content.
+//
+// Narrow viewports: scroll the frame, never crush the layout — the grid
+// column widths are tuned for 1120 and there's no responsive fallback.
+.engine-sim-page__shell-frame {
+  width: 1120px;
+  height: 500px;
+  max-width: 100%;
+  overflow: auto;
+}

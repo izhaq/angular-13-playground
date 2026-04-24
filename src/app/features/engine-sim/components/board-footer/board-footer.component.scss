@@ -1,6 +1,6 @@
 // Engine-sim color palette (mirrors `src/styles/_dropdowns.scss`):
-//   control surface       → #1a2942
-//   control border        → #2d3f5e
+//   control surface       → #2d2d2d
+//   control border        → #3a3a3a
 //   text on dark surface  → #e6e6e6
 //   accent (hover)        → #1e88e5
 //   control radius        → 2px
@@ -8,9 +8,12 @@
 // this feature migrates into has its own design tokens; replacing values
 // is a one-pass find/replace, no shared partial needed.
 $btn-min-width:        80px;
-$btn-line-height:      28px;
+$btn-line-height:      26px;
 $btn-disabled-opacity: 0.5;
 $gap:                  8px;
+// Vertical padding sets the breathing room around the buttons. ~8px each
+// side keeps the footer ≈ 42px tall — comfortable but still compact for
+// the 500px envelope.
 $pad-y:                8px;
 $pad-x:                12px;
 
@@ -34,9 +37,9 @@ $pad-x:                12px;
   // same accent hover treatment.
   &__btn {
     min-width: $btn-min-width;
-    background: #1a2942;
+    background: #2d2d2d;
     color: #e6e6e6;
-    border: 1px solid #2d3f5e;
+    border: 1px solid #3a3a3a;
     border-radius: 2px;
     line-height: $btn-line-height;
   }

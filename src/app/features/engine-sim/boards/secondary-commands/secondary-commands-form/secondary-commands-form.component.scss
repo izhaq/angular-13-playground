@@ -12,16 +12,23 @@
 // duplication is intentional (per the project's "don't generalize until
 // the third use case" rule). When a third form lands AND it actually
 // shares the pattern, lift to a shared partial — not before.
-$row-pad-y:       4px;
+// Compact row vocabulary — 14 fields must fit inside the ~390px form
+// pane the board reserves on the left without scroll. Mirror of the
+// Primary form's tightening (intentional duplication per the project's
+// "don't generalize until the third use case" rule).
+$row-pad-y:       1px;
 $row-gap:         12px;
-$rows-gap:        2px;
-$label-col-width: 150px;
-$control-col-min: 140px;
+$rows-gap:        0;
+$label-col-width: 140px;
+// Fixed control width — see PrimaryCommandsFormComponent for rationale.
+$control-col-width: 100px;
 
 :host {
   display: block;
   height: 100%;
-  padding: 8px 12px 12px;
+  // Right padding is also reduced — the vertical divider on the board's
+  // left pane (.engine-sim-board__left::after) provides the visual edge.
+  padding: 4px 8px 6px;
   color: #e6e6e6;
 }
 
@@ -36,10 +43,9 @@ $control-col-min: 140px;
 
   &__row {
     display: grid;
-    // `minmax(0, 1fr)` on the control side lets `min-width: 0` work for
-    // nested mat-form-fields — prevents intrinsic-width overflow on
-    // narrow shells. Same rationale as PrimaryCommandsFormComponent.
-    grid-template-columns: $label-col-width minmax($control-col-min, 1fr);
+    // Both columns fixed-width — see PrimaryCommandsFormComponent for the
+    // rationale. Extra horizontal space sits to the right of the control.
+    grid-template-columns: $label-col-width $control-col-width;
     align-items: center;
     column-gap: $row-gap;
     padding: $row-pad-y 0;

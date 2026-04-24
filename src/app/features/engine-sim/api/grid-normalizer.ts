@@ -15,8 +15,15 @@ import { FieldConfig, GridColumn, GridRow } from '../shared/models';
  * the `fields` argument.
  */
 
-/** Raw wire values for a single grid column, keyed by field key. */
-export type CellValues = Record<string, string>;
+/**
+ * Raw wire values for a single grid column, keyed by field key.
+ *
+ * Multi-select fields (e.g. `videoRecType`) carry `string[]` here — the
+ * widening lives at this internal boundary only. `GridRow.values` (the
+ * shape the grid actually renders) stays `Record<string, string>`
+ * because `abbrFor` joins arrays into a single comma-separated string.
+ */
+export type CellValues = Record<string, string | string[]>;
 
 /** All grid cells keyed by column id. Missing columns / fields → empty cells. */
 export type FlatGrid = Partial<Record<GridColId, CellValues>>;
@@ -106,12 +113,26 @@ function cellValuesForField(
 /**
  * Cell rendering rule:
  *   - missing / empty wire value → ''
- *   - value matches a known option → option's `abbr`
- *   - value present but unknown → first 3 chars of the value
+ *   - single value matches a known option → option's `abbr`
+ *   - single value present but unknown → first 3 chars of the value
  *     (so QA can spot drift instead of staring at silently-empty cells)
+ *   - multi value (array) → each element resolved via the same rule
+ *     above, then joined with ',' (no space — keeps the cell as
+ *     compact as possible against the narrow Secondary grid columns)
+ *
+ * Defensive on shape: `single` fields that happen to receive an array
+ * still render correctly (joined). Empty array → ''.
  */
-function abbrFor(field: FieldConfig, value: string | undefined): string {
+function abbrFor(field: FieldConfig, value: string | string[] | undefined): string {
   if (value === undefined || value === '') return '';
+  if (Array.isArray(value)) {
+    if (value.length === 0) return '';
+    return value.map((v) => abbrForOne(field, v)).join(',');
+  }
+  return abbrForOne(field, value);
+}
+
+function abbrForOne(field: FieldConfig, value: string): string {
   const match = field.options.find((o) => o.value === value);
   if (match) return match.abbr;
   return value.length <= 3 ? value : value.slice(0, 3);

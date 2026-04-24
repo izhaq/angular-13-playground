@@ -1,0 +1,68 @@
+// Opt-in styling for `<mat-tab-group class="app-dashboard-tabs">`.
+//
+// Bundles four capabilities for tab groups that live on a dark dashboard
+// surface inside a fixed-height container:
+//
+//   1. Tab body fills the remaining vertical space (so the projected
+//      content can run its own flex layout against a real height).
+//   2. Slim 36px tab header (vs Material's ~49px default) — buys
+//      vertical budget for tight envelopes.
+//   3. Dark-surface label colors (muted gray inactive, white active).
+//   4. 2px accent ink bar that reads on a dark background.
+//
+// All four travel as a set today because the only consumer (engine-sim
+// shell) wants them all. If a future use case wants only some of them,
+// split the partial then — not before. (See: "don't generalize until
+// the third use case".)
+//
+// Lives in the global stylesheet because Material's `.mat-tab-*`
+// internals sit behind component encapsulation; selectors written in a
+// component SCSS would need `::ng-deep` (banned) to reach them. Scoped
+// under `.app-dashboard-tabs` so it can never leak to a non-opted-in
+// tab group elsewhere.
+
+.app-dashboard-tabs {
+
+  // -- Tab body (sizing) -----------------------------------------------------
+  .mat-tab-body-wrapper {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .mat-tab-body,
+  .mat-tab-body-content {
+    height: 100%;
+  }
+
+  // -- Tab header (look + height) -------------------------------------------
+  .mat-tab-header {
+    border-bottom: 1px solid #2d2d2d;
+    flex-shrink: 0;
+  }
+
+  .mat-tab-labels {
+    padding: 0 12px;
+  }
+
+  .mat-tab-label {
+    height: 36px;
+    min-width: 0;
+    padding: 0 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(230, 230, 230, 0.55);
+    opacity: 1;
+
+    &.mat-tab-label-active {
+      color: #ffffff;
+    }
+  }
+
+  // Material draws an ink bar at the bottom of the header. Slightly
+  // thicker than default + tinted to the accent so it reads on the dark
+  // background.
+  .mat-ink-bar {
+    height: 2px;
+    background-color: #1e88e5;
+  }
+}

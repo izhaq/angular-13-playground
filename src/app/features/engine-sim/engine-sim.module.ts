@@ -3,6 +3,8 @@ import { HttpClientModule } from '@angular/common/http';
 import { NgModule } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatTabsModule } from '@angular/material/tabs';
 import { webSocket } from 'rxjs/webSocket';
 
 import { AppDropdownCvaModule } from '../../components/app-dropdown-cva/app-dropdown-cva.module';
@@ -13,6 +15,7 @@ import { SecondaryCommandsFormComponent } from './boards/secondary-commands/seco
 import { BoardFooterComponent } from './components/board-footer/board-footer.component';
 import { CmdSectionComponent } from './components/cmd-section/cmd-section.component';
 import { EngineSimBoardComponent } from './components/engine-sim-board/engine-sim-board.component';
+import { EngineSimShellComponent } from './components/engine-sim-shell/engine-sim-shell.component';
 import { StatusGridComponent } from './components/status-grid/status-grid.component';
 import { EngineSimResponse } from './api/api-contract';
 import { ENGINE_SIM_WS_FACTORY, EngineSimWebSocketFactory } from './api/api-tokens';
@@ -35,6 +38,7 @@ const defaultWebSocketFactory: EngineSimWebSocketFactory =
     BoardFooterComponent,
     CmdSectionComponent,
     EngineSimBoardComponent,
+    EngineSimShellComponent,
     PrimaryCommandsFormComponent,
     SecondaryCommandsFormComponent,
     StatusGridComponent,
@@ -44,6 +48,8 @@ const defaultWebSocketFactory: EngineSimWebSocketFactory =
     HttpClientModule,
     ReactiveFormsModule,
     MatButtonModule,
+    MatSlideToggleModule,
+    MatTabsModule,
     AppDropdownModule,
     AppMultiDropdownModule,
     AppDropdownCvaModule,
@@ -52,6 +58,7 @@ const defaultWebSocketFactory: EngineSimWebSocketFactory =
     BoardFooterComponent,
     CmdSectionComponent,
     EngineSimBoardComponent,
+    EngineSimShellComponent,
     PrimaryCommandsFormComponent,
     SecondaryCommandsFormComponent,
     StatusGridComponent,

@@ -1,0 +1,64 @@
+// Shell sizing budget for the 1120 × 500 envelope:
+//   chrome header  ~32px  (test-mode toggle row, slim)
+//   tab header     ~36px  (compacted via the `app-dashboard-tabs` opt-in
+//                          on the mat-tab-group below — see
+//                          src/styles/_app-dashboard-tabs.scss)
+//   board content  ~432px (everything inside the active tab)
+//   ───────────────────
+//   total          500px
+//
+// The host fills whatever the parent gives it (height: 100%); the inner
+// board grows to fill the remaining height after chrome + tab header.
+// Page-level sizing (1150 × 550) lives on the host page so the shell
+// stays portable.
+
+:host {
+  display: block;
+  width: 100%;
+  height: 100%;
+  // Dark gray surface, lifted one step above the page background (#1a1a1a)
+  // so the shell reads as a card. The dropdowns, form labels, grid row
+  // labels and footer buttons all assume a dark surface for contrast.
+  background: #242424;
+  color: #e6e6e6;
+  overflow: hidden;
+}
+
+.engine-sim-shell {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+// Top chrome row — owns the Test Mode toggle on the right. Slim so the
+// tab body has as much vertical room as possible. No bottom border —
+// the tab header that follows already supplies a visual divider.
+.engine-sim-shell__chrome {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 32px;
+  padding: 0 16px;
+  flex-shrink: 0;
+}
+
+// Compact slide-toggle: the Material default ~36px works as-is, just
+// adjust label color/size to match the rest of the chrome.
+.engine-sim-shell__test-mode {
+  font-size: 12px;
+  color: #e6e6e6;
+}
+
+// Tab header look (height + colors) is opted-in via the
+// `app-dashboard-tabs` class on the mat-tab-group element (see
+// engine-sim-shell.component.html). That partial lives globally
+// because Material's `.mat-tab-*` internals sit behind this
+// component's encapsulation boundary, and the project rule is
+// no `::ng-deep`.
+.engine-sim-shell__tabs {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}

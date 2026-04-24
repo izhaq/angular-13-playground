@@ -18,6 +18,10 @@ import { DemoPageComponent } from './demo-page.component';
     AppDropdownModule,
     AppMultiDropdownModule,
     AppDropdownCvaModule,
+    // EngineSimModule is imported here because the demo previews each
+    // dumb engine-sim component in isolation (CMD section, footer, grid,
+    // forms, board layout). The full <engine-sim-shell> lives on its own
+    // page (`/engine-sim`) — see EngineSimPageModule.
     EngineSimModule,
   ],
   exports: [DemoPageComponent],

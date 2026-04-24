@@ -12,13 +12,21 @@
 // own SCSS (per the project's "don't generalize until the third use case"
 // rule). When a third form lands AND it actually shares the pattern, lift
 // to a shared partial — not before.
-$row-pad-y:        4px;
+// Compact row vocabulary — 14 fields (11 main + sub-header + 3 cmd-to-gs)
+// must fit inside the ~390px form pane the board reserves on the left
+// without scroll. See engine-sim-shell.component.scss for the 550px
+// vertical budget breakdown.
+$row-pad-y:        1px;
 $row-gap:          12px;
-$rows-gap:         2px;
-$label-col-width:  150px;
-$control-col-min:  140px;
-$sub-header-mt:    14px;
-$sub-header-pad-y: 6px;
+$rows-gap:         0;
+$label-col-width:  140px;
+// Fixed control width — short value labels (No / Yes / On / Normal /
+// Not Active …) don't need to stretch across the pane. ~100px fits the
+// longest label "Not Active" with its caret comfortably; the freed
+// horizontal space goes to the grid pane (see engine-sim-board.scss).
+$control-col-width: 100px;
+$sub-header-mt:    4px;
+$sub-header-pad-y: 2px;
 $sub-header-pad-x: 8px;
 $sub-header-fs:    12px;
 $control-radius:   2px;
@@ -26,10 +34,9 @@ $control-radius:   2px;
 :host {
   display: block;
   height: 100%;
-  // Form pane has its own internal padding so rows don't crash into the
-  // board layout's borders. Top/bottom padding leaves room for the sub-
-  // header to breathe at the section boundary.
-  padding: 8px 12px 12px;
+  // Right padding is also reduced — the vertical divider on the board's
+  // left pane (.engine-sim-board__left::after) provides the visual edge.
+  padding: 4px 8px 6px;
   color: #e6e6e6;
 }
 
@@ -44,11 +51,11 @@ $control-radius:   2px;
 
   &__row {
     display: grid;
-    // Fixed label column + flexible control column. `minmax(0, 1fr)` on
-    // the control side lets `min-width: 0` work for nested mat-form-fields
-    // — without it, mat-form-field's intrinsic width would push past the
-    // pane and break the layout on narrow shells.
-    grid-template-columns: $label-col-width minmax($control-col-min, 1fr);
+    // Both columns are fixed-width — label on the left, control on the
+    // right at $control-col-width. The grid no longer stretches to the
+    // pane edge; any extra horizontal space sits to the right of the
+    // control as deliberate whitespace.
+    grid-template-columns: $label-col-width $control-col-width;
     align-items: center;
     column-gap: $row-gap;
     padding: $row-pad-y 0;

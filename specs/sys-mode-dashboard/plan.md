@@ -4,7 +4,7 @@
 **Spec**: [spec.md](./spec.md)
 **Field Definitions**: [field-definitions.md](./field-definitions.md)
 **Date**: 2026-04-21
-**Status**: Phase 1 ✅ · Phase 2 ✅ · Phases 3-7 pending
+**Status**: Phase 1 ✅ · Phase 2 ✅ · Phase 3 ✅ · Phase 4 ✅ · Phase 5 ✅ · Phase 6 ✅ · Phase 7 pending · Phase 8 pending (shell decomposition — deferred)
 
 ---
 
@@ -89,42 +89,42 @@ All files live under `src/app/features/engine-sim/`:
 
 ```
 engine-sim/
-├── engine-sim.module.ts
-├── shared/                                # Cross-board primitives (no UI)
-│   ├── engine-sim.api-contract.ts         # Wire format: EngineSimResponse, EntityData, MCommandItem, BoardPostPayload, EngineSimApiConfig
-│   ├── engine-sim.models.ts               # Internal view models: CmdSelection, GridColumn, GridRow, FieldConfig
-│   ├── engine-sim.labels.ts               # ENGINE_SIM_LABELS centralized translation map
-│   ├── engine-sim.tokens.ts               # ENGINE_SIM_API_CONFIG + ENGINE_SIM_WS_FACTORY injection tokens
-│   ├── board-ids.ts                       # BOARD_IDS const + BoardId type (namespaces all data-test-id values)
-│   ├── column-ids.ts                      # COL_IDS const + GridColId type (single source for grid column ids)
-│   ├── option-values.ts                   # Canonical value maps + derived types (YES_NO, ON_OFF, SIDE, WHEEL, …)
-│   ├── cmd-options.ts                     # CMD_SIDE_OPTIONS, CMD_WHEEL_OPTIONS (reused by both boards)
-│   └── build-defaults.util.ts             # buildDefaultValues() helper
+├── engine-sim.module.ts                   # Declares all components + provides services + WS factory token
+├── api/                                   # Wire-facing layer (everything network-shaped)
+│   ├── api-contract.ts                    # Wire types: EngineSimResponse, EntityData, MCommandItem, BoardPostPayload, EngineSimApiConfig
+│   ├── api-tokens.ts                      # ENGINE_SIM_API_CONFIG + ENGINE_SIM_WS_FACTORY injection tokens
+│   ├── engine-sim-api.service.ts          # POST for each board
+│   ├── engine-sim-data.service.ts         # GET + WebSocket → Observable<EngineSimResponse>
+│   └── grid-normalizer.ts                 # normalizeResponse() + generic buildRows() — single board-agnostic pipeline
+├── shared/                                # Cross-board primitives (no UI, no wire shape)
+│   ├── ids.ts                             # BOARD_IDS / COL_IDS const maps + BoardId / GridColId derived types
+│   ├── models.ts                          # Free-standing view models: CmdSelection, GridColumn, GridRow, FieldConfig, LabeledOption
+│   ├── labels.ts                          # ENGINE_SIM_LABELS centralized translation map
+│   └── option-values.ts                   # Canonical value maps + derived types (YES_NO, ON_OFF, SIDE, WHEEL, TFF, …)
 ├── boards/                                # One folder per dashboard tab — self-contained
+│   ├── build-defaults.ts                  # buildDefaultValues() — board-construction helper over FieldConfig[]
+│   ├── build-form-group.ts                # buildFormGroup() — board-construction helper over FieldConfig[]
 │   ├── primary-commands/                  # Primary — "System Commands" tab (frequently used)
 │   │   ├── primary-commands.options.ts    # DropdownOption arrays (with `abbr`)
 │   │   ├── primary-commands.fields.ts     # PRIMARY_COMMANDS_*_FIELDS configs + buildPrimaryCommandsDefaults()
 │   │   ├── primary-commands.columns.ts    # 8-column grid
-│   │   └── primary-commands-form/         # Phase 5 form component (11 main + 3 "Cmd to GS" fields)
+│   │   └── primary-commands-form/         # Form component (11 main + 3 "Cmd to GS" fields)
 │   └── secondary-commands/                # Secondary — "Failure & Antenna" tab (less frequently used)
 │       ├── secondary-commands.options.ts
 │       ├── secondary-commands.fields.ts   # SECONDARY_COMMANDS_*_FIELDS configs + buildSecondaryCommandsDefaults()
 │       ├── secondary-commands.columns.ts  # 11-column grid (reuses Primary's 8)
-│       └── secondary-commands-form/       # Phase 5 form component (14 fields)
-├── utils/
-│   └── grid-data.utils.ts                 # normalizeResponse() + generic buildRows() — single board-agnostic pipeline
-├── services/
-│   ├── engine-sim-api.service.ts          # POST for each board
-│   └── engine-sim-data.service.ts         # GET + WebSocket → Observable<EngineSimResponse>
+│       └── secondary-commands-form/       # Form component (14 fields)
 └── components/                            # Cross-board / shell-level UI
-    ├── engine-sim-shell/                  # Smart: tabs, toggle, CMD state, WS subscription
-    ├── engine-sim-board/                  # Dumb layout: sticky CMD + scroll body + sticky footer
-    ├── cmd-section/                       # Dumb: 2 multi-dropdowns (side, wheel)
+    ├── engine-sim-shell/                  # Smart: tabs, Test Mode toggle, CMD state, snapshots, grid subscription, Apply/Cancel/Defaults wiring
+    ├── engine-sim-board/                  # Dumb layout: sticky CMD + scroll body + sticky footer (4 ng-content slots)
+    ├── cmd-section/                       # Dumb: 2 multi-dropdowns (side, wheel) — also owns CMD_SIDE_OPTIONS / CMD_WHEEL_OPTIONS
     ├── board-footer/                      # Dumb: Defaults, Cancel, Apply buttons
     └── status-grid/                       # Dumb: dynamic grid with row labels, column hover, cell click
 ```
 
-Each `boards/<board>/` folder is the **migration unit** — self-contained, depends only on `shared/`. Form components live inside their board folder so the whole dashboard moves as one piece.
+Each `boards/<board>/` folder is the **migration unit** — self-contained, depends only on `api/`, `shared/`, and the small `boards/build-*.ts` helpers. Form components live inside their board folder so the whole dashboard moves as one piece.
+
+**One global SCSS partial supports the feature** — `src/styles/_dropdowns.scss` (Material dropdown overrides) and `src/styles/_engine-sim-shell.scss` (Material tab body sizing). Both are scoped under unique component class names so they can never leak. Loaded once from `styles.scss`.
 
 ---
 
@@ -533,16 +533,26 @@ Both consume `FormGroup` + `disabled` as inputs. All dropdowns use `formControlN
 - **`disabled` input intentionally lives on the form component, not on the board layout.** The shell wires the `[disabled]` directly: `<engine-sim-primary-commands-form [disabled]="!testMode" boardForm>`. The board (Phase 4) is pure layout and doesn't pass anything through.
 - **Demo page wired with both standalone form previews + a real Primary form inside the full board layout** (replacing the Phase 4 form stub). Each standalone preview has a "Toggle disabled" button so the test/live mode behavior is observable end-to-end.
 
-### Phase 6: Shell Component — Integration (M-L)
+### Phase 6: Shell Component — Integration (M-L) — ✅ Complete
 
-- `EngineSimShellComponent` — the smart orchestrator
-- Wire everything: tabs, toggle, CMD state, form creation, Apply/Cancel/Defaults, grid data subscription, data transformation
-- `EngineSimModule` final wiring — declare all components, import dependencies
+- `EngineSimShellComponent` — smart orchestrator: tabs, Test Mode toggle, CMD state, both form groups, snapshots, grid data subscription, Apply/Cancel/Defaults wiring
+- `MatTabsModule` + `MatSlideToggleModule` added to `EngineSimModule`; shell declared and exported
 
-**Acceptance criteria:** Full feature works end-to-end. Tab switching preserves CMD. Apply saves, Cancel reverts, Defaults resets. Grid shows live data. Test/Live toggle disables forms. `ng build` clean. `ng test` passes.
+**Acceptance criteria:** ✅ `ng test` 96/96 green · `ng build` clean (no warnings, no errors) · full demo dashboard renders with mock data + console-logged Apply.
 
-**Tests:**
-- `engine-sim-shell.component.spec.ts` — Apply on Primary tab calls `EngineSimApiService.postPrimary` with `{ sides, wheels, fields: { ...defaults, ...edits } }`; Cancel restores the form to the snapshot; Defaults resets to `buildPrimaryCommandsDefaults()`; switching tabs preserves `cmdSaved` but not unapplied form edits; toggling test mode off disables both form groups but leaves the grid enabled (use spy services injected via TestBed providers)
+**Tests delivered (12 specs, all green):**
+- `engine-sim-shell.component.spec.ts` — initial state (testMode on, forms enabled, CMD empty); both form groups seeded with their canonical defaults; Apply on Primary calls `postPrimary` with `{ sides, wheels, fields }` (full form snapshot, not just edits); Apply on Secondary calls `postSecondary`, not `postPrimary`; Apply commits both the form snapshot and `cmdDraft → cmdSaved` on success (verified via subsequent Cancel reverting to the just-applied state); Cancel restores form to snapshot; Defaults resets to `buildPrimaryCommandsDefaults()` independent of snapshot; tab switch preserves `cmdSaved` and `cmdDraft` (CMD is shared); tab switch discards unapplied form edits on the leaving tab; test-mode-off disables both form groups + CMD; test-mode-on re-enables them. Uses TestBed-provided `EngineSimApiService` spy and a stubbed `EngineSimDataService.connect()` that returns a manual `Subject` so frame timing is deterministic.
+
+**Notes from Phase 6 implementation:**
+- **CMD draft and saved are separate properties on the shell.** Apply commits `cmdDraft → cmdSaved` *after* the POST resolves. Cancel does NOT revert `cmdDraft` — CMD is shared across tabs, so per-tab Cancel only owns the tab's form. To revert CMD, the user re-selects (or future iteration can add a CMD-specific revert affordance if the spec asks for it).
+- **Spec interpretation:** "switching tabs preserves cmdSaved but not unapplied form edits" — the shell preserves *both* `cmdSaved` and `cmdDraft` across tabs (per spec.md: "shared across tabs… what gets lost when switching tabs without clicking Apply is the tab-specific form field selections — not the CMD selection itself"). Only the leaving tab's form is reset to its snapshot via `formGroup.reset(snapshot, { emitEvent: false })`.
+- **`emitEvent: false` on every reset/disable/enable.** Test-mode toggling and Cancel/Defaults are UI affordances, not value changes — downstream `valueChanges` subscribers (none today, cheap insurance for tomorrow) should not see phantom edit cycles.
+- **Apply payload uses `formGroup.getRawValue()`.** That already merges per-field defaults with edits — `getRawValue()` returns every control's current value regardless of disabled state. No explicit `{ ...defaults, ...edits }` merge in the shell.
+- **Grid stream subscribed once in `ngOnInit`, normalized + built once per emission, with both boards' rows derived from the same `FlatGrid`.** `takeUntil(destroy$)` for unsubscribe; `cdr.markForCheck()` because OnPush + async assignment.
+- **Test Mode disables CMD + both forms; the grid stays alive.** Footer buttons are bound to `[disabled]="!testMode"` (so Apply/Cancel/Defaults can't fire while controls are read-only). The Test Mode toggle itself stays interactive.
+- **Mat Tabs styling needs to fill height** (so the projected `<engine-sim-board>` can run its own flex layout against a real height). Material's `.mat-tab-body-wrapper` sits behind the shell's encapsulation boundary, and the project rule is no `::ng-deep` — handled by adding `src/styles/_engine-sim-shell.scss` (a tiny global partial scoped under `.engine-sim-shell`, same pattern as `_dropdowns.scss`). Imported once in `styles.scss`.
+- **Demo wiring (`src/app/demo/engine-sim-demo.providers.ts`):** stubs `EngineSimDataService` and `EngineSimApiService` for the playground so the shell renders a canned `EngineSimResponse` and Apply logs to the console instead of POSTing. `DemoPageModule` providers override `EngineSimModule`'s real services via Angular's last-provider-wins rule for eager modules. The host project for the migration target is expected to provide its own `ENGINE_SIM_API_CONFIG` and use the real services.
+- **Build budgets bumped** in `angular.json` (`initial: 500kb → 600kb`, `anyComponentStyle: 2kb → 3kb`) to absorb `MatTabsModule` + `MatSlideToggleModule` and the slightly larger demo SCSS. Both are compatible with the migration target — bundle still well under the 1 MB error ceiling.
 
 ### Phase 7: Polish and Verify (S)
 
@@ -553,6 +563,42 @@ Both consume `FormGroup` + `disabled` as inputs. All dropdowns use `formControlN
 - Production build clean
 
 **Tests:** No new tests — this phase is verification only. Confirm `ng test --no-watch --browsers=ChromeHeadless` and `ng build` are both clean.
+
+### Phase 8: Shell Decomposition — Per-Board Controllers (M) — pending
+
+`EngineSimShellComponent` accreted multiple responsibilities by Phase 6:
+
+| Concern | Owns | Approx LoC |
+|---------|------|----|
+| Tab state | `selectedTabIndex`, `onTabChange`, "discard unapplied edits" rule | ~10 |
+| Form state — Primary | `primaryFormGroup`, `primarySnapshot`, defaults/cancel/apply, enable/disable | ~25 |
+| Form state — Secondary | mirror of Primary for `secondary*` | ~25 |
+| CMD state | `cmdDraft`, `cmdSaved`, `onCmdSelectionChange`, "Apply also commits CMD" coupling | ~10 |
+| Test mode | `testMode`, `cmdDisabled`, `onTestModeChange` (drives form `disable()` + CMD disable) | ~10 |
+| Grid streams | `primaryRows$` / `secondaryRows$` (post-Phase-7 async-pipe refactor) | ~12 |
+| API orchestration | `buildPayload`, `postPrimary` / `postSecondary`, commit handlers | ~25 |
+
+The smell isn't any single concern — each is small. It's that they share instance fields: `cmdSaved` is touched by both commit handlers, `testMode` triggers form + CMD disable, `selectedTabIndex` decides which form gets reset on tab switch. This makes per-concern testing harder than it should be and grows with every new behavior.
+
+**Proposed decomposition:**
+
+1. Introduce a `BoardController` (one per board) holding `formGroup`, `snapshot`, the apply/cancel/defaults handlers, and the POST call. Two instances — `PrimaryBoardController`, `SecondaryBoardController` — instantiated by the shell, passed down to the board template.
+2. Shell shrinks to: tabs + CMD + test-mode + two controller refs. The shared concerns (`cmdDraft` / `cmdSaved`, `testMode`) stay on the shell because they actually are shared across both boards.
+3. Optional follow-up: extract a `GridRowsService` so `data.connect()` doesn't live in the shell at all. Modest win — defer until the third consumer of grid rows exists.
+
+**Out of scope for Phase 8** (revisit later, in priority order):
+- A formal state machine for the per-board lifecycle (`pristine → editing → posting → applied`). Premature until "show spinner during POST" or "block tab switch while POSTing" is asked for.
+- Migration to typed reactive forms. Lands when the host project upgrades past Angular 14.
+
+**Acceptance criteria:**
+- Shell file drops under ~120 LoC; each `BoardController` is independently unit-testable without spinning up the full shell module.
+- Existing shell spec re-targets the controllers where appropriate; the shell itself only keeps tests for the cross-board behaviors (CMD sharing, tab-switch reset, test mode).
+- `ng test` + `ng build` clean. No behavior change visible at the UI layer.
+
+**Why deferred (not blocking Phase 7):**
+- The shell is correct today and well-tested (12 specs covering every observable behavior). The complexity is annoying to read but not actively biting us.
+- Splitting now risks the wrong abstraction — we'd be designing `BoardController` from a sample size of two boards that look almost identical. The migration target may add a third board with different semantics; that third use case will tell us what genuinely belongs on the controller and what stays on the shell.
+- "Don't generalize until the third use case" applies — same rule we cited when we kept `PrimaryCommandsFormComponent` and `SecondaryCommandsFormComponent` as deliberate duplicates instead of one parameterized form.
 
 ---
 

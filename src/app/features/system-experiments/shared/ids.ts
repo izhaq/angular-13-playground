@@ -1,5 +1,5 @@
 /**
- * Engine-sim string-id namespaces — board ids and grid-column ids.
+ * System Experiments string-id namespaces — board ids and grid-column ids.
  *
  * Both are `as const` value maps with derived literal-union types. Co-located
  * here because they're the same kind of thing (canonical string identifiers

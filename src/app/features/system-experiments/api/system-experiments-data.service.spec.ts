@@ -118,4 +118,30 @@ describe('SystemExperimentsDataService', () => {
     expect(httpMock.match(TEST_API_CONFIG.getUrl).length).toBe(1);
   });
 
+  /**
+   * Defensive ceiling — without a cap, a backend that's down for hours would
+   * generate ~1,200 reconnect attempts per hour per browser tab. The cap
+   * (60 attempts × 3 s ≈ 3 min) bounds the damage and surfaces the failure
+   * to subscribers instead of looping silently.
+   */
+  it('stops retrying after MAX_RECONNECT_ATTEMPTS consecutive failures and errors the stream', fakeAsync(() => {
+    let streamError: unknown = null;
+    service.connect().subscribe({ error: (e) => (streamError = e) });
+
+    httpMock.expectOne(TEST_API_CONFIG.getUrl).flush(emptyResponse('seed'));
+
+    // First socket fails immediately, then 60 retries also fail before
+    // emitting anything (no `resetOnSuccess` reset). On attempt #61 the
+    // stream should error out instead of opening yet another socket.
+    for (let i = 0; i < 61; i++) {
+      const lastSocket = openSockets[openSockets.length - 1];
+      lastSocket.error(new Error(`failure ${i}`));
+      tick(3000);
+    }
+
+    // 1 initial attempt + 60 retries = 61 sockets total. No 62nd socket.
+    expect(openSockets.length).toBe(61);
+    expect(streamError).toBeTruthy();
+  }));
+
 });

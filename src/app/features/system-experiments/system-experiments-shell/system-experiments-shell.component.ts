@@ -1,6 +1,5 @@
 import {
   ChangeDetectionStrategy,
-  ChangeDetectorRef,
   Component,
   OnDestroy,
 } from '@angular/core';
@@ -95,7 +94,6 @@ export class SystemExperimentsShellComponent implements OnDestroy {
   constructor(
     private readonly api: SystemExperimentsApiService,
     private readonly data: SystemExperimentsDataService,
-    private readonly cdr: ChangeDetectorRef,
   ) {
     const grid$ = this.data.connect().pipe(
       map((response) => normalizeResponse(response)),
@@ -219,13 +217,11 @@ export class SystemExperimentsShellComponent implements OnDestroy {
   private commitPrimary(): void {
     this.primarySnapshot = this.primaryFormGroup.getRawValue();
     this.cmdSaved = this.cmdDraft;
-    this.cdr.markForCheck();
   }
 
   private commitSecondary(): void {
     this.secondarySnapshot = this.secondaryFormGroup.getRawValue();
     this.cmdSaved = this.cmdDraft;
-    this.cdr.markForCheck();
   }
 
   private resetActiveFormToSnapshot(): void {

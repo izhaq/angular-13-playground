@@ -32,9 +32,8 @@ $border-width:  1px;
   height: 100%;
   overflow: auto;
 
-  // Re-export the cell minimums as CSS custom properties so the TS-built
-  // `gridTemplateColumns` string can reference them via `var(--…)` —
-  // single source of truth between SCSS and TS. (See StatusGridComponent.)
+  // Cell minimums published as custom properties so `.status-grid` (and
+  // anyone styling it) can read them without referring to SCSS variables.
   --grid-label-col-min: #{$label-col-min};
   --grid-data-col-min:  #{$data-col-min};
 }
@@ -50,6 +49,14 @@ $border-width:  1px;
 // reads as a closed rectangle.
 .status-grid {
   display: grid;
+  // Track template: one row-label column (sized to content with a floor)
+  // + N data columns (`--col-count` is set by the host template via
+  // `[style.--col-count]="columns.length"`). Keeping the template in CSS
+  // means the component has no `ngOnInit` and reacts automatically when
+  // the column count changes.
+  grid-template-columns:
+    minmax(var(--grid-label-col-min), max-content)
+    repeat(var(--col-count), minmax(var(--grid-data-col-min), 1fr));
   // Fill the host so `1fr` rows have a real height to distribute. Without
   // this the grid would size to its intrinsic content (≈ rows × cell-min-h)
   // and the rows could never grow.

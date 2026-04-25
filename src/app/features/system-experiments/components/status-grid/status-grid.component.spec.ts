@@ -60,15 +60,16 @@ describe('StatusGridComponent', () => {
     fixture.detectChanges();
   });
 
-  it('precomputes grid-template-columns with one label col + N data cols', () => {
+  it('publishes column count to CSS via --col-count so SCSS can build the track template', () => {
     const root: HTMLElement = fixture.debugElement.query(By.css('.status-grid')).nativeElement;
-    // Cell minimums are sourced from CSS custom properties on `:host` (set
-    // by the system-experiments tokens partial), so the asserted string contains
-    // `var(--…)` references rather than literal pixel values.
-    expect(root.style.gridTemplateColumns).toBe(
-      'minmax(var(--grid-label-col-min), max-content) ' +
-      'repeat(3, minmax(var(--grid-data-col-min), 1fr))',
-    );
+    // The `grid-template-columns` rule itself lives in SCSS as
+    //   minmax(var(--grid-label-col-min), max-content) repeat(var(--col-count), …)
+    // — TS only contributes the integer count via [style.--col-count]. We
+    // can't assert the resolved grid template (it depends on SCSS being
+    // applied + custom-property var resolution, neither of which a unit
+    // test guarantees), so we verify the contract: the count made it
+    // onto the host element as a custom property.
+    expect(root.style.getPropertyValue('--col-count')).toBe(String(COLUMNS.length));
   });
 
   it('renders one column header per column with namespaced test ids', () => {

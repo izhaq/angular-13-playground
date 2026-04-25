@@ -2,7 +2,6 @@ import {
   ChangeDetectionStrategy,
   Component,
   Input,
-  OnInit,
 } from '@angular/core';
 
 import { BoardId, GridColId } from '../../shared/ids';
@@ -30,33 +29,14 @@ import { GridColumn, GridRow } from '../../shared/models';
   styleUrls: ['./status-grid.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class StatusGridComponent implements OnInit {
+export class StatusGridComponent {
   @Input() boardId!: BoardId;
   @Input() columns: GridColumn[] = [];
   @Input() rows: GridRow[] = [];
 
-  /**
-   * Precomputed once at init (avoids recalculation per change-detection
-   * tick — relevant since OnPush still runs CD on event handlers).
-   * `columns` is treated as set-once: each board hands the grid a static
-   * `GridColumn[]` constant. If columns ever become reactive, switch to
-   * `ngOnChanges` so the track template stays in sync.
-   */
-  gridTemplateColumns = '';
-
   hoveredColId: GridColId | null = null;
   /** Composite id "{fieldKey}|{colId}" — null when nothing is selected. */
   selectedCellId: string | null = null;
-
-  ngOnInit(): void {
-    // Cell minimums come from `--grid-label-col-min` / `--grid-data-col-min`,
-    // which the host's SCSS exposes (see status-grid.component.scss). Keeping
-    // the literals out of TS means changing the sizing budget is a one-line
-    // edit in this component's SCSS.
-    this.gridTemplateColumns =
-      'minmax(var(--grid-label-col-min), max-content) ' +
-      `repeat(${this.columns.length}, minmax(var(--grid-data-col-min), 1fr))`;
-  }
 
   onEnterColumn(colId: GridColId): void {
     this.hoveredColId = colId;

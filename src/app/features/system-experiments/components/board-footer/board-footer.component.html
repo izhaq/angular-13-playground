@@ -25,7 +25,7 @@
     mat-flat-button
     type="button"
     class="board-footer__btn board-footer__btn--apply"
-    [disabled]="disabled"
+    [disabled]="disabled || applyDisabled"
     [attr.data-test-id]="'footer-' + boardId + '-apply'"
     (click)="apply.emit()">
     {{ labels.apply }}

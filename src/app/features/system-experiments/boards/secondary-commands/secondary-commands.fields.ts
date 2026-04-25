@@ -49,10 +49,25 @@ export const SECONDARY_COMMANDS_GDL_FIELDS: FieldConfig[] = [
   { key: 'uuuAntSelect',   label: L.uuuAntSelect,   type: 'single', options: NORMAL_FORCED_OPTIONS, defaultValue: NORMAL_FORCED.Normal },
 ];
 
+/**
+ * Multi-location fields — same key participates in more than one wire
+ * structure (any subset of `additionalFields`, `aCommands`, GDL flat props).
+ * Renders as a row that spans whichever of the 11 columns the backend
+ * populates per frame; absence in a structure renders as an empty cell.
+ *
+ * Server-side routing for these keys lives in `server/src/system-experiments/
+ * state.ts` — keyset membership in N sets means an Apply POST writes to all
+ * N matching slots.
+ */
+export const SECONDARY_COMMANDS_MULTI_LOCATION_FIELDS: FieldConfig[] = [
+  { key: 'linkHealth', label: L.linkHealth, type: 'single', options: NORMAL_FORCED_OPTIONS, defaultValue: NORMAL_FORCED.Normal },
+];
+
 export const SECONDARY_COMMANDS_ALL_FIELDS: FieldConfig[] = [
   ...SECONDARY_COMMANDS_8COL_FIELDS,
   ...SECONDARY_COMMANDS_TLL_TLR_FIELDS,
   ...SECONDARY_COMMANDS_GDL_FIELDS,
+  ...SECONDARY_COMMANDS_MULTI_LOCATION_FIELDS,
 ];
 
 /** Returns a fresh defaults map; callers may mutate freely. */

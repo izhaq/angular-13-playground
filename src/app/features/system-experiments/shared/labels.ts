@@ -85,6 +85,12 @@ export const SYSTEM_EXPERIMENTS_LABELS = {
   gdlTransmitPwr:  'GDL Transmit Pwr',
   uuuAntSelect:    'UUU Ant Select',
 
+  // -- Secondary: Multi-location Fields --------------------------------------
+  // Same key participates in multiple wire structures simultaneously
+  // (additionalFields + aCommands + GDL). Renders as a single row spanning
+  // any subset of the 11 columns the backend populates.
+  linkHealth:      'Link Health',
+
   // -- Shared Option Labels --------------------------------------------------
   no: 'No',
   yes: 'Yes',

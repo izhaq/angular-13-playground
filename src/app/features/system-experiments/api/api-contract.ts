@@ -47,6 +47,11 @@ export interface EntityData {
   antSelectedCmd: string;
   gdlTransmitPwr: string;
   uuuAntSelect: string;
+
+  // -- Multi-location fields (also live in mCommands.additionalFields and
+  //    aCommands; backend may emit them in any subset of the three).
+  //    Optional here because absence is meaningful — empty cell, not zero.
+  linkHealth?: string;
 }
 
 /** Values for ONE column on one side. */
@@ -83,6 +88,9 @@ export interface SecondaryAdditionalFields {
   whlCriticalFail: string;
   whlWarningFail: string;
   whlFatalFail: string;
+
+  // Multi-location — backend may also send `linkHealth` on this struct.
+  linkHealth?: string;
 }
 
 /** Secondary board's 5 TLL/TLR fields (per-side: left entity → TLL, right → TLR). */
@@ -92,6 +100,9 @@ export interface ACommandsData {
   msTlFail: string;
   tlTempFail: string;
   tlToAgCommFail: string;
+
+  // Multi-location — backend may also send `linkHealth` on this struct.
+  linkHealth?: string;
 }
 
 /**
@@ -105,7 +116,8 @@ export type GdlFieldKey =
   | 'antTransmitPwr'
   | 'antSelectedCmd'
   | 'gdlTransmitPwr'
-  | 'uuuAntSelect';
+  | 'uuuAntSelect'
+  | 'linkHealth';
 
 // ---------------------------------------------------------------------------
 // POST Payload (one per board, sent on Apply)

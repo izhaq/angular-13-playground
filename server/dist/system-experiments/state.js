@@ -17,13 +17,20 @@ const PRIMARY_CMD_TO_GS_KEYS = new Set([
 ]);
 const SECONDARY_ADDITIONAL_KEYS = [
     'whlCriticalFail', 'whlWarningFail', 'whlFatalFail',
+    // Multi-location: same key participates in all three secondary structures.
+    // The applySecondary fan-out (additionalFields + aCommands + GDL) is three
+    // independent passes — membership in N keysets means the value is written
+    // to all N matching slots in one POST.
+    'linkHealth',
 ];
 const SECONDARY_ACOMMANDS_KEYS = [
     'tlCriticalFail', 'masterTlFail', 'msTlFail', 'tlTempFail', 'tlToAgCommFail',
+    'linkHealth',
 ];
 const SECONDARY_GDL_KEYS = [
     'gdlFail', 'gdlTempFail', 'antTransmitPwr',
     'antSelectedCmd', 'gdlTransmitPwr', 'uuuAntSelect',
+    'linkHealth',
 ];
 const PRIMARY_STANDARD_KEY_SET = new Set(PRIMARY_STANDARD_KEYS);
 const SECONDARY_ADDITIONAL_KEY_SET = new Set(SECONDARY_ADDITIONAL_KEYS);
@@ -51,6 +58,10 @@ function emptyMCommand() {
             whlCriticalFail: 'no',
             whlWarningFail: 'normal',
             whlFatalFail: 'no',
+            // Multi-location seed — same key, same default, in all three structures.
+            // This is what makes the field render across all 11 secondary columns
+            // from boot, before the user touches the form.
+            linkHealth: 'normal',
         },
     };
 }
@@ -61,6 +72,7 @@ function emptyACommands() {
         msTlFail: 'normal',
         tlTempFail: 'no',
         tlToAgCommFail: 'no',
+        linkHealth: 'normal',
     };
 }
 function emptyEntity(entityId) {
@@ -74,6 +86,7 @@ function emptyEntity(entityId) {
         antSelectedCmd: 'normal',
         gdlTransmitPwr: 'normal',
         uuuAntSelect: 'normal',
+        linkHealth: 'normal',
     };
 }
 function buildInitialState() {

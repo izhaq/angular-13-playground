@@ -124,6 +124,21 @@ export class SystemExperimentsShellComponent implements OnDestroy {
     this.cmdDraft = selection;
   }
 
+  /**
+   * Apply requires BOTH a side and a wheel — the POST payload routes by
+   * `(side, wheel)` for additionalFields and by `side` for aCommands, so
+   * an empty selection would no-op on the server. Defaults + Cancel stay
+   * enabled regardless: those are local form ops with no network side
+   * effect and are useful even before the user picks a CMD scope.
+   *
+   * Read as a getter (cheap, no caching needed) so the template re-evaluates
+   * exactly when CMD selection changes — `cmdDraft` is reassigned in
+   * `onCmdSelectionChange`, which triggers OnPush change detection.
+   */
+  get applyDisabled(): boolean {
+    return this.cmdDraft.sides.length === 0 || this.cmdDraft.wheels.length === 0;
+  }
+
   // ---------------------------------------------------------------------------
   // Tabs
   // ---------------------------------------------------------------------------

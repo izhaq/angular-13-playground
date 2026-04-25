@@ -33,6 +33,10 @@ export interface SecondaryAdditionalFields {
   whlCriticalFail: string;
   whlWarningFail: string;
   whlFatalFail: string;
+
+  // Multi-location — same key may also appear on aCommands and EntityData
+  // GDL props. Optional because backend may emit it in any subset.
+  linkHealth?: string;
 }
 
 /** Secondary board's 5 TLL/TLR fields (per-side). */
@@ -42,6 +46,9 @@ export interface ACommandsData {
   msTlFail: string;
   tlTempFail: string;
   tlToAgCommFail: string;
+
+  // Multi-location — see SecondaryAdditionalFields.
+  linkHealth?: string;
 }
 
 /** Values for ONE column on one side. */
@@ -57,7 +64,8 @@ export type GdlFieldKey =
   | 'antTransmitPwr'
   | 'antSelectedCmd'
   | 'gdlTransmitPwr'
-  | 'uuuAntSelect';
+  | 'uuuAntSelect'
+  | 'linkHealth';
 
 export interface EntityData {
   entityId: EntityId;
@@ -69,6 +77,9 @@ export interface EntityData {
   antSelectedCmd: string;
   gdlTransmitPwr: string;
   uuuAntSelect: string;
+
+  // Multi-location — see SecondaryAdditionalFields. Optional everywhere.
+  linkHealth?: string;
 }
 
 export interface SystemExperimentsResponse {

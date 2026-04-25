@@ -30,6 +30,7 @@ export interface SecondaryAdditionalFields {
     whlCriticalFail: string;
     whlWarningFail: string;
     whlFatalFail: string;
+    linkHealth?: string;
 }
 /** Secondary board's 5 TLL/TLR fields (per-side). */
 export interface ACommandsData {
@@ -38,6 +39,7 @@ export interface ACommandsData {
     msTlFail: string;
     tlTempFail: string;
     tlToAgCommFail: string;
+    linkHealth?: string;
 }
 /** Values for ONE column on one side. */
 export interface MCommandItem {
@@ -45,7 +47,7 @@ export interface MCommandItem {
     additionalFields: SecondaryAdditionalFields;
 }
 /** GDL field keys — values live flat on EntityData per wire format. */
-export declare type GdlFieldKey = 'gdlFail' | 'gdlTempFail' | 'antTransmitPwr' | 'antSelectedCmd' | 'gdlTransmitPwr' | 'uuuAntSelect';
+export declare type GdlFieldKey = 'gdlFail' | 'gdlTempFail' | 'antTransmitPwr' | 'antSelectedCmd' | 'gdlTransmitPwr' | 'uuuAntSelect' | 'linkHealth';
 export interface EntityData {
     entityId: EntityId;
     mCommands: [MCommandItem, MCommandItem, MCommandItem, MCommandItem];
@@ -56,6 +58,7 @@ export interface EntityData {
     antSelectedCmd: string;
     gdlTransmitPwr: string;
     uuuAntSelect: string;
+    linkHealth?: string;
 }
 export interface SystemExperimentsResponse {
     /** Always 2 entities: [left, right]. */

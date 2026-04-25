@@ -49,7 +49,15 @@ $pad-x:                12px;
     border-color: #1e88e5;
   }
 
+  // Material's `mat-flat-button[disabled]` ships with its own near-black
+  // text + light-gray background — invisible on top of our dark surface.
+  // Pin our colors through the disabled state and let opacity alone carry
+  // the "muted" cue. Specificity matches Material's own rule (component
+  // host attribute + `[disabled]`) so no `!important` is needed.
   &__btn[disabled] {
+    background: #2d2d2d;
+    color: #e6e6e6;
+    border-color: #3a3a3a;
     opacity: $btn-disabled-opacity;
     cursor: not-allowed;
   }

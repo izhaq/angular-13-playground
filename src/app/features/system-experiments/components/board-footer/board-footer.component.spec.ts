@@ -18,6 +18,7 @@ import { BoardFooterComponent } from './board-footer.component';
     <system-experiments-board-footer
       [boardId]="boardId"
       [disabled]="disabled"
+      [applyDisabled]="applyDisabled"
       (defaults)="events.push('defaults')"
       (cancel)="events.push('cancel')"
       (apply)="events.push('apply')">
@@ -27,6 +28,7 @@ import { BoardFooterComponent } from './board-footer.component';
 class HostComponent {
   boardId: BoardId = BOARD_IDS.primary;
   disabled = false;
+  applyDisabled = false;
   events: string[] = [];
   @ViewChild(BoardFooterComponent, { static: true }) footer!: BoardFooterComponent;
 }
@@ -86,5 +88,34 @@ describe('BoardFooterComponent', () => {
     fixture.detectChanges();
 
     expect(btn('secondary', 'apply')).toBeTruthy();
+  });
+
+  it('disables ONLY Apply when applyDisabled is true (defaults + cancel stay clickable)', () => {
+    host.applyDisabled = true;
+    fixture.detectChanges();
+
+    expect(btn('primary', 'apply').disabled).toBe(true);
+    expect(btn('primary', 'defaults').disabled).toBe(false);
+    expect(btn('primary', 'cancel').disabled).toBe(false);
+  });
+
+  it('keeps Apply disabled when either disabled OR applyDisabled is true', () => {
+    // disabled wins on its own
+    host.disabled = true;
+    host.applyDisabled = false;
+    fixture.detectChanges();
+    expect(btn('primary', 'apply').disabled).toBe(true);
+
+    // applyDisabled wins on its own
+    host.disabled = false;
+    host.applyDisabled = true;
+    fixture.detectChanges();
+    expect(btn('primary', 'apply').disabled).toBe(true);
+
+    // Both off → enabled
+    host.disabled = false;
+    host.applyDisabled = false;
+    fixture.detectChanges();
+    expect(btn('primary', 'apply').disabled).toBe(false);
   });
 });

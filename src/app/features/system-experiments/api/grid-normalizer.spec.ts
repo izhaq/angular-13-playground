@@ -309,4 +309,175 @@ describe('buildRows', () => {
     expect(row.values['left1']).toBe('A,B');
   });
 
+  // -------------------------------------------------------------------------
+  // Multi-location fields — same key may appear in any combination of the
+  // three secondary structures (additionalFields, aCommands, GDL flat props).
+  //
+  // The normalizer was designed for this on day one — it spreads each wire
+  // structure into its own column slot and the row builder iterates ALL
+  // columns looking up the key. There is no per-field "where does this
+  // live" routing; the wire location IS the routing.
+  //
+  // These tests lock that property in: future refactors that try to
+  // optimize the normalizer by indexing fields → location (one canonical
+  // location per key) will break here and force the conversation.
+  // -------------------------------------------------------------------------
+
+  /**
+   * Helper: builds a secondary response where a SAME-KEYED field appears in
+   * any subset of the three structures. Each structure that should host the
+   * key takes a `string` value; structures left out get an empty object.
+   */
+  function multiLocationResponse(
+    fieldKey: string,
+    locations: {
+      leftWheels?:  Partial<Record<0 | 1 | 2 | 3, string>>;
+      rightWheels?: Partial<Record<0 | 1 | 2 | 3, string>>;
+      tll?: string;
+      tlr?: string;
+      gdl?: string;
+    },
+  ): SystemExperimentsResponse {
+    const wheelMItem = (cmds: Partial<Record<0 | 1 | 2 | 3, string>>, idx: 0 | 1 | 2 | 3) =>
+      cmds[idx] !== undefined
+        ? mItemWith({}, { [fieldKey]: cmds[idx]! } as any)
+        : emptyMItem();
+
+    const left = entity('left', {
+      mCommands: [
+        wheelMItem(locations.leftWheels ?? {}, 0),
+        wheelMItem(locations.leftWheels ?? {}, 1),
+        wheelMItem(locations.leftWheels ?? {}, 2),
+        wheelMItem(locations.leftWheels ?? {}, 3),
+      ],
+      aCommands: (locations.tll !== undefined
+        ? { [fieldKey]: locations.tll }
+        : {}) as unknown as ACommandsData,
+      ...(locations.gdl !== undefined ? { [fieldKey]: locations.gdl } : {}),
+    });
+    const right = entity('right', {
+      mCommands: [
+        wheelMItem(locations.rightWheels ?? {}, 0),
+        wheelMItem(locations.rightWheels ?? {}, 1),
+        wheelMItem(locations.rightWheels ?? {}, 2),
+        wheelMItem(locations.rightWheels ?? {}, 3),
+      ],
+      aCommands: (locations.tlr !== undefined
+        ? { [fieldKey]: locations.tlr }
+        : {}) as unknown as ACommandsData,
+    });
+    return response(left, right);
+  }
+
+  it('multi-location: same key in additionalFields only fills wheel cells, leaves TLL/TLR/GDL empty', () => {
+    const grid = normalizeResponse(multiLocationResponse('linkHealth', {
+      leftWheels:  { 0: 'a', 1: 'b', 2: 'c', 3: 'a' },
+      rightWheels: { 0: 'b', 1: 'c', 2: 'a', 3: 'b' },
+    }));
+    const [row] = buildRows([singleField('linkHealth')], grid, SECONDARY_COMMANDS_COLUMNS);
+
+    expect(row.values).toEqual({
+      left1: 'A', left2: 'B', left3: 'C', left4: 'A',
+      right1: 'B', right2: 'C', right3: 'A', right4: 'B',
+      tll: '', tlr: '', gdl: '',
+    });
+  });
+
+  it('multi-location: same key in aCommands only fills TLL/TLR, leaves wheels and GDL empty', () => {
+    const grid = normalizeResponse(multiLocationResponse('linkHealth', {
+      tll: 'a',
+      tlr: 'b',
+    }));
+    const [row] = buildRows([singleField('linkHealth')], grid, SECONDARY_COMMANDS_COLUMNS);
+
+    expect(row.values[COL_IDS.tll]).toBe('A');
+    expect(row.values[COL_IDS.tlr]).toBe('B');
+    expect(row.values[COL_IDS.gdl]).toBe('');
+    expect([...COL_IDS.left, ...COL_IDS.right].every((c) => row.values[c] === '')).toBe(true);
+  });
+
+  it('multi-location: same key in GDL only fills the GDL cell, leaves all others empty', () => {
+    const grid = normalizeResponse(multiLocationResponse('linkHealth', { gdl: 'a' }));
+    const [row] = buildRows([singleField('linkHealth')], grid, SECONDARY_COMMANDS_COLUMNS);
+
+    expect(row.values[COL_IDS.gdl]).toBe('A');
+    expect(
+      [...COL_IDS.left, ...COL_IDS.right, COL_IDS.tll, COL_IDS.tlr]
+        .every((c) => row.values[c] === ''),
+    ).toBe(true);
+  });
+
+  it('multi-location: same key in additionalFields + GDL fills wheels + GDL, leaves TLL/TLR empty', () => {
+    const grid = normalizeResponse(multiLocationResponse('linkHealth', {
+      leftWheels:  { 0: 'a', 1: 'b', 2: 'c', 3: 'a' },
+      rightWheels: { 0: 'b', 1: 'c', 2: 'a', 3: 'b' },
+      gdl: 'c',
+    }));
+    const [row] = buildRows([singleField('linkHealth')], grid, SECONDARY_COMMANDS_COLUMNS);
+
+    expect(row.values[COL_IDS.left[0]]).toBe('A');
+    expect(row.values[COL_IDS.right[3]]).toBe('B');
+    expect(row.values[COL_IDS.gdl]).toBe('C');
+    expect(row.values[COL_IDS.tll]).toBe('');
+    expect(row.values[COL_IDS.tlr]).toBe('');
+  });
+
+  it('multi-location: same key in all three structures fills every one of the 11 columns', () => {
+    const grid = normalizeResponse(multiLocationResponse('linkHealth', {
+      leftWheels:  { 0: 'a', 1: 'b', 2: 'c', 3: 'a' },
+      rightWheels: { 0: 'b', 1: 'c', 2: 'a', 3: 'b' },
+      tll: 'a',
+      tlr: 'b',
+      gdl: 'c',
+    }));
+    const [row] = buildRows([singleField('linkHealth')], grid, SECONDARY_COMMANDS_COLUMNS);
+
+    expect(Object.values(row.values).every((v) => v !== '')).toBe(true);
+    expect(row.values[COL_IDS.tll]).toBe('A');
+    expect(row.values[COL_IDS.tlr]).toBe('B');
+    expect(row.values[COL_IDS.gdl]).toBe('C');
+  });
+
+  it('multi-location: same key partially populated across wheels — only the present cells fill', () => {
+    // Backend sends the field in L1 + L3 + R2 only — every other wheel
+    // cell is intentionally empty. The grid mirrors the wire exactly.
+    const grid = normalizeResponse(multiLocationResponse('linkHealth', {
+      leftWheels:  { 0: 'a', 2: 'b' },
+      rightWheels: { 1: 'c' },
+    }));
+    const [row] = buildRows([singleField('linkHealth')], grid, SECONDARY_COMMANDS_COLUMNS);
+
+    expect(row.values[COL_IDS.left[0]]).toBe('A');
+    expect(row.values[COL_IDS.left[1]]).toBe('');
+    expect(row.values[COL_IDS.left[2]]).toBe('B');
+    expect(row.values[COL_IDS.left[3]]).toBe('');
+    expect(row.values[COL_IDS.right[0]]).toBe('');
+    expect(row.values[COL_IDS.right[1]]).toBe('C');
+    expect(row.values[COL_IDS.right[2]]).toBe('');
+    expect(row.values[COL_IDS.right[3]]).toBe('');
+  });
+
+  it('multi-location: keys in different structures do not overwrite each other', () => {
+    // Two different fields with the same wire location pattern — proves the
+    // normalizer keys cells by (column, fieldKey) not by location identity.
+    const grid = normalizeResponse(multiLocationResponse('linkHealth', {
+      leftWheels: { 0: 'a' },
+      gdl: 'b',
+    }));
+    // Layer a second key onto the same response by mutating before reading.
+    grid[COL_IDS.left[0]]!['otherFlag'] = 'c';
+    grid[COL_IDS.gdl]!['otherFlag']     = 'a';
+
+    const [linkRow, otherRow] = buildRows(
+      [singleField('linkHealth'), singleField('otherFlag')],
+      grid,
+      SECONDARY_COMMANDS_COLUMNS,
+    );
+
+    expect(linkRow.values[COL_IDS.left[0]]).toBe('A');
+    expect(linkRow.values[COL_IDS.gdl]).toBe('B');
+    expect(otherRow.values[COL_IDS.left[0]]).toBe('C');
+    expect(otherRow.values[COL_IDS.gdl]).toBe('A');
+  });
+
 });

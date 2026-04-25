@@ -107,6 +107,32 @@ describe('SystemExperimentsShellComponent', () => {
   });
 
   // ---------------------------------------------------------------------------
+  // applyDisabled — Apply requires a complete CMD scope (side AND wheel).
+  // The server fans the POST out by (side, wheel) for additionalFields and
+  // by side for aCommands; an empty selection no-ops on the wire, so the
+  // button is gated client-side rather than letting users fire dud requests.
+  // ---------------------------------------------------------------------------
+
+  it('applyDisabled is true when CMD is fully empty (initial state)', () => {
+    expect(component.applyDisabled).toBe(true);
+  });
+
+  it('applyDisabled is true when only sides are selected (no wheels)', () => {
+    component.cmdDraft = { sides: ['left'], wheels: [] };
+    expect(component.applyDisabled).toBe(true);
+  });
+
+  it('applyDisabled is true when only wheels are selected (no sides)', () => {
+    component.cmdDraft = { sides: [], wheels: ['1', '3'] };
+    expect(component.applyDisabled).toBe(true);
+  });
+
+  it('applyDisabled is false once both a side and a wheel are selected', () => {
+    component.cmdDraft = { sides: ['left'], wheels: ['3'] };
+    expect(component.applyDisabled).toBe(false);
+  });
+
+  // ---------------------------------------------------------------------------
   // Apply
   // ---------------------------------------------------------------------------
 

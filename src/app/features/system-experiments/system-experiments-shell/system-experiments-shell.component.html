@@ -41,6 +41,7 @@
           boardFooter
           [boardId]="boardIds.primary"
           [disabled]="!testMode"
+          [applyDisabled]="applyDisabled"
           (defaults)="onPrimaryDefaults()"
           (cancel)="onPrimaryCancel()"
           (apply)="onPrimaryApply()">
@@ -73,6 +74,7 @@
           boardFooter
           [boardId]="boardIds.secondary"
           [disabled]="!testMode"
+          [applyDisabled]="applyDisabled"
           (defaults)="onSecondaryDefaults()"
           (cancel)="onSecondaryCancel()"
           (apply)="onSecondaryApply()">

@@ -4,7 +4,7 @@
     type="button"
     class="board-footer__btn board-footer__btn--defaults"
     [disabled]="disabled"
-    [attr.data-test-id]="'footer-' + boardId + '-defaults'"
+    data-test-id="footer-defaults"
     (click)="defaults.emit()">
     {{ labels.defaults }}
   </button>
@@ -16,7 +16,7 @@
     type="button"
     class="board-footer__btn board-footer__btn--cancel"
     [disabled]="disabled"
-    [attr.data-test-id]="'footer-' + boardId + '-cancel'"
+    data-test-id="footer-cancel"
     (click)="cancel.emit()">
     {{ labels.cancel }}
   </button>
@@ -26,7 +26,7 @@
     type="button"
     class="board-footer__btn board-footer__btn--apply"
     [disabled]="disabled || applyDisabled"
-    [attr.data-test-id]="'footer-' + boardId + '-apply'"
+    data-test-id="footer-apply"
     (click)="apply.emit()">
     {{ labels.apply }}
   </button>

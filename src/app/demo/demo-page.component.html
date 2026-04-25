@@ -189,15 +189,15 @@ form.status = {{ form.status }}</pre>
   <section class="demo-section" id="engine-footer">
     <h2>SystemExperiments — BoardFooterComponent</h2>
     <p class="demo-section__desc">
-      Sticky board footer with Defaults / Cancel / Apply. Each button stamps
-      a namespaced <code>data-test-id</code> via the <code>boardId</code>
-      input so primary and secondary footers stay unique even when both
-      tabs are mounted at the same time.
+      Singleton action bar with Defaults / Cancel / Apply. The shell mounts
+      ONE instance outside the tab-group and routes the three events to the
+      active board (test ids: <code>footer-defaults</code>,
+      <code>footer-cancel</code>, <code>footer-apply</code>) — there is no
+      per-board footer.
     </p>
 
     <div class="demo-section__example demo-section__example--system-experiments">
       <system-experiments-board-footer
-        [boardId]="boardIds.primary"
         [disabled]="footerDisabled"
         (defaults)="onFooterEvent('defaults')"
         (cancel)="onFooterEvent('cancel')"
@@ -299,11 +299,12 @@ form.status = {{ form.status }}</pre>
     <h2>SystemExperiments — BoardComponent (full layout)</h2>
     <p class="demo-section__desc">
       The Phase 4 layout primitive, wired with every Phase 3 + Phase 5 piece
-      projected into its slot: <code>[boardCmd]</code>,
-      <code>[boardForm]</code>, <code>[boardGrid]</code>,
-      <code>[boardFooter]</code>. The form pane scrolls while the cmd row
-      and footer stay pinned. Resize the window to see the 4 : 6 form /
-      grid split shrink proportionally.
+      projected into its three slots: <code>[boardCmd]</code>,
+      <code>[boardForm]</code>, <code>[boardGrid]</code>. The form pane
+      scrolls while the cmd row stays pinned. The action bar is the
+      shell-level singleton rendered below — not part of the board.
+      Resize the window to see the 4 : 6 form / grid split shrink
+      proportionally.
     </p>
 
     <div class="demo-section__example demo-section__example--system-experiments demo-section__example--board">
@@ -326,16 +327,14 @@ form.status = {{ form.status }}</pre>
           [columns]="primaryGridColumns"
           [rows]="primaryGridRows">
         </system-experiments-status-grid>
-
-        <system-experiments-board-footer
-          boardFooter
-          [boardId]="boardIds.primary"
-          [disabled]="footerDisabled"
-          (defaults)="onFooterEvent('defaults')"
-          (cancel)="onFooterEvent('cancel')"
-          (apply)="onFooterEvent('apply')">
-        </system-experiments-board-footer>
       </system-experiments-board>
+
+      <system-experiments-board-footer
+        [disabled]="footerDisabled"
+        (defaults)="onFooterEvent('defaults')"
+        (cancel)="onFooterEvent('cancel')"
+        (apply)="onFooterEvent('apply')">
+      </system-experiments-board-footer>
     </div>
   </section>
 </main>

@@ -3,7 +3,10 @@
 //   tab header     ~36px  (compacted via the `app-dashboard-tabs` opt-in
 //                          on the mat-tab-group below — see
 //                          src/styles/_app-dashboard-tabs.scss)
-//   board content  ~432px (everything inside the active tab)
+//   board content  ~390px (everything inside the active tab)
+//   footer         ~42px  (single shared `BoardFooterComponent` — see
+//                          board-footer.component.scss; ~26 line-height
+//                          + 8/8 vertical padding)
 //   ───────────────────
 //   total          500px
 //
@@ -61,4 +64,30 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
+}
+
+// Single shared footer rendered below the tab strip. The divider runs
+// edge-to-edge across the shell so the footer reads as a chrome-level
+// action bar — distinct from the per-tab content area above it. Lives
+// here (not on `BoardFooterComponent`) because the line belongs to the
+// SHELL's structure: footer is a sibling of the tab-group, not part of
+// the projected board content. Using ::before (instead of `border-top`)
+// keeps the line an explicit visual element we can inset later if the
+// design needs it.
+.system-experiments-shell__footer {
+  position: relative;
+  display: block;
+  flex: 0 0 auto;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    // Mirrors `$divider` in board.component.scss — same rgba-style brightness
+    // so all dividers across the shell read as one family.
+    background: #4a4a4a;
+  }
 }

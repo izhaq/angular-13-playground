@@ -171,10 +171,10 @@ src/app/features/system-experiments/
 
 | Component | Smart / Dumb | Role |
 |-----------|-------------|------|
-| `SystemExperimentsShellComponent` | **Smart** | Holds `mat-tab-group`, test/live mode toggle, manages CMD shared state, owns the WebSocket subscription, passes grid data down. |
-| `SystemExperimentsBoardComponent` | **Dumb (layout)** | Two-column layout: Form (left) + Status Grid (right). Sticky CMD row at top, sticky footer at bottom, scrollable middle. Receives `disabled` from test/live mode. |
+| `SystemExperimentsShellComponent` | **Smart** | Holds `mat-tab-group`, test/live mode toggle, manages CMD shared state, owns the WebSocket subscription, passes grid data down. Mounts the shared `BoardFooterComponent` outside the tab-group and dispatches its events to the active board. |
+| `SystemExperimentsBoardComponent` | **Dumb (layout)** | Per-tab content surface: left pane (CMD stacked above the scrollable form) + status grid on the right. Receives `disabled` from test/live mode. The action bar is shell-level, not part of the board. |
 | `CmdSectionComponent` | **Dumb** | CMD row: label + two multi-dropdowns (sides, wheels). `@Input` value, `@Output` changed. |
-| `BoardFooterComponent` | **Dumb** | Three buttons: Defaults, Cancel, Apply. `@Output` for defaults / cancel / apply. |
+| `BoardFooterComponent` | **Dumb (singleton)** | Three buttons: Defaults, Cancel, Apply. `@Output` for defaults / cancel / apply. Mounted ONCE by the shell outside the `mat-tab-group`; both tabs share the same instance (identical disabled state and labels — only the handler routing varies). |
 | `PrimaryCommandsFormComponent` | **Dumb** | Primary form fields (left column). All dropdowns, includes "Cmd to GS" sub-section. `@Input` formGroup + disabled. No API calls. |
 | `SecondaryCommandsFormComponent` | **Dumb** | Secondary form fields (left column). Same pattern, different fields. |
 | `StatusGridComponent` | **Dumb** | Right column: field labels (row headers) + dynamic data grid (8 or 11 cols). Column hover effect, cell click selection. Receives column config + row data + abbreviation mapper. White background, cell borders. No board-specific knowledge. |
@@ -189,32 +189,30 @@ SystemExperimentsShellComponent
   │
   ├── cmdSelection: CmdSelection (shared across tabs, persisted on Apply)
   │
-  ├── Tab 1 — Primary ("System Commands"): SystemExperimentsBoardComponent (two-column layout)
+  ├── Tab 1 — Primary ("System Commands"): SystemExperimentsBoardComponent
   │     │
-  │     ├── CMD row (sticky top):
-  │     │     └── CmdSectionComponent  ← [selection] / (changed) →
-  │     │
-  │     ├── Left col:  PrimaryCommandsFormComponent  ← [formGroup] [disabled]
-  │     │     (includes "Cmd to GS" sub-section — these fields excluded from grid)
-  │     ├── Right col:  StatusGridComponent  ← [columns: 8] [rows] [abbrMapper]
-  │     │     (row labels + grid cells, filtered from response.entities + standardFields)
-  │     │
-  │     └── Footer (sticky bottom):
-  │           BoardFooterComponent → (defaults) (cancel) (apply)
-  │              apply → SystemExperimentsApiService.postPrimary(payload)
+  │     ├── Left pane (CMD stacked above form):
+  │     │     ├── CmdSectionComponent      ← [selection] / (changed) →
+  │     │     └── PrimaryCommandsFormComponent  ← [formGroup]
+  │     │           (includes "Cmd to GS" sub-section — these fields excluded from grid)
+  │     └── Right pane:
+  │           StatusGridComponent  ← [columns: 8] [rows]
+  │             (row labels + grid cells, filtered from response.entities + standardFields)
   │
-  └── Tab 2 — Secondary ("Failure & Antenna"): SystemExperimentsBoardComponent (two-column layout)
-        │
-        ├── CMD row (sticky top):
-        │     └── CmdSectionComponent  ← [selection] (same saved value) / (changed) →
-        │
-        ├── Left col:  SecondaryCommandsFormComponent  ← [formGroup] [disabled]
-        ├── Right col:  StatusGridComponent  ← [columns: 11] [rows] [abbrMapper]
-        │     (row labels + grid cells, filtered from response.entities + additionalFields + aCommands)
-        │
-        └── Footer (sticky bottom):
-              BoardFooterComponent → (defaults) (cancel) (apply)
-                 apply → SystemExperimentsApiService.postSecondary(payload)
+  ├── Tab 2 — Secondary ("Failure & Antenna"): SystemExperimentsBoardComponent
+  │     │
+  │     ├── Left pane:
+  │     │     ├── CmdSectionComponent           ← [selection] (same saved value) / (changed) →
+  │     │     └── SecondaryCommandsFormComponent ← [formGroup]
+  │     └── Right pane:
+  │           StatusGridComponent  ← [columns: 11] [rows]
+  │             (row labels + grid cells, filtered from response.entities + additionalFields + aCommands)
+  │
+  └── Singleton action bar (sticky bottom, OUTSIDE the tab-group):
+        BoardFooterComponent → (defaults) (cancel) (apply)
+          ↳ shell.onActive*  → routes to {primary | secondary} handler by selectedTabIndex
+          ↳ apply on Primary   → SystemExperimentsApiService.postPrimary(payload)
+          ↳ apply on Secondary → SystemExperimentsApiService.postSecondary(payload)
 ```
 
 ---

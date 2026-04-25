@@ -7,13 +7,23 @@ import {
 } from '@angular/core';
 
 import { SYSTEM_EXPERIMENTS_LABELS as L } from '../../shared/labels';
-import { BoardId } from '../../shared/ids';
 
 /**
- * Sticky footer for a board. Stateless: emits one event per button.
- * `boardId` is required so each button gets a globally-unique
- * `data-test-id` (footer-{boardId}-{action}) — Material tabs render
- * both tabs' DOM at once, so footer ids would otherwise collide.
+ * Sticky footer for the dashboard. Stateless: emits one event per button.
+ *
+ * Single-instance design: the shell mounts ONE footer outside the
+ * `mat-tab-group` and dispatches its events to the active board's
+ * handler (see `SystemExperimentsShellComponent.onActive*`). Material
+ * lazy-renders only the active tab, so per-tab footers would have been
+ * functionally redundant — same disabled state, same labels, just
+ * different handler routes — and visually competed with the board's
+ * own envelope. Pulling the footer out also keeps `BoardComponent` a
+ * pure 3-slot layout (cmd / form / grid) instead of leaking action-bar
+ * concerns into the layout primitive.
+ *
+ * Test-id naming: `footer-{action}` (no board namespace). The footer is
+ * a singleton; namespacing was only ever defensive against simultaneous
+ * mounting that doesn't happen.
  *
  * Disable surface area:
  *   - `disabled`      → kills ALL three buttons (used for live mode).
@@ -30,7 +40,6 @@ import { BoardId } from '../../shared/ids';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class BoardFooterComponent {
-  @Input() boardId!: BoardId;
   @Input() disabled = false;
   @Input() applyDisabled = false;
 

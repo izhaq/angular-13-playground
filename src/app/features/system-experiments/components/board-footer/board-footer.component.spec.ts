@@ -4,7 +4,6 @@ import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { MatButtonModule } from '@angular/material/button';
 import { By } from '@angular/platform-browser';
 
-import { BOARD_IDS, BoardId } from '../../shared/ids';
 import { SYSTEM_EXPERIMENTS_LABELS as L } from '../../shared/labels';
 import { BoardFooterComponent } from './board-footer.component';
 
@@ -16,7 +15,6 @@ import { BoardFooterComponent } from './board-footer.component';
 @Component({
   template: `
     <system-experiments-board-footer
-      [boardId]="boardId"
       [disabled]="disabled"
       [applyDisabled]="applyDisabled"
       (defaults)="events.push('defaults')"
@@ -26,7 +24,6 @@ import { BoardFooterComponent } from './board-footer.component';
   `,
 })
 class HostComponent {
-  boardId: BoardId = BOARD_IDS.primary;
   disabled = false;
   applyDisabled = false;
   events: string[] = [];
@@ -48,28 +45,28 @@ describe('BoardFooterComponent', () => {
     fixture.detectChanges();
   });
 
-  function btn(boardId: string, action: 'defaults' | 'cancel' | 'apply'): HTMLButtonElement {
+  function btn(action: 'defaults' | 'cancel' | 'apply'): HTMLButtonElement {
     return fixture.debugElement.query(
-      By.css(`[data-test-id="footer-${boardId}-${action}"]`),
+      By.css(`[data-test-id="footer-${action}"]`),
     ).nativeElement;
   }
 
-  it('renders three buttons with namespaced test ids', () => {
-    expect(btn('primary', 'defaults')).toBeTruthy();
-    expect(btn('primary', 'cancel')).toBeTruthy();
-    expect(btn('primary', 'apply')).toBeTruthy();
+  it('renders three buttons with stable test ids (singleton — no board namespace)', () => {
+    expect(btn('defaults')).toBeTruthy();
+    expect(btn('cancel')).toBeTruthy();
+    expect(btn('apply')).toBeTruthy();
   });
 
   it('uses centralized labels for button text', () => {
-    expect(btn('primary', 'defaults').textContent?.trim()).toBe(L.defaults);
-    expect(btn('primary', 'cancel').textContent?.trim()).toBe(L.cancel);
-    expect(btn('primary', 'apply').textContent?.trim()).toBe(L.apply);
+    expect(btn('defaults').textContent?.trim()).toBe(L.defaults);
+    expect(btn('cancel').textContent?.trim()).toBe(L.cancel);
+    expect(btn('apply').textContent?.trim()).toBe(L.apply);
   });
 
   it('emits the matching output for each button click', () => {
-    btn('primary', 'defaults').click();
-    btn('primary', 'cancel').click();
-    btn('primary', 'apply').click();
+    btn('defaults').click();
+    btn('cancel').click();
+    btn('apply').click();
 
     expect(host.events).toEqual(['defaults', 'cancel', 'apply']);
   });
@@ -78,25 +75,18 @@ describe('BoardFooterComponent', () => {
     host.disabled = true;
     fixture.detectChanges();
 
-    expect(btn('primary', 'defaults').disabled).toBe(true);
-    expect(btn('primary', 'cancel').disabled).toBe(true);
-    expect(btn('primary', 'apply').disabled).toBe(true);
-  });
-
-  it('namespaces test ids by boardId so secondary footer is unique', () => {
-    host.boardId = BOARD_IDS.secondary;
-    fixture.detectChanges();
-
-    expect(btn('secondary', 'apply')).toBeTruthy();
+    expect(btn('defaults').disabled).toBe(true);
+    expect(btn('cancel').disabled).toBe(true);
+    expect(btn('apply').disabled).toBe(true);
   });
 
   it('disables ONLY Apply when applyDisabled is true (defaults + cancel stay clickable)', () => {
     host.applyDisabled = true;
     fixture.detectChanges();
 
-    expect(btn('primary', 'apply').disabled).toBe(true);
-    expect(btn('primary', 'defaults').disabled).toBe(false);
-    expect(btn('primary', 'cancel').disabled).toBe(false);
+    expect(btn('apply').disabled).toBe(true);
+    expect(btn('defaults').disabled).toBe(false);
+    expect(btn('cancel').disabled).toBe(false);
   });
 
   it('keeps Apply disabled when either disabled OR applyDisabled is true', () => {
@@ -104,18 +94,18 @@ describe('BoardFooterComponent', () => {
     host.disabled = true;
     host.applyDisabled = false;
     fixture.detectChanges();
-    expect(btn('primary', 'apply').disabled).toBe(true);
+    expect(btn('apply').disabled).toBe(true);
 
     // applyDisabled wins on its own
     host.disabled = false;
     host.applyDisabled = true;
     fixture.detectChanges();
-    expect(btn('primary', 'apply').disabled).toBe(true);
+    expect(btn('apply').disabled).toBe(true);
 
     // Both off → enabled
     host.disabled = false;
     host.applyDisabled = false;
     fixture.detectChanges();
-    expect(btn('primary', 'apply').disabled).toBe(false);
+    expect(btn('apply').disabled).toBe(false);
   });
 });

@@ -37,6 +37,11 @@ import { CmdSelection, GridColumn, GridRow } from '../shared/models';
  *   - test/live mode (drives `disable()` on both forms + CMD)
  *   - the grid row streams (one shared upstream → two per-board projections,
  *     consumed by the template via `async` pipe — no manual subscribe).
+ *   - the SHARED `BoardFooterComponent` (one instance, mounted outside
+ *     the tab-group). The footer's disabled state is identical for both
+ *     boards, so a per-tab footer would have been pure duplication;
+ *     `onActive*` dispatchers route the three events to the active
+ *     board's `onPrimary*` / `onSecondary*` handler.
  *
  * Three behaviours derived from spec / plan §5:
  *   - Apply  → POST `{ sides, wheels, fields }`; on success snapshot form
@@ -162,6 +167,26 @@ export class SystemExperimentsShellComponent implements OnDestroy {
     // toggle itself.
     this.primaryFormGroup[op]({ emitEvent: false });
     this.secondaryFormGroup[op]({ emitEvent: false });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Footer dispatch — single shared footer routes to the active board.
+  // The footer doesn't know which board it's acting on; the shell does
+  // (via `selectedTabIndex`). Keeping the dispatch trivial and per-event
+  // means each per-board handler stays a single, testable method — same
+  // shape as before the footer was unified.
+  // ---------------------------------------------------------------------------
+
+  onActiveDefaults(): void {
+    this.selectedTabIndex === 0 ? this.onPrimaryDefaults() : this.onSecondaryDefaults();
+  }
+
+  onActiveCancel(): void {
+    this.selectedTabIndex === 0 ? this.onPrimaryCancel() : this.onSecondaryCancel();
+  }
+
+  onActiveApply(): void {
+    this.selectedTabIndex === 0 ? this.onPrimaryApply() : this.onSecondaryApply();
   }
 
   // ---------------------------------------------------------------------------

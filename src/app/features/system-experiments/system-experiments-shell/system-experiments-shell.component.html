@@ -36,16 +36,6 @@
           [columns]="primaryColumns"
           [rows]="(primaryRows$ | async) ?? []">
         </system-experiments-status-grid>
-
-        <system-experiments-board-footer
-          boardFooter
-          [boardId]="boardIds.primary"
-          [disabled]="!testMode"
-          [applyDisabled]="applyDisabled"
-          (defaults)="onPrimaryDefaults()"
-          (cancel)="onPrimaryCancel()"
-          (apply)="onPrimaryApply()">
-        </system-experiments-board-footer>
       </system-experiments-board>
     </mat-tab>
 
@@ -69,19 +59,25 @@
           [columns]="secondaryColumns"
           [rows]="(secondaryRows$ | async) ?? []">
         </system-experiments-status-grid>
-
-        <system-experiments-board-footer
-          boardFooter
-          [boardId]="boardIds.secondary"
-          [disabled]="!testMode"
-          [applyDisabled]="applyDisabled"
-          (defaults)="onSecondaryDefaults()"
-          (cancel)="onSecondaryCancel()"
-          (apply)="onSecondaryApply()">
-        </system-experiments-board-footer>
       </system-experiments-board>
     </mat-tab>
 
   </mat-tab-group>
+
+  <!--
+    Single shared footer for both tabs. Defaults / Cancel / Apply are
+    identical across boards (same disabled rules, same labels) — the
+    only per-board variance is which form's handlers run, and that
+    routing is trivial via `selectedTabIndex`. See onActive* dispatch
+    methods on the component.
+  -->
+  <system-experiments-board-footer
+    class="system-experiments-shell__footer"
+    [disabled]="!testMode"
+    [applyDisabled]="applyDisabled"
+    (defaults)="onActiveDefaults()"
+    (cancel)="onActiveCancel()"
+    (apply)="onActiveApply()">
+  </system-experiments-board-footer>
 
 </div>

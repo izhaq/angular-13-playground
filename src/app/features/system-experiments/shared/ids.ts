@@ -21,7 +21,7 @@
  *
  * Test ID conventions (centralized so all components agree):
  *   form-{boardId}-{fieldKey}              e.g. form-primary-tff
- *   footer-{boardId}-{action}              e.g. footer-secondary-apply
+ *   footer-{action}                        e.g. footer-apply
  *   grid-{boardId}-{fieldKey}-{colId}      e.g. grid-primary-tff-left1
  *   grid-header-{boardId}-{colId}          e.g. grid-header-secondary-tll
  *   grid-label-{boardId}-{fieldKey}        e.g. grid-label-primary-abort
@@ -30,7 +30,13 @@
  *   - Both boards share grid column ids (left1..right4) — without a board
  *     prefix, `grid-{fieldKey}-{colId}` would clash the moment any field key
  *     appears in both boards (a likely future change).
- *   - Footer / form ids would silently overlap between tabs without it.
+ *   - Form ids would silently overlap between tabs without it (Material's
+ *     mat-tabs lazy-renders the active tab today, but a future flip to
+ *     preserveContent would mount both at once).
+ *
+ * Footer is intentionally NOT namespaced: it's a singleton mounted by the
+ * shell outside the tab-group (one shared instance for both boards), so
+ * `footer-{action}` is unambiguous by construction.
  */
 export const BOARD_IDS = {
   primary:   'primary',

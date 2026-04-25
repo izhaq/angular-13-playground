@@ -17,40 +17,46 @@ graph TD
     Shell["SystemExperimentsShellComponent (smart)"]
     DataSvc["SystemExperimentsDataService"]
     ApiSvc["SystemExperimentsApiService"]
-    
+    Footer["BoardFooterComponent (singleton, shell-level)"]
+
     Shell -->|"subscribe"| DataSvc
     Shell -->|"POST on Apply"| ApiSvc
-    
+    Shell --- Footer
+
     subgraph tab1 [Tab 1 — Primary: System Commands]
         Primary["SystemExperimentsBoardComponent"]
         Cmd1["CmdSectionComponent"]
         Form1["PrimaryCommandsFormComponent"]
         Grid1["StatusGridComponent (8 cols)"]
-        Footer1["BoardFooterComponent"]
         Primary --- Cmd1
         Primary --- Form1
         Primary --- Grid1
-        Primary --- Footer1
     end
-    
+
     subgraph tab2 [Tab 2 — Secondary: Failure and Antenna]
         Secondary["SystemExperimentsBoardComponent"]
         Cmd2["CmdSectionComponent"]
         Form2["SecondaryCommandsFormComponent"]
         Grid2["StatusGridComponent (11 cols)"]
-        Footer2["BoardFooterComponent"]
         Secondary --- Cmd2
         Secondary --- Form2
         Secondary --- Grid2
-        Secondary --- Footer2
     end
-    
+
     Shell --- Primary
     Shell --- Secondary
-    
+
     DataSvc -->|"GET + WebSocket"| WS["Backend"]
     ApiSvc -->|"POST primary / POST secondary"| WS
 ```
+
+> **Footer is shell-level, not board-level.** A single `BoardFooterComponent`
+> is mounted by the shell outside the `mat-tab-group`. Its disabled state
+> and labels are identical for both boards; the only per-board variance is
+> which form's handler runs, and that's solved by `selectedTabIndex`-based
+> dispatch. Putting the footer per-board would have meant two identical
+> instances — see §5 (`SystemExperimentsShellComponent` and
+> `BoardFooterComponent`) and the post-build follow-up note in §14.5.
 
 ### Architecture Decisions
 
@@ -59,7 +65,7 @@ graph TD
 | Form strategy | Reactive Forms | Spec requires programmatic disable, reset, defaults, and snapshot/restore on cancel |
 | CMD state | Component properties on shell | Simple draft + saved values — no need for a dedicated service (code-simplification) |
 | Grid component | Single reusable `StatusGridComponent` | Receives dynamic column config and row data — no board-specific knowledge |
-| Board layout | Content projection via `ng-content` | Board provides sticky header/body/footer shell; each tab projects its specific form |
+| Board layout | Content projection via `ng-content` | Board provides a 3-slot surface (cmd / form / grid); each tab projects its specific form. The action-bar footer is shell-level, not part of the board. |
 | Service scope | Feature-scoped (`providers` in module) | Not `providedIn: 'root'` — self-contained for migration |
 | API URLs | `InjectionToken` | Migration portability — no hardcoded URLs, no environment file dependency |
 
@@ -115,10 +121,10 @@ system-experiments/
 │       ├── secondary-commands.columns.ts  # 11-column grid (reuses Primary's 8)
 │       └── secondary-commands-form/       # Form component (14 fields)
 └── components/                            # Cross-board / shell-level UI
-    ├── system-experiments-shell/                  # Smart: tabs, Test Mode toggle, CMD state, snapshots, grid subscription, Apply/Cancel/Defaults wiring
-    ├── system-experiments-board/                  # Dumb layout: sticky CMD + scroll body + sticky footer (4 ng-content slots)
+    ├── system-experiments-shell/                  # Smart: tabs, Test Mode toggle, CMD state, snapshots, grid subscription, Apply/Cancel/Defaults wiring; mounts the singleton footer
+    ├── system-experiments-board/                  # Dumb layout: sticky CMD + scrollable form + grid (3 ng-content slots — footer is shell-level)
     ├── cmd-section/                       # Dumb: 2 multi-dropdowns (side, wheel) — also owns CMD_SIDE_OPTIONS / CMD_WHEEL_OPTIONS
-    ├── board-footer/                      # Dumb: Defaults, Cancel, Apply buttons
+    ├── board-footer/                      # Dumb: Defaults, Cancel, Apply buttons (singleton, mounted by the shell — NOT projected into the board)
     └── status-grid/                       # Dumb: dynamic grid with row labels, column hover, cell click
 ```
 
@@ -263,23 +269,24 @@ Flat `const` object. Every user-visible string — field names, option labels, b
 
 ### `SystemExperimentsBoardComponent` (Dumb Layout)
 
-**Purpose:** Provides the sticky CMD (top) + scrollable form+grid (middle) + sticky footer (bottom) structure using flexbox.
+**Purpose:** Provides the per-tab content surface — a left pane (CMD stacked above the scrollable form) plus a grid pane on the right. The action-bar footer is **not** part of the board; the shell mounts a single shared `BoardFooterComponent` outside the `mat-tab-group` (same disabled state and labels for both boards, so per-tab footers would be redundant — see `BoardFooterComponent` below).
 
-**Inputs:** `disabled: boolean`
+**Inputs / Outputs:** none.
 
-**Template uses `ng-content` with named slots:**
+**Template uses `ng-content` with three named slots:**
 ```html
 <div class="board">
-  <header class="board__cmd"><ng-content select="[boardCmd]"></ng-content></header>
   <div class="board__body">
-    <div class="board__form"><ng-content select="[boardForm]"></ng-content></div>
+    <div class="board__left">
+      <div class="board__cmd"><ng-content select="[boardCmd]"></ng-content></div>
+      <div class="board__form"><ng-content select="[boardForm]"></ng-content></div>
+    </div>
     <div class="board__grid"><ng-content select="[boardGrid]"></ng-content></div>
   </div>
-  <footer class="board__footer"><ng-content select="[boardFooter]"></ng-content></footer>
 </div>
 ```
 
-**SCSS:** Flex column, `height: 100%`, `overflow: hidden` on host. Header/footer `flex-shrink: 0`. Body `flex: 1; overflow-y: auto; display: flex` (form left + grid right). Uses `%` widths internally for resize support.
+**SCSS:** `height: 100%`. Body is a 2-column grid (`__left | __grid`). Left pane is a flex column with CMD pinned above the scrollable form; grid scrolls independently. Uses `%` / `fr` widths for resize support. The horizontal divider above the footer lives on the SHELL (`.system-experiments-shell__footer::before`), not here, so it can run edge-to-edge across the whole shell envelope.
 
 ### `CmdSectionComponent` (Dumb)
 
@@ -288,11 +295,14 @@ Flat `const` object. Every user-visible string — field names, option labels, b
 
 Two `app-multi-dropdown` instances (Side and Wheel) bound via CVA `formControlName` to an internal `FormGroup` that emits on `valueChanges`. Labels from `LABELS.cmdSide` / `LABELS.cmdWheel`.
 
-### `BoardFooterComponent` (Dumb)
+### `BoardFooterComponent` (Dumb — singleton)
 
-**Outputs:** `defaults`, `cancel`, `apply` (all `EventEmitter<void>`)
+**Inputs:** `disabled: boolean` (kills all three buttons — used for live mode); `applyDisabled: boolean` (additive — kills only Apply when CMD scope is incomplete).
+**Outputs:** `defaults`, `cancel`, `apply` (all `EventEmitter<void>`).
 
-Three `mat-button` elements. Takes `@Input() boardId: BoardId` and stamps `[attr.data-test-id]="'footer-' + boardId + '-' + action"` on each button (e.g. `footer-primary-apply`). Labels from `LABELS`.
+Three `mat-button` elements. Stamps stable `data-test-id="footer-{action}"` (no board namespace — the footer is a singleton mounted by the shell outside the `mat-tab-group`, so the ids are unambiguous by construction). Labels from `LABELS`.
+
+The shell holds a single instance and routes its three events to the active board via `selectedTabIndex`-based `onActiveDefaults()` / `onActiveCancel()` / `onActiveApply()` dispatchers. Both boards share identical disabled rules and identical labels, so per-tab footers would be pure duplication; pulling it up also keeps `SystemExperimentsBoardComponent` a pure 3-slot layout instead of leaking action-bar concerns into the layout primitive.
 
 ### `PrimaryCommandsFormComponent` (Dumb — Primary)
 
@@ -500,15 +510,15 @@ All three are OnPush, declared and exported by `SystemExperimentsModule`, and li
 
 **Acceptance criteria:** Content projection works. Sticky header/footer verified. Resize shrinks proportionally.
 
-**Tests delivered (6 specs, all green):**
-- `system-experiments-board.component.spec.ts` — four structural slot containers render (`__cmd`, `__form`, `__grid`, `__footer`); each marker (`[boardCmd]`, `[boardForm]`, `[boardGrid]`, `[boardFooter]`) projects into the matching container; form + grid live inside the scrollable body container while cmd + footer do not (containment assertion — couples the spec to the layout contract, not specific CSS values)
+**Tests delivered (originally 6 specs; reshaped to 7 specs after the §14.5 footer-unify follow-up — board is now a 3-slot surface):**
+- `system-experiments-board.component.spec.ts` — three structural slot containers render (`__cmd`, `__form`, `__grid`); each marker (`[boardCmd]`, `[boardForm]`, `[boardGrid]`) projects into the matching container; explicit "no footer slot" assertion locks the contract that the footer is shell-level; cmd + form live inside the left pane while grid does not; the body container holds all three.
 
 **Notes from Phase 4 implementation:**
-- Zero inputs, zero outputs, zero logic. The board is pure layout: 4 `ng-content` slots wrapped in flex/grid containers. The shell wires data and events directly to the projected children — `[disabled]` flows from shell to `<primary-commands-form [disabled]="…" boardForm>`, not through the board. Spec table mention of "Receives `disabled` from test/live mode" describes data flow, not a literal `@Input` on the board.
-- "Sticky" behavior is implemented via flex-column layout (cmd + footer = `flex: 0 0 auto`, body = `flex: 1 1 auto` with `overflow` on its grid children) rather than `position: sticky`. Cleaner: no stacking-context games, no scroll-container assumptions, no need for the parent to be the scroll root. The user-visible behavior (cmd row pinned at top, footer pinned at bottom, middle scrolls) is identical.
-- Form / grid horizontal split is **4 : 6** — gives the 11-column secondary grid the ~640px pane it needs (90 + 11 × 44 = 574px minimum), leaving ~460px for form rows. Documented as a token at the top of the SCSS so it's tunable in one place.
+- Zero inputs, zero outputs, zero logic. The board is pure layout — 3 `ng-content` slots wrapped in flex/grid containers (originally 4 with a footer slot; the §14.5 follow-up removed the footer slot when the action bar was promoted to a shell-level singleton). The shell wires data and events directly to the projected children — `[disabled]` flows from shell to `<primary-commands-form [disabled]="…" boardForm>`, not through the board. Spec table mention of "Receives `disabled` from test/live mode" describes data flow, not a literal `@Input` on the board.
+- "Sticky" behavior comes from flex/grid layout (`__cmd` is `flex: 0 0 auto` inside the left pane; `__form` and `__grid` `overflow: auto` independently) rather than `position: sticky`. Cleaner: no stacking-context games, no scroll-container assumptions, no need for the parent to be the scroll root.
+- Form / grid horizontal split is **fixed-width left pane (280px) + grid `1fr`** — gives the 11-column secondary grid the ~640–800px pane it needs (90 + 11 × 44 = 574px minimum). Documented at the top of the SCSS so it's tunable in one place.
 - `min-height: 0` on the body and `min-width: 0` / `min-height: 0` on form/grid columns are critical — without them, flex/grid children refuse to shrink below their intrinsic content size and the layout overflows on narrow shells. Comments in the SCSS explain why each one is needed.
-- Slot markers use plain attribute selectors (`[boardCmd]`, `[boardForm]`, `[boardGrid]`, `[boardFooter]`) so consumers can attach them to any element or component without coupling the layout to a specific child class. CamelCase chosen to match the rest of Angular's directive / projection conventions.
+- Slot markers use plain attribute selectors (`[boardCmd]`, `[boardForm]`, `[boardGrid]`) so consumers can attach them to any element or component without coupling the layout to a specific child class. CamelCase chosen to match the rest of Angular's directive / projection conventions.
 
 ### Phase 5: Form Components (M) — ✅ Complete
 
@@ -549,7 +559,8 @@ Both consume `FormGroup` + `disabled` as inputs. All dropdowns use `formControlN
 - **`emitEvent: false` on every reset/disable/enable.** Test-mode toggling and Cancel/Defaults are UI affordances, not value changes — downstream `valueChanges` subscribers (none today, cheap insurance for tomorrow) should not see phantom edit cycles.
 - **Apply payload uses `formGroup.getRawValue()`.** That already merges per-field defaults with edits — `getRawValue()` returns every control's current value regardless of disabled state. No explicit `{ ...defaults, ...edits }` merge in the shell.
 - **Grid stream subscribed once in `ngOnInit`, normalized + built once per emission, with both boards' rows derived from the same `FlatGrid`.** `takeUntil(destroy$)` for unsubscribe; `cdr.markForCheck()` because OnPush + async assignment.
-- **Test Mode disables CMD + both forms; the grid stays alive.** Footer buttons are bound to `[disabled]="!testMode"` (so Apply/Cancel/Defaults can't fire while controls are read-only). The Test Mode toggle itself stays interactive.
+- **Test Mode disables CMD + both forms; the grid stays alive.** The single shared footer's three buttons are bound to `[disabled]="!testMode"` (so Apply/Cancel/Defaults can't fire while controls are read-only). The Test Mode toggle itself stays interactive. Apply additionally honors `[applyDisabled]="applyDisabled"` (true while CMD scope is incomplete — see `applyDisabled` getter docs).
+- **Footer is one shared instance, mounted by the shell outside the `mat-tab-group`** (see §14.5 follow-up). Its three events fan out to the active board through `onActive*` dispatchers, which are trivial ternaries on `selectedTabIndex`. Rationale: both boards share identical disabled / labels — per-tab footers were pure duplication.
 - **Mat Tabs styling needs to fill height** (so the projected `<system-experiments-board>` can run its own flex layout against a real height). Material's `.mat-tab-body-wrapper` sits behind the shell's encapsulation boundary, and the project rule is no `::ng-deep` — handled by adding `src/styles/_system-experiments-shell.scss` (a tiny global partial scoped under `.system-experiments-shell`, same pattern as `_dropdowns.scss`). Imported once in `styles.scss`.
 - **Demo wiring (`src/app/demo/system-experiments-demo.providers.ts`):** stubs `SystemExperimentsDataService` and `SystemExperimentsApiService` for the playground so the shell renders a canned `SystemExperimentsResponse` and Apply logs to the console instead of POSTing. `DemoPageModule` providers override `SystemExperimentsModule`'s real services via Angular's last-provider-wins rule for eager modules. The host project for the migration target is expected to provide its own `SYSTEM_EXPERIMENTS_API_CONFIG` and use the real services.
 - **Build budgets bumped** in `angular.json` (`initial: 500kb → 600kb`, `anyComponentStyle: 2kb → 3kb`) to absorb `MatTabsModule` + `MatSlideToggleModule` and the slightly larger demo SCSS. Both are compatible with the migration target — bundle still well under the 1 MB error ceiling.
@@ -577,6 +588,7 @@ Both consume `FormGroup` + `disabled` as inputs. All dropdowns use `formControlN
 | Test mode | `testMode`, `cmdDisabled`, `onTestModeChange` (drives form `disable()` + CMD disable) | ~10 |
 | Grid streams | `primaryRows$` / `secondaryRows$` (post-Phase-7 async-pipe refactor) | ~12 |
 | API orchestration | `buildPayload`, `postPrimary` / `postSecondary`, commit handlers | ~25 |
+| Footer dispatch | `onActiveDefaults / onActiveCancel / onActiveApply` (route the singleton footer's events to the active board's per-board handler) | ~6 |
 
 The smell isn't any single concern — each is small. It's that they share instance fields: `cmdSaved` is touched by both commit handlers, `testMode` triggers form + CMD disable, `selectedTabIndex` decides which form gets reset on tab switch. This makes per-concern testing harder than it should be and grows with every new behavior.
 
@@ -740,3 +752,28 @@ ngOnChanges(changes: SimpleChanges): void {
 **Spec rewrites**: Both `*-form.component.spec.ts` files dropped the host wrapper's `disabled` field and replaced the two `[disabled]` input tests with two `formGroup.disable() / .enable()` tests that exercise the actual production contract. Net change: same coverage, fewer lines, no test for a layer that no longer exists.
 
 **Demo update**: The demo's "Toggle disabled" buttons now call `togglePrimaryFormDisabled()` / `toggleSecondaryFormDisabled()` which hit `formGroup.disable()` / `.enable()` directly. The labels read `formGroup.disabled` instead of a local boolean. The full-board demo's projected primary form likewise drops the `[disabled]` attribute binding.
+
+### 14.5 Single shared `BoardFooterComponent` — promoted to shell-level
+
+**Where**: `system-experiments-shell/system-experiments-shell.component.{html,scss,ts,spec.ts}`, `components/board/board.component.{html,scss,ts,spec.ts}`, `components/board-footer/board-footer.component.{html,ts,spec.ts}`, `shared/ids.ts`, `src/app/demo/demo-page.component.html`.
+
+**Before**: Each tab projected its own `<system-experiments-board-footer boardFooter [boardId]="…" …>` into the board's `[boardFooter]` slot — two instances, identical disabled state and labels, only differing in `boardId` (for `data-test-id` namespacing) and which `onPrimary*` / `onSecondary*` handlers their events were wired to.
+
+**After**: The shell mounts ONE `<system-experiments-board-footer>` outside the `mat-tab-group` and dispatches its three events to the active board via `onActiveDefaults() / onActiveCancel() / onActiveApply()` (a one-line ternary on `selectedTabIndex`). The board's `[boardFooter]` slot is removed; `BoardComponent` becomes a pure 3-slot surface. `BoardFooterComponent` drops its `boardId` input and stamps stable `data-test-id="footer-{action}"` (no namespace).
+
+**Why**: The two instances were always rendering identically — same `[disabled]="!testMode"`, same `[applyDisabled]="applyDisabled"`, same labels. The only per-tab difference was the handler routing, which the shell already knows how to do via `selectedTabIndex`. The historical justification ("Material's mat-tabs might mount both at once if `preserveContent` were ever flipped on") was speculative; today's lazy-render strategy means there's no scenario where two footers can coexist anyway.
+
+**Wins**:
+- One less component instance per render (and the `boardId` input + namespace concatenation are gone).
+- `BoardFooterComponent`'s API shrinks from 3 inputs to 2 — the `boardId` was only used for test-id stamping.
+- `BoardComponent` becomes a 3-slot surface (cmd / form / grid). The "self-contained 4-region card" mental model softens, but it was already partially broken — the user-visible footer divider was specced to run edge-to-edge across the shell anyway (see §14.2 discussion / shell SCSS), so a chrome-level footer matches the visual intent better than a board-level one did.
+- Footer divider moves from `board.component.scss` to `system-experiments-shell.component.scss` as a `::before` on `.system-experiments-shell__footer` — same divider color (`#4a4a4a`), now structurally correct (it separates the action bar from the tab content area, not from the board's content area).
+
+**Spec rewrites**:
+- `board-footer.component.spec.ts`: dropped the `boardId` field from the host wrapper; `btn(action)` looks up `[data-test-id="footer-${action}"]` directly. The "namespaces test ids by boardId" test was deleted (the contract no longer exists).
+- `board.component.spec.ts`: dropped the `boardFooter` projection from the host template and the corresponding "projects footer slot" test; added an explicit "no `.board__footer` rendered" assertion to lock the new contract.
+- `system-experiments-shell.component.spec.ts`: added four tests covering `onActiveDefaults / onActiveCancel / onActiveApply` — they route to the active tab's `onPrimary*` / `onSecondary*` handler and don't touch the inactive tab's form.
+
+**Test-id convention update** (`shared/ids.ts` doc comment): `footer-{boardId}-{action}` → `footer-{action}`. The other namespaced patterns (`form-`, `grid-`, `grid-header-`, `grid-label-`) keep the `boardId` prefix because both forms / grids are structurally separate per-tab and would silently collide if Material ever flipped to `preserveContent`.
+
+**Why this is independent of (and complementary to) Phase 8 / shell decomposition**: Whichever path Phase 8 takes (`BoardController` per board, or smart `BoardTabComponent` per board), the unified footer simplifies the controller's API. Each per-board concern now exposes only `defaults / cancel / apply` *methods*; it no longer needs to project a footer or expose three `(footerEvent)` outputs. Doing the unify first keeps each Phase 8 change surgical.

@@ -126,24 +126,9 @@ $grid-pad-left: 12px;
   overflow: auto;
 }
 
-// Footer spans both panes (intentionally — it's the board-wide action bar).
-// Its top divider runs edge-to-edge of the shell (no inset) — unlike the
-// CMD/vertical dividers, this one separates the action bar from the
-// content area as a whole, so a full-width line reads more decisively.
-// Combined with body's `overflow` and cmd's `flex: 0 0 auto`, the
-// CMD/footer read as "sticky" without `position: sticky` — cleaner:
-// no stacking-context games, no scroll-container assumptions.
-.board__footer {
-  position: relative;
-  flex: 0 0 auto;
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: $divider;
-  }
-}
+// Note: the action bar (Defaults / Cancel / Apply) is NOT part of this
+// layout. The shell mounts a single shared `BoardFooterComponent` below
+// the tab strip, so the board surface here is just the cmd + form + grid
+// content area. The horizontal divider above the footer is rendered by
+// the shell (`system-experiments-shell.component.scss`) so it can run
+// edge-to-edge across the whole shell envelope.

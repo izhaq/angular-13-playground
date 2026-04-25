@@ -204,6 +204,61 @@ describe('SystemExperimentsShellComponent', () => {
   });
 
   // ---------------------------------------------------------------------------
+  // Single shared footer — onActive* dispatch routes to the active board.
+  // The shell mounts ONE BoardFooterComponent outside the tab-group; the
+  // three footer events fan out to onPrimary*/onSecondary* depending on
+  // selectedTabIndex. Asserting at the dispatch boundary keeps these tests
+  // independent of how the per-board handlers are implemented.
+  // ---------------------------------------------------------------------------
+
+  it('onActive* routes to Primary handlers while the Primary tab is active', () => {
+    component.selectedTabIndex = 0;
+    component.cmdDraft = { sides: ['left'], wheels: ['1'] };
+
+    component.onActiveApply();
+
+    expect(apiSpy.postPrimary).toHaveBeenCalledTimes(1);
+    expect(apiSpy.postSecondary).not.toHaveBeenCalled();
+  });
+
+  it('onActive* routes to Secondary handlers while the Secondary tab is active', () => {
+    component.selectedTabIndex = 1;
+    component.cmdDraft = { sides: ['left'], wheels: ['1'] };
+
+    component.onActiveApply();
+
+    expect(apiSpy.postSecondary).toHaveBeenCalledTimes(1);
+    expect(apiSpy.postPrimary).not.toHaveBeenCalled();
+  });
+
+  it('onActiveDefaults resets the active tab\'s form (Primary), not the other', () => {
+    component.selectedTabIndex = 0;
+    component.primaryFormGroup.patchValue({ tff: TFF.Dominate });
+    component.secondaryFormGroup.patchValue({ whlCriticalFail: 'whatever' });
+    const secondaryBefore = component.secondaryFormGroup.getRawValue();
+
+    component.onActiveDefaults();
+
+    expect(component.primaryFormGroup.getRawValue()).toEqual(buildPrimaryCommandsDefaults());
+    expect(component.secondaryFormGroup.getRawValue()).toEqual(secondaryBefore);
+  });
+
+  it('onActiveCancel restores the active tab\'s snapshot only', async () => {
+    // Apply on Primary so primarySnapshot has a non-default value to restore to.
+    component.cmdDraft = { sides: ['left'], wheels: ['1'] };
+    component.primaryFormGroup.patchValue({ tff: TFF.Dominate });
+    component.onPrimaryApply();
+    await Promise.resolve(); await Promise.resolve();
+
+    // Now edit Primary again, then dispatch via the shared footer's cancel.
+    component.primaryFormGroup.patchValue({ tff: TFF.LightActive });
+    component.selectedTabIndex = 0;
+    component.onActiveCancel();
+
+    expect(component.primaryFormGroup.getRawValue()['tff']).toBe(TFF.Dominate);
+  });
+
+  // ---------------------------------------------------------------------------
   // Tab switching
   // ---------------------------------------------------------------------------
 

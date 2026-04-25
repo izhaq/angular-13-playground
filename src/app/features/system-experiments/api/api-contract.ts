@@ -24,7 +24,21 @@ export interface SystemExperimentsResponse {
   entities: [EntityData, EntityData];
 }
 
-export interface EntityData {
+/**
+ * Fields that ride on more than one wire structure simultaneously.
+ * The same key carries the same value in any combination of:
+ *   - `EntityData` (flat on the entity — also routes to the GDL grid column)
+ *   - `MCommandItem.additionalFields` (per side + wheel)
+ *   - `EntityData.aCommands` (per side)
+ * Apply writes to all three matching slots; the grid renders whichever
+ * structures the backend populates. An empty `string` value means the
+ * cell is empty — same convention as every other wire field.
+ */
+export interface MultiLocationFields {
+  linkHealth: string;
+}
+
+export interface EntityData extends MultiLocationFields {
   entityId: EntityId;
   /**
    * 4 items, one per column on this side.
@@ -47,11 +61,6 @@ export interface EntityData {
   antSelectedCmd: string;
   gdlTransmitPwr: string;
   uuuAntSelect: string;
-
-  // -- Multi-location fields (also live in mCommands.additionalFields and
-  //    aCommands; backend may emit them in any subset of the three).
-  //    Optional here because absence is meaningful — empty cell, not zero.
-  linkHealth?: string;
 }
 
 /** Values for ONE column on one side. */
@@ -84,31 +93,25 @@ export interface PrimaryStandardFields {
 }
 
 /** Secondary board's 3 fields targeting first 8 cols. */
-export interface SecondaryAdditionalFields {
+export interface SecondaryAdditionalFields extends MultiLocationFields {
   whlCriticalFail: string;
   whlWarningFail: string;
   whlFatalFail: string;
-
-  // Multi-location — backend may also send `linkHealth` on this struct.
-  linkHealth?: string;
 }
 
 /** Secondary board's 5 TLL/TLR fields (per-side: left entity → TLL, right → TLR). */
-export interface ACommandsData {
+export interface ACommandsData extends MultiLocationFields {
   tlCriticalFail: string;
   masterTlFail: string;
   msTlFail: string;
   tlTempFail: string;
   tlToAgCommFail: string;
-
-  // Multi-location — backend may also send `linkHealth` on this struct.
-  linkHealth?: string;
 }
 
 /**
- * Field keys for Secondary's GDL column. The values themselves live flat on
- * `EntityData` (backend wire format has no `gdl` wrapper). This union exists
- * so the grid-data util can iterate the GDL group without redeclaring the keys.
+ * Field keys NATIVE to Secondary's GDL column (flat on `EntityData`).
+ * Multi-location keys (see `MultiLocationFields`) can also land in the
+ * GDL column when present on `entities[0]`, but they don't belong here.
  */
 export type GdlFieldKey =
   | 'gdlFail'
@@ -116,8 +119,7 @@ export type GdlFieldKey =
   | 'antTransmitPwr'
   | 'antSelectedCmd'
   | 'gdlTransmitPwr'
-  | 'uuuAntSelect'
-  | 'linkHealth';
+  | 'uuuAntSelect';
 
 // ---------------------------------------------------------------------------
 // POST Payload (one per board, sent on Apply)

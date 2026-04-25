@@ -27,8 +27,8 @@ function emptyResponse(tag: string): SystemExperimentsResponse {
   // The exact shape doesn't matter for these tests — we only care about
   // identity ("did this frame flow through?"), so we use a tag for clarity.
   return { entities: [
-    { entityId: 'left',  mCommands: [{} as any, {} as any, {} as any, {} as any], aCommands: { tag } as any, gdlFail: '', gdlTempFail: '', antTransmitPwr: '', antSelectedCmd: '', gdlTransmitPwr: '', uuuAntSelect: '' },
-    { entityId: 'right', mCommands: [{} as any, {} as any, {} as any, {} as any], aCommands: {} as any,      gdlFail: '', gdlTempFail: '', antTransmitPwr: '', antSelectedCmd: '', gdlTransmitPwr: '', uuuAntSelect: '' },
+    { entityId: 'left',  mCommands: [{} as any, {} as any, {} as any, {} as any], aCommands: { tag } as any, gdlFail: '', gdlTempFail: '', antTransmitPwr: '', antSelectedCmd: '', gdlTransmitPwr: '', uuuAntSelect: '', linkHealth: '' },
+    { entityId: 'right', mCommands: [{} as any, {} as any, {} as any, {} as any], aCommands: {} as any,      gdlFail: '', gdlTempFail: '', antTransmitPwr: '', antSelectedCmd: '', gdlTransmitPwr: '', uuuAntSelect: '', linkHealth: '' },
   ]};
 }
 

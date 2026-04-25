@@ -66,8 +66,10 @@ export function normalizeResponse(response: SystemExperimentsResponse): FlatGrid
 
   // GDL: the backend's flat GDL props on the entity, minus the non-GDL
   // wrappers (entityId / mCommands / aCommands). Spread-rest is fine here
-  // because the wire contract is stable — if it ever grows non-GDL props,
-  // switch this to an explicit `GdlFieldKey[]` whitelist.
+  // because the wire contract is stable — `MultiLocationFields` keys
+  // intentionally land here when present on entities[0]. If the contract
+  // ever grows other non-GDL flat props, switch this to an explicit
+  // whitelist of allowed keys.
   const { entityId: _id, mCommands: _m, aCommands: _a, ...gdlProps } = left;
   grid[COL_IDS.gdl] = gdlProps as unknown as CellValues;
 

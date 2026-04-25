@@ -45,6 +45,7 @@ function entity(side: 'left' | 'right', overrides: Partial<EntityData> = {}): En
     gdlFail: '', gdlTempFail: '',
     antTransmitPwr: '', antSelectedCmd: '',
     gdlTransmitPwr: '', uuuAntSelect: '',
+    linkHealth: '',
     ...overrides,
   };
 }

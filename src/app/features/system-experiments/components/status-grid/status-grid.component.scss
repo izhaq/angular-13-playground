@@ -9,7 +9,7 @@
 // this feature migrates into has its own design tokens; replacing colors
 // is a one-pass find/replace per hex, no shared partial needed.
 
-// Component-internal layout values. Sized for the 1150 × 550 shell envelope:
+// Component-internal layout values. Sized for the 1120 × 500 shell envelope:
 //   The grid lives in the right pane (~640px wide). With an 11-column
 //   secondary grid + the row-label column we need to fit inside that
 //   without horizontal scroll: 11 × 44 + 90 = 574px ✓.

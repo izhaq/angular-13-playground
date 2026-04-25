@@ -5,7 +5,7 @@
 // is a one-pass find/replace per hex, no shared partial needed.
 
 // Component-internal layout values. Sized for the ~460px form pane the
-// board layout reserves on the left side of the 1150 × 550 shell. If the
+// board layout reserves on the left side of the 1120 × 500 shell. If the
 // host gives us a wider envelope, retune these here.
 //
 // The Secondary form intentionally duplicates this row vocabulary in its
@@ -14,7 +14,7 @@
 // to a shared partial — not before.
 // Compact row vocabulary — 14 fields (11 main + sub-header + 3 cmd-to-gs)
 // must fit inside the ~390px form pane the board reserves on the left
-// without scroll. See system-experiments-shell.component.scss for the 550px
+// without scroll. See system-experiments-shell.component.scss for the 500px
 // vertical budget breakdown.
 $row-pad-y:        1px;
 $row-gap:          12px;

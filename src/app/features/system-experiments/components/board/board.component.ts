@@ -5,7 +5,7 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
  *
  * Structure:
  *
- *   ┌─ board (flex column, fills the 1150 × 550 shell) ─┐
+ *   ┌─ board (flex column, fills the 1120 × 500 shell) ─┐
  *   │  CMD (fixed top — `[boardCmd]`)                   │
  *   │  ┌─ body (scrollable middle, two columns) ─────┐ │
  *   │  │  FORM (`[boardForm]`)    │   GRID (`[boardGrid]`) │ │

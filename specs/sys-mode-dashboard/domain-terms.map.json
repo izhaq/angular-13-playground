@@ -1,0 +1,194 @@
+{
+  "_about": "Domain-specific names used in the system-experiments feature (client-only). Generic terms (PRIMARY_COMMANDS, board, footer, status-grid, Yes/No/On/Off, Apply/Cancel/Defaults, etc.) are intentionally excluded. To swap to a different domain, fill in `to` for any term you want renamed and run your replacement script. Match strategy: identifiers should be matched with word-boundary regex (\\b<id>\\b); strings should be matched exactly (case-sensitive).",
+  "_match": {
+    "identifiers": "Match as TypeScript symbols only (\\b<id>\\b). Affects .ts/.html/.scss spec ids.",
+    "strings": "Match as exact string literals (quoted or unquoted in HTML text nodes). Case-sensitive.",
+    "css": "CSS class fragments — match inside .scss selectors AND .html class= attributes."
+  },
+
+  "feature": {
+    "_kind": "identifiers + strings + css",
+    "_note": "The product/feature name itself. Touches selectors, class names, file/folder names, DI tokens, css classes.",
+    "system-experiments": { "to": "" },
+    "SystemExperiments":  { "to": "" },
+    "systemExperiments":  { "to": "" },
+    "SYSTEM_EXPERIMENTS":  { "to": "" }
+  },
+
+  "shellChrome": {
+    "_kind": "strings",
+    "Sys Mode":           { "to": "" },
+    "Active":             { "to": "" },
+    "Not Active":         { "to": "" },
+    "System Commands":    { "to": "", "_note": "Primary tab label" },
+    "Failure & Antenna":  { "to": "", "_note": "Secondary tab label" }
+  },
+
+  "cmdConcept": {
+    "_kind": "identifiers + strings",
+    "_note": "The CMD section drives a side+wheel target on the physical platform.",
+    "Cmd":   { "to": "", "_kind": "string" },
+    "Cmd to GS": { "to": "", "_kind": "string", "_note": "Sub-section header (still in labels even though we replaced the inline label with a divider)" },
+    "cmd":   { "to": "", "_kind": "identifier", "_note": "label key + css fragment (cmd-section, cmd-side-select, cmd-wheel-select)" },
+    "cmd-side-select":  { "to": "", "_kind": "string", "_note": "data-test-id" },
+    "cmd-wheel-select": { "to": "", "_kind": "string", "_note": "data-test-id" },
+    "CmdSelection":     { "to": "", "_kind": "identifier" },
+    "CmdSectionComponent": { "to": "", "_kind": "identifier" }
+  },
+
+  "sideAndWheel": {
+    "_kind": "identifiers + strings",
+    "_note": "Physical platform has left/right sides and 4 wheels per side.",
+    "Side":  { "to": "", "_kind": "identifier (type)" },
+    "SIDE":  { "to": "", "_kind": "identifier (const)" },
+    "side":  { "to": "", "_kind": "identifier (prop / wire field)" },
+    "sides": { "to": "", "_kind": "identifier (prop / wire field)" },
+    "Wheel": { "to": "", "_kind": "identifier (type)" },
+    "WHEEL": { "to": "", "_kind": "identifier (const)" },
+    "wheel":  { "to": "", "_kind": "identifier (prop / wire field)" },
+    "wheels": { "to": "", "_kind": "identifier (prop / wire field)" },
+    "Left":  { "to": "", "_kind": "string", "_note": "Side label" },
+    "Right": { "to": "", "_kind": "string", "_note": "Side label" },
+    "left":  { "to": "", "_kind": "string", "_note": "Side wire value + entity id" },
+    "right": { "to": "", "_kind": "string", "_note": "Side wire value + entity id" }
+  },
+
+  "gridColumns": {
+    "_kind": "identifiers + strings",
+    "_note": "8-col grid (Primary): L1..L4 + R1..R4. 11-col grid (Secondary): adds TLL, TLR, GDL.",
+    "left1":  { "to": "" }, "left2":  { "to": "" }, "left3":  { "to": "" }, "left4":  { "to": "" },
+    "right1": { "to": "" }, "right2": { "to": "" }, "right3": { "to": "" }, "right4": { "to": "" },
+    "tll": { "to": "" },
+    "tlr": { "to": "" },
+    "gdl": { "to": "" },
+    "L1": { "to": "" }, "L2": { "to": "" }, "L3": { "to": "" }, "L4": { "to": "" },
+    "R1": { "to": "" }, "R2": { "to": "" }, "R3": { "to": "" }, "R4": { "to": "" },
+    "TLL": { "to": "" },
+    "TLR": { "to": "" },
+    "GDL": { "to": "" }
+  },
+
+  "wireContractTypes": {
+    "_kind": "identifiers",
+    "_note": "Names that encode the physical-platform vocabulary into TS types.",
+    "EntityId":                 { "to": "" },
+    "EntityData":               { "to": "" },
+    "MCommandItem":             { "to": "", "_note": "M-command record per side+wheel slot" },
+    "PrimaryStandardFields":    { "to": "", "_note": "MCommandItem.standardFields" },
+    "SecondaryAdditionalFields":{ "to": "", "_note": "MCommandItem.additionalFields" },
+    "ACommandsData":            { "to": "", "_note": "Per-side TLL/TLR record" },
+    "GdlFieldKey":              { "to": "" },
+    "MultiLocationFields":      { "to": "", "_note": "Same key on additionalFields + aCommands + flat entity" },
+    "mCommands":                { "to": "" },
+    "aCommands":                { "to": "" },
+    "standardFields":           { "to": "", "_note": "Could be considered generic, but is paired with mCommands which is domain — flagged to keep them in sync." },
+    "additionalFields":         { "to": "", "_note": "Same as above." },
+    "entities":                 { "to": "" },
+    "entityId":                 { "to": "" }
+  },
+
+  "primaryFields": {
+    "_kind": "identifiers (field keys)",
+    "_note": "Both TS keys and matching wire keys. Each pairs with a label below.",
+    "tff":           { "to": "" },
+    "mlmTransmit":   { "to": "" },
+    "videoRec":      { "to": "" },
+    "videoRecType":  { "to": "" },
+    "mtrRec":        { "to": "" },
+    "speedPwrOnOff": { "to": "" },
+    "forceTtl":      { "to": "" },
+    "nuu":           { "to": "" },
+    "muDump":        { "to": "" },
+    "sendMtrTss":    { "to": "" },
+    "abort":         { "to": "" },
+    "teo":           { "to": "" },
+    "gsMtrRec":      { "to": "" },
+    "aiMtrRec":      { "to": "" }
+  },
+
+  "primaryFieldLabels": {
+    "_kind": "strings",
+    "TFF":              { "to": "" },
+    "MLM transmit":     { "to": "" },
+    "Video rec":        { "to": "" },
+    "Video Rec Type":   { "to": "" },
+    "Mtr Rec":          { "to": "", "_note": "Used for both `mtrRec` and `gsMtrRec` (intentional duplicate label)" },
+    "Speed PWR On/Off": { "to": "" },
+    "Force TTL":        { "to": "" },
+    "NUU":              { "to": "" },
+    "MU dump":          { "to": "" },
+    "Send Mtr TSS":     { "to": "" },
+    "Abort":            { "to": "" },
+    "Teo":              { "to": "" },
+    "Ai Mtr Rec":       { "to": "" }
+  },
+
+  "primaryOptionValuesAndLabels": {
+    "_kind": "strings",
+    "_note": "Wire option values + their UI labels + grid abbreviations.",
+    "not_active":   { "to": "" }, "Not Active":   { "to": "" }, "NACV": { "to": "" },
+    "light_active": { "to": "" }, "Light Active": { "to": "" }, "LACV": { "to": "" },
+    "dominate":     { "to": "" }, "Dominate":     { "to": "" }, "DMN":  { "to": "" },
+    "ir":           { "to": "" }, "Infra Red":    { "to": "" }, "IRD":  { "to": "" },
+    "4k":           { "to": "" }, "4K":           { "to": "" },
+    "hdr":          { "to": "" }, "HDR":          { "to": "" },
+    "FORCED":       { "to": "", "_note": "Force-TTL label override (wire is `forced`); also a force-ttl abbr `FRC`" },
+    "FRC":          { "to": "" },
+    "Int":          { "to": "", "_note": "Internal video-rec abbr" },
+    "EXT":          { "to": "", "_note": "External video-rec abbr" }
+  },
+
+  "secondaryFields": {
+    "_kind": "identifiers (field keys)",
+    "whlCriticalFail": { "to": "" },
+    "whlWarningFail":  { "to": "" },
+    "whlFatalFail":    { "to": "" },
+    "tlCriticalFail":  { "to": "" },
+    "masterTlFail":    { "to": "" },
+    "msTlFail":        { "to": "" },
+    "tlTempFail":      { "to": "" },
+    "tlToAgCommFail":  { "to": "" },
+    "gdlFail":         { "to": "" },
+    "gdlTempFail":     { "to": "" },
+    "antTransmitPwr":  { "to": "" },
+    "antSelectedCmd":  { "to": "" },
+    "gdlTransmitPwr":  { "to": "" },
+    "uuuAntSelect":    { "to": "" },
+    "linkHealth":      { "to": "" }
+  },
+
+  "secondaryFieldLabels": {
+    "_kind": "strings",
+    "Wheel Critical Fail":   { "to": "" },
+    "Wheel Warning Fail":    { "to": "" },
+    "Wheel Fatal Fail":      { "to": "" },
+    "TL Critical Fail":      { "to": "" },
+    "Master TL Fail":        { "to": "" },
+    "MSs TL Fail":           { "to": "" },
+    "TL Temp Fail":          { "to": "" },
+    "TL to AGM Comm Fail":   { "to": "" },
+    "GDL Fail":              { "to": "" },
+    "GDL Temp Fail":         { "to": "" },
+    "Ant Transmit Pwr":      { "to": "" },
+    "Ant Selected Cmd":      { "to": "" },
+    "GDL Transmit Pwr":      { "to": "" },
+    "UUU Ant Select":        { "to": "" },
+    "Link Health":           { "to": "" }
+  },
+
+  "secondaryOptionAbbreviations": {
+    "_kind": "strings",
+    "_note": "Secondary-board grid abbreviations only (Yes/No → YES/NO and On/Off → ON/OFF are generic and not listed here).",
+    "NRML": { "to": "" },
+    "ATU":  { "to": "" },
+    "MNL":  { "to": "" }
+  },
+
+  "_excluded_for_reference": {
+    "_about": "These are intentionally NOT in the swap map because they're generic enough to be reused in any domain.",
+    "structural": ["primary", "secondary", "Primary", "Secondary", "PRIMARY_COMMANDS", "SECONDARY_COMMANDS", "BOARD_IDS", "board", "Board", "BoardComponent", "BoardPostPayload", "BoardFooterComponent", "footer", "shell", "Shell", "status-grid", "StatusGridComponent", "GridColumn", "GridRow", "GridColId", "FieldConfig", "FieldType", "LabeledOption", "DropdownOption", "SingleSelectField", "MultiSelectField", "BaseFieldConfig", "MAIN_FIELDS", "ALL_FIELDS"],
+    "generic_options": ["Yes", "No", "yes", "no", "On", "Off", "on", "off", "Auto", "Manual", "auto", "manual", "Internal", "External", "internal", "external", "Normal", "Forced", "normal", "forced"],
+    "generic_actions": ["Apply", "Cancel", "Defaults", "apply", "cancel", "defaults"],
+    "generic_abbrs":   ["NO", "YES", "ON", "OFF"]
+  }
+}

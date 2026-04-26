@@ -11,13 +11,11 @@ import {
   AppDropdownModule,
   AppMultiDropdownModule,
 } from './_external/ui-primitives';
-import { PrimaryCommandsFormComponent } from './boards/primary-commands/primary-commands-form/primary-commands-form.component';
-import { SecondaryCommandsFormComponent } from './boards/secondary-commands/secondary-commands-form/secondary-commands-form.component';
 import { BoardFooterComponent } from './components/board-footer/board-footer.component';
+import { BoardRowsComponent } from './components/board-rows/board-rows.component';
 import { CmdSectionComponent } from './components/cmd-section/cmd-section.component';
 import { BoardComponent } from './components/board/board.component';
 import { SystemExperimentsShellComponent } from './system-experiments-shell/system-experiments-shell.component';
-import { StatusGridComponent } from './components/status-grid/status-grid.component';
 import { SystemExperimentsResponse } from './api/api-contract';
 import { SYSTEM_EXPERIMENTS_WS_FACTORY, SystemExperimentsWebSocketFactory } from './api/api-tokens';
 import { SystemExperimentsApiService } from './api/system-experiments-api.service';
@@ -38,11 +36,9 @@ const defaultWebSocketFactory: SystemExperimentsWebSocketFactory =
   declarations: [
     BoardComponent,
     BoardFooterComponent,
+    BoardRowsComponent,
     CmdSectionComponent,
     SystemExperimentsShellComponent,
-    PrimaryCommandsFormComponent,
-    SecondaryCommandsFormComponent,
-    StatusGridComponent,
   ],
   imports: [
     CommonModule,
@@ -57,11 +53,9 @@ const defaultWebSocketFactory: SystemExperimentsWebSocketFactory =
   exports: [
     BoardComponent,
     BoardFooterComponent,
+    BoardRowsComponent,
     CmdSectionComponent,
     SystemExperimentsShellComponent,
-    PrimaryCommandsFormComponent,
-    SecondaryCommandsFormComponent,
-    StatusGridComponent,
   ],
   providers: [
     SystemExperimentsApiService,

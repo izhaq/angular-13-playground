@@ -1,13 +1,12 @@
 // Sized for the 1120 × 500 shell envelope (canonical breakdown lives in
-// `system-experiments-shell.component.scss`). The form pane is fixed-
-// width so the grid pane gets `1fr` of whatever's left.
-$left-pane-width: 280px;
-$body-pad-x: 16px;
-$body-pad-y: 8px;
-$divider: #4a4a4a;
-$divider-inset-y: 8px;
-$divider-inset-x: 8px;
-$grid-pad-left: 12px;
+// `system-experiments-shell.component.scss`). The CMD section sits on
+// top; the unified rows component (form + grid in one CSS grid) takes
+// the remainder.
+$body-pad-x:        16px;
+$body-pad-y:        8px;
+$divider:           #4a4a4a;
+$divider-inset-x:   8px;
+$rows-gap-top:      8px;
 
 :host {
   display: block;
@@ -20,43 +19,15 @@ $grid-pad-left: 12px;
   flex-direction: column;
   width: 100%;
   height: 100%;
-}
-
-// CMD lives INSIDE the left pane so it shares a width with the form;
-// the grid then takes the full body height on the right with no empty
-// space above it.
-.board__body {
-  flex: 1 1 auto;
-
-  // `min-height: 0` lets a flex child be smaller than its content
-  // (default `min-height: auto` would push the body to its full
-  // intrinsic height and break the scroll behavior).
-  min-height: 0;
   padding: $body-pad-y $body-pad-x;
+  box-sizing: border-box;
 
-  display: grid;
-  grid-template-columns: $left-pane-width minmax(0, 1fr);
-}
-
-// Vertical divider lives on `::after` (instead of `border-right`) so it
-// can be inset top/bottom — borders always span the full edge.
-// `min-width: 0` is the grid equivalent of the `min-height: 0` above.
-.board__left {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
+  // `min-height: 0` / `min-width: 0` so a flex child can shrink below
+  // its intrinsic content size; without these the rows area can't
+  // scroll vertically and a wide grid would push the shell into
+  // horizontal scroll.
   min-height: 0;
-
-  &::after {
-    content: '';
-    position: absolute;
-    top: $divider-inset-y;
-    bottom: $divider-inset-y;
-    right: 0;
-    width: 1px;
-    background: $divider;
-  }
+  min-width: 0;
 }
 
 .board__cmd {
@@ -64,6 +35,8 @@ $grid-pad-left: 12px;
   flex: 0 0 auto;
   padding-bottom: $body-pad-y;
 
+  // Inset divider on `::after` (instead of `border-bottom`) so the line
+  // can be padded away from the shell edges.
   &::after {
     content: '';
     position: absolute;
@@ -75,18 +48,12 @@ $grid-pad-left: 12px;
   }
 }
 
-.board__form {
+.board__rows {
   flex: 1 1 auto;
   min-height: 0;
-  overflow: auto;
-  // Breathing room below the CMD-panel divider so the first form row
-  // doesn't sit flush against it.
-  padding-top: 8px;
-}
-
-.board__grid {
   min-width: 0;
-  min-height: 0;
-  padding-left: $grid-pad-left;
+  // Breathing room below the CMD-panel divider so the column-header
+  // strip doesn't sit flush against it.
+  padding-top: $rows-gap-top;
   overflow: auto;
 }

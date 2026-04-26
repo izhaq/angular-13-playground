@@ -18,10 +18,8 @@
       <li><a href="#test-id">data-test-id (native attribute)</a></li>
       <li><a href="#engine-cmd">SystemExperiments — CmdSectionComponent</a></li>
       <li><a href="#engine-footer">SystemExperiments — BoardFooterComponent</a></li>
-      <li><a href="#engine-grid-primary">SystemExperiments — StatusGridComponent (8 cols)</a></li>
-      <li><a href="#engine-grid-secondary">SystemExperiments — StatusGridComponent (11 cols)</a></li>
-      <li><a href="#engine-form-primary">SystemExperiments — PrimaryCommandsFormComponent</a></li>
-      <li><a href="#engine-form-secondary">SystemExperiments — SecondaryCommandsFormComponent</a></li>
+      <li><a href="#engine-rows-primary">SystemExperiments — BoardRowsComponent (Primary)</a></li>
+      <li><a href="#engine-rows-secondary">SystemExperiments — BoardRowsComponent (Secondary)</a></li>
       <li><a href="#engine-board">SystemExperiments — BoardComponent (full layout)</a></li>
     </ul>
   </nav>
@@ -216,53 +214,25 @@ form.status = {{ form.status }}</pre>
 {{ footerEvents.length ? (footerEvents | json) : '(none yet — click a button above)' }}</pre>
   </section>
 
-  <section class="demo-section" id="engine-grid-primary">
-    <h2>SystemExperiments — StatusGridComponent (8 cols)</h2>
+  <section class="demo-section" id="engine-rows-primary">
+    <h2>SystemExperiments — BoardRowsComponent (Primary)</h2>
     <p class="demo-section__desc">
-      Primary board's grid: row labels in the leading column, then 8 data
-      columns (L1-L4 + R1-R4). Hover a cell for column highlight; click a
-      cell to select it. Inspect any cell to see
-      <code>grid-primary-{{ '{' }}fieldKey{{ '}' }}-{{ '{' }}colId{{ '}' }}</code>.
+      Primary board's unified rows: 11 main fields rendered as
+      <code>[label] [control] [data-cells × 8]</code> in one CSS Grid,
+      followed by the divider and 3 form-only "Cmd to GS" rows that
+      occupy only the label + control half. Hover a data cell for column
+      highlight; click to select.
     </p>
 
     <div class="demo-section__example demo-section__example--system-experiments demo-section__example--grid">
-      <system-experiments-status-grid
+      <system-experiments-board-rows
         [boardId]="boardIds.primary"
+        [formGroup]="primaryFormGroup"
+        [gridFields]="primaryGridFields"
+        [formOnlyFields]="primaryFormOnlyFields"
         [columns]="primaryGridColumns"
         [rows]="primaryGridRows">
-      </system-experiments-status-grid>
-    </div>
-  </section>
-
-  <section class="demo-section" id="engine-grid-secondary">
-    <h2>SystemExperiments — StatusGridComponent (11 cols)</h2>
-    <p class="demo-section__desc">
-      Secondary board's grid: same component, just 11 columns this time
-      (L1-L4 + R1-R4 + TLL + TLR + GDL). Sparse rows are fine — cells with
-      no value render empty.
-    </p>
-
-    <div class="demo-section__example demo-section__example--system-experiments demo-section__example--grid">
-      <system-experiments-status-grid
-        [boardId]="boardIds.secondary"
-        [columns]="secondaryGridColumns"
-        [rows]="secondaryGridRows">
-      </system-experiments-status-grid>
-    </div>
-  </section>
-
-  <section class="demo-section" id="engine-form-primary">
-    <h2>SystemExperiments — PrimaryCommandsFormComponent</h2>
-    <p class="demo-section__desc">
-      11 main fields plus the boxed "Cmd to GS" sub-section (3 fields).
-      All controls are bound through Reactive Forms; the
-      <code>disabled</code> input flips the whole FormGroup, matching the
-      shell's test/live mode contract.
-    </p>
-
-    <div class="demo-section__example demo-section__example--system-experiments demo-section__example--form">
-      <system-experiments-primary-commands-form [formGroup]="primaryFormGroup">
-      </system-experiments-primary-commands-form>
+      </system-experiments-board-rows>
     </div>
 
     <div class="demo-section__actions">
@@ -274,16 +244,22 @@ form.status = {{ form.status }}</pre>
     <pre class="demo-section__state">primaryFormGroup.value = {{ primaryFormGroup.value | json }}</pre>
   </section>
 
-  <section class="demo-section" id="engine-form-secondary">
-    <h2>SystemExperiments — SecondaryCommandsFormComponent</h2>
+  <section class="demo-section" id="engine-rows-secondary">
+    <h2>SystemExperiments — BoardRowsComponent (Secondary)</h2>
     <p class="demo-section__desc">
-      14 fields, flat list, no sub-section. Same row pattern and same
-      enable/disable contract as Primary.
+      Secondary board: 14 fields, 11 data columns, no form-only subset
+      (so no divider). Same component, just different inputs.
     </p>
 
-    <div class="demo-section__example demo-section__example--system-experiments demo-section__example--form">
-      <system-experiments-secondary-commands-form [formGroup]="secondaryFormGroup">
-      </system-experiments-secondary-commands-form>
+    <div class="demo-section__example demo-section__example--system-experiments demo-section__example--grid">
+      <system-experiments-board-rows
+        [boardId]="boardIds.secondary"
+        [formGroup]="secondaryFormGroup"
+        [gridFields]="secondaryGridFields"
+        [formOnlyFields]="secondaryFormOnlyFields"
+        [columns]="secondaryGridColumns"
+        [rows]="secondaryGridRows">
+      </system-experiments-board-rows>
     </div>
 
     <div class="demo-section__actions">
@@ -298,13 +274,11 @@ form.status = {{ form.status }}</pre>
   <section class="demo-section" id="engine-board">
     <h2>SystemExperiments — BoardComponent (full layout)</h2>
     <p class="demo-section__desc">
-      The Phase 4 layout primitive, wired with every Phase 3 + Phase 5 piece
-      projected into its three slots: <code>[boardCmd]</code>,
-      <code>[boardForm]</code>, <code>[boardGrid]</code>. The form pane
-      scrolls while the cmd row stays pinned. The action bar is the
-      shell-level singleton rendered below — not part of the board.
-      Resize the window to see the 4 : 6 form / grid split shrink
-      proportionally.
+      The Phase 4 layout primitive, wired with the Phase 3 CMD section
+      and the unified BoardRowsComponent projected into its two slots:
+      <code>[boardCmd]</code> and <code>[boardRows]</code>. The action
+      bar is the shell-level singleton rendered below — not part of the
+      board.
     </p>
 
     <div class="demo-section__example demo-section__example--system-experiments demo-section__example--board">
@@ -316,17 +290,15 @@ form.status = {{ form.status }}</pre>
           (selectionChange)="onCmdSelectionChange($event)">
         </system-experiments-cmd-section>
 
-        <system-experiments-primary-commands-form
-          boardForm
-          [formGroup]="primaryFormGroup">
-        </system-experiments-primary-commands-form>
-
-        <system-experiments-status-grid
-          boardGrid
+        <system-experiments-board-rows
+          boardRows
           [boardId]="boardIds.primary"
+          [formGroup]="primaryFormGroup"
+          [gridFields]="primaryGridFields"
+          [formOnlyFields]="primaryFormOnlyFields"
           [columns]="primaryGridColumns"
           [rows]="primaryGridRows">
-        </system-experiments-status-grid>
+        </system-experiments-board-rows>
       </system-experiments-board>
 
       <system-experiments-board-footer

@@ -1,0 +1,86 @@
+<div class="board-rows dropdown-stretch"
+     [formGroup]="formGroup"
+     [style.--data-col-count]="columns.length">
+
+  <div class="board-rows__header-empty board-rows__header-empty--label" aria-hidden="true"></div>
+  <div class="board-rows__header-empty board-rows__header-empty--control" aria-hidden="true"></div>
+
+  <div *ngFor="let col of columns; let i = index; trackBy: trackByColId"
+       class="board-rows__header-cell"
+       [class.board-rows__header-cell--first]="i === 0"
+       [class.board-rows__header-cell--hovered]="hoveredColId === col.id"
+       [attr.data-test-id]="'grid-header-' + boardId + '-' + col.id">
+    {{ col.label }}
+  </div>
+
+  <ng-container *ngFor="let field of gridFields; trackBy: trackByFieldKey">
+    <label class="board-rows__row-label"
+           [attr.data-test-id]="'grid-label-' + boardId + '-' + field.key">
+      {{ field.label }}
+    </label>
+
+    <div class="board-rows__row-control">
+      <ng-container [ngSwitch]="field.type">
+        <app-dropdown
+          *ngSwitchCase="'single'"
+          [options]="field.options"
+          [formControlName]="field.key"
+          [testId]="'form-' + boardId + '-' + field.key">
+        </app-dropdown>
+
+        <app-multi-dropdown
+          *ngSwitchCase="'multi'"
+          [options]="field.options"
+          [formControlName]="field.key"
+          [testId]="'form-' + boardId + '-' + field.key">
+        </app-multi-dropdown>
+      </ng-container>
+    </div>
+
+    <div *ngFor="let col of columns; let i = index; trackBy: trackByColId"
+         class="board-rows__data-cell"
+         [class.board-rows__data-cell--first]="i === 0"
+         [class.board-rows__data-cell--col-hovered]="hoveredColId === col.id"
+         [class.board-rows__data-cell--selected]="isSelected(field.key, col.id)"
+         [attr.data-test-id]="'grid-' + boardId + '-' + field.key + '-' + col.id"
+         (mouseenter)="onEnterColumn(col.id)"
+         (mouseleave)="onLeaveColumn()"
+         (click)="onCellClick(field.key, col.id)">
+      {{ cellValue(field.key, col.id) }}
+    </div>
+  </ng-container>
+
+  <ng-container *ngIf="formOnlyFields.length > 0">
+    <hr class="board-rows__divider"
+        [attr.data-test-id]="'section-' + boardId + '-cmd-to-gs'" />
+    <div class="board-rows__divider-spacer" aria-hidden="true"></div>
+  </ng-container>
+
+  <ng-container *ngFor="let field of formOnlyFields; trackBy: trackByFieldKey">
+    <label class="board-rows__row-label"
+           [attr.data-test-id]="'grid-label-' + boardId + '-' + field.key">
+      {{ field.label }}
+    </label>
+
+    <div class="board-rows__row-control">
+      <ng-container [ngSwitch]="field.type">
+        <app-dropdown
+          *ngSwitchCase="'single'"
+          [options]="field.options"
+          [formControlName]="field.key"
+          [testId]="'form-' + boardId + '-' + field.key">
+        </app-dropdown>
+
+        <app-multi-dropdown
+          *ngSwitchCase="'multi'"
+          [options]="field.options"
+          [formControlName]="field.key"
+          [testId]="'form-' + boardId + '-' + field.key">
+        </app-multi-dropdown>
+      </ng-container>
+    </div>
+
+    <div class="board-rows__form-only-spacer" aria-hidden="true"></div>
+  </ng-container>
+
+</div>

@@ -26,17 +26,15 @@
           (selectionChange)="onCmdSelectionChange($event)">
         </system-experiments-cmd-section>
 
-        <system-experiments-primary-commands-form
-          boardForm
-          [formGroup]="primary.formGroup">
-        </system-experiments-primary-commands-form>
-
-        <system-experiments-status-grid
-          boardGrid
+        <system-experiments-board-rows
+          boardRows
           [boardId]="boardIds.primary"
+          [formGroup]="primary.formGroup"
+          [gridFields]="primaryGridFields"
+          [formOnlyFields]="primaryFormOnlyFields"
           [columns]="primaryColumns"
           [rows]="(primaryRows$ | async) ?? []">
-        </system-experiments-status-grid>
+        </system-experiments-board-rows>
       </system-experiments-board>
     </mat-tab>
 
@@ -49,17 +47,15 @@
           (selectionChange)="onCmdSelectionChange($event)">
         </system-experiments-cmd-section>
 
-        <system-experiments-secondary-commands-form
-          boardForm
-          [formGroup]="secondary.formGroup">
-        </system-experiments-secondary-commands-form>
-
-        <system-experiments-status-grid
-          boardGrid
+        <system-experiments-board-rows
+          boardRows
           [boardId]="boardIds.secondary"
+          [formGroup]="secondary.formGroup"
+          [gridFields]="secondaryGridFields"
+          [formOnlyFields]="secondaryFormOnlyFields"
           [columns]="secondaryColumns"
           [rows]="(secondaryRows$ | async) ?? []">
-        </system-experiments-status-grid>
+        </system-experiments-board-rows>
       </system-experiments-board>
     </mat-tab>
 

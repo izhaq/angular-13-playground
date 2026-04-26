@@ -1,0 +1,156 @@
+// Sized for the 1120 × 500 shell envelope. Label column is fixed-width
+// (matches the legacy form's vocabulary so labels don't reflow as the
+// grid widens); control column is fixed; data columns split the
+// remainder with `1fr`. No `1fr`/`max-content` track is allowed to
+// expand the container — every track resolves to a deterministic width.
+$label-col-w:      140px;
+$control-col-w:    100px;
+$cell-min-h:       24px;
+$cell-pad-y:       3px;
+$cell-pad-x:       10px;
+$col-gap:          12px;     // horizontal gap between label and control
+$grid-pad-x:       8px;      // breathing room left + right of the grid
+$divider-color:    #4a4a4a;
+$divider-my:       6px;
+$cell-border:      1px solid #cccccc;
+
+:host {
+  display: block;
+  width: 100%;
+  height: 100%;
+  // `min-width: 0` so a flex/grid parent can shrink this host past its
+  // intrinsic content width — without it the host's grid would push the
+  // shell into horizontal scroll.
+  min-width: 0;
+  overflow: auto;
+  color: #e6e6e6;
+  // Symmetric horizontal breathing room so the grid doesn't sit flush
+  // against the shell edges (matches the user's "little space left and
+  // right" request).
+  padding: 0 $grid-pad-x;
+  box-sizing: border-box;
+}
+
+.board-rows {
+  display: grid;
+  // Two fixed-width form columns, then N flexible data columns that
+  // share the remainder. `minmax(0, 1fr)` (instead of `1fr` on its own,
+  // or `minmax(44px, 1fr)`) is the key to no horizontal scroll: the min
+  // is 0 so a column can never demand more width than its share, even
+  // when the cell content is wider than the column.
+  grid-template-columns:
+    $label-col-w
+    $control-col-w
+    repeat(var(--data-col-count), minmax(0, 1fr));
+  // `height: 100%` so `1fr` rows have a real height to distribute against.
+  height: 100%;
+  width: 100%;
+  min-width: 0;
+  grid-auto-rows: minmax($cell-min-h, 1fr);
+  align-items: center;
+  font-size: 12px;
+  box-sizing: border-box;
+}
+
+// Header row — first two cells empty (corner above label + control),
+// then a header cell per data column.
+.board-rows__header-empty {
+  background: transparent;
+  min-width: 0;
+}
+
+.board-rows__header-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  color: #1f1f1f;
+  font-weight: 600;
+  padding: $cell-pad-y $cell-pad-x;
+  min-width: 0;
+  min-height: $cell-min-h;
+  border-top: $cell-border;
+  border-right: $cell-border;
+  border-bottom: $cell-border;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-sizing: border-box;
+}
+
+.board-rows__header-cell--first {
+  border-left: $cell-border;
+}
+
+// Field rows
+.board-rows__row-label {
+  color: #e6e6e6;
+  font-size: 12px;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-right: $col-gap;
+}
+
+.board-rows__row-control {
+  display: block;
+  min-width: 0;
+  // Tiny right padding so the dropdown's caret doesn't sit flush against
+  // the first data cell's left border.
+  padding-right: $col-gap;
+}
+
+.board-rows__data-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  color: #1f1f1f;
+  padding: $cell-pad-y $cell-pad-x;
+  min-width: 0;
+  min-height: $cell-min-h;
+  border-right: $cell-border;
+  border-bottom: $cell-border;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-sizing: border-box;
+}
+
+.board-rows__data-cell--first {
+  border-left: $cell-border;
+}
+
+.board-rows__header-cell--hovered,
+.board-rows__data-cell--col-hovered {
+  background: #eef4ff;
+}
+
+.board-rows__data-cell--selected {
+  outline: 2px solid #1976d2;
+  outline-offset: -2px;
+}
+
+// Divider between in-grid section and form-only section (Primary tab's
+// "Cmd to GS" subset). Spans only the form half of the grid; the data
+// half gets a transparent spacer so auto-flow advances to the next row.
+.board-rows__divider {
+  grid-column: 1 / 3;
+  border: 0;
+  border-top: 1px solid $divider-color;
+  margin: $divider-my 0;
+  width: 100%;
+}
+
+.board-rows__divider-spacer {
+  grid-column: 3 / -1;
+}
+
+// Form-only row spacer fills the data columns so the next field starts
+// on a fresh row. Without this, auto-flow would pack the next label
+// into the data half of the same row.
+.board-rows__form-only-spacer {
+  grid-column: 3 / -1;
+}

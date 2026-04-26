@@ -9,7 +9,10 @@ import { map, shareReplay, takeUntil } from 'rxjs/operators';
 import { SystemExperimentsDataService } from '../api/system-experiments-data.service';
 import { buildRows, normalizeResponse } from '../api/grid-normalizer';
 import { PrimaryCommandsBoardService } from '../boards/primary-commands/primary-commands-board.service';
-import { PRIMARY_COMMANDS_MAIN_FIELDS } from '../boards/primary-commands/primary-commands.fields';
+import {
+  PRIMARY_COMMANDS_CMD_TO_GS_FIELDS,
+  PRIMARY_COMMANDS_MAIN_FIELDS,
+} from '../boards/primary-commands/primary-commands.fields';
 import { PRIMARY_COMMANDS_COLUMNS } from '../boards/primary-commands/primary-commands.columns';
 import { SecondaryCommandsBoardService } from '../boards/secondary-commands/secondary-commands-board.service';
 import { SECONDARY_COMMANDS_ALL_FIELDS } from '../boards/secondary-commands/secondary-commands.fields';
@@ -17,7 +20,7 @@ import { SECONDARY_COMMANDS_COLUMNS } from '../boards/secondary-commands/seconda
 import { DropdownOption } from '../_external/ui-primitives';
 import { BOARD_IDS } from '../shared/ids';
 import { SYSTEM_EXPERIMENTS_LABELS } from '../shared/labels';
-import { CmdSelection, GridColumn, GridRow } from '../shared/models';
+import { CmdSelection, FieldConfig, GridColumn, GridRow } from '../shared/models';
 
 const TEST_MODE_VALUE_ACTIVE = 'active';
 const TEST_MODE_VALUE_INACTIVE = 'inactive';
@@ -43,6 +46,14 @@ export class SystemExperimentsShellComponent implements OnDestroy {
 
   readonly primaryColumns: GridColumn[] = PRIMARY_COMMANDS_COLUMNS;
   readonly secondaryColumns: GridColumn[] = SECONDARY_COMMANDS_COLUMNS;
+
+  // Field lists handed to <system-experiments-board-rows>. `gridFields`
+  // appear in the data area; `formOnlyFields` get a label + control but
+  // no grid cells (Primary's "Cmd to GS" subset; Secondary has none).
+  readonly primaryGridFields: FieldConfig[]     = PRIMARY_COMMANDS_MAIN_FIELDS;
+  readonly primaryFormOnlyFields: FieldConfig[] = PRIMARY_COMMANDS_CMD_TO_GS_FIELDS;
+  readonly secondaryGridFields: FieldConfig[]     = SECONDARY_COMMANDS_ALL_FIELDS;
+  readonly secondaryFormOnlyFields: FieldConfig[] = [];
 
   readonly testModeOptions: DropdownOption[] = [
     { value: TEST_MODE_VALUE_ACTIVE,   label: SYSTEM_EXPERIMENTS_LABELS.testModeActive },

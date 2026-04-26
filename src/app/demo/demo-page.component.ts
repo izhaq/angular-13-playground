@@ -3,12 +3,16 @@ import { FormControl, FormGroup } from '@angular/forms';
 
 import { DropdownOption } from '../components/app-dropdown/app-dropdown.models';
 import { buildFormGroup } from '../features/system-experiments/boards/build-form-group';
-import { PRIMARY_COMMANDS_ALL_FIELDS } from '../features/system-experiments/boards/primary-commands/primary-commands.fields';
+import {
+  PRIMARY_COMMANDS_ALL_FIELDS,
+  PRIMARY_COMMANDS_CMD_TO_GS_FIELDS,
+  PRIMARY_COMMANDS_MAIN_FIELDS,
+} from '../features/system-experiments/boards/primary-commands/primary-commands.fields';
 import { PRIMARY_COMMANDS_COLUMNS } from '../features/system-experiments/boards/primary-commands/primary-commands.columns';
 import { SECONDARY_COMMANDS_ALL_FIELDS } from '../features/system-experiments/boards/secondary-commands/secondary-commands.fields';
 import { SECONDARY_COMMANDS_COLUMNS } from '../features/system-experiments/boards/secondary-commands/secondary-commands.columns';
 import { BOARD_IDS, COL_IDS } from '../features/system-experiments/shared/ids';
-import { CmdSelection, GridColumn, GridRow } from '../features/system-experiments/shared/models';
+import { CmdSelection, FieldConfig, GridColumn, GridRow } from '../features/system-experiments/shared/models';
 
 @Component({
   selector: 'app-demo-page',
@@ -113,6 +117,11 @@ export class DemoPageComponent {
 
   readonly primaryFormGroup: FormGroup = buildFormGroup(PRIMARY_COMMANDS_ALL_FIELDS);
   readonly secondaryFormGroup: FormGroup = buildFormGroup(SECONDARY_COMMANDS_ALL_FIELDS);
+
+  readonly primaryGridFields: FieldConfig[]     = PRIMARY_COMMANDS_MAIN_FIELDS;
+  readonly primaryFormOnlyFields: FieldConfig[] = PRIMARY_COMMANDS_CMD_TO_GS_FIELDS;
+  readonly secondaryGridFields: FieldConfig[]     = SECONDARY_COMMANDS_ALL_FIELDS;
+  readonly secondaryFormOnlyFields: FieldConfig[] = [];
 
   togglePrimaryFormDisabled(): void {
     this.primaryFormGroup.disabled

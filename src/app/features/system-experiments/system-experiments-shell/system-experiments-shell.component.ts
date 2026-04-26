@@ -3,11 +3,13 @@ import {
   Component,
   OnDestroy,
 } from '@angular/core';
-import { Observable, Subject } from 'rxjs';
-import { map, shareReplay, takeUntil } from 'rxjs/operators';
+import { BehaviorSubject, Observable, Subject } from 'rxjs';
+import { finalize, map, shareReplay, takeUntil } from 'rxjs/operators';
 
+import { SystemExperimentsApiService } from '../api/system-experiments-api.service';
 import { SystemExperimentsDataService } from '../api/system-experiments-data.service';
 import { buildRows, normalizeResponse } from '../api/grid-normalizer';
+import { FooterLoadingButton } from '../components/board-footer/board-footer.component';
 import { PrimaryCommandsBoardService } from '../boards/primary-commands/primary-commands-board.service';
 import {
   PRIMARY_COMMANDS_CMD_TO_GS_FIELDS,
@@ -76,11 +78,31 @@ export class SystemExperimentsShellComponent implements OnDestroy {
   readonly primaryRows$: Observable<GridRow[]>;
   readonly secondaryRows$: Observable<GridRow[]>;
 
+  /**
+   * Loading state. `BehaviorSubject` + `async` pipe (instead of plain
+   * boolean fields) so OnPush re-renders without `markForCheck()`.
+   *
+   * Footer is single-flight by design: at most ONE of Apply/Defaults
+   * can be in flight at a time. The same subject also drives the
+   * cross-button disable in the footer (see `FooterLoadingButton`).
+   */
+  private readonly _footerLoading$   = new BehaviorSubject<FooterLoadingButton>(null);
+  private readonly _testModeLoading$ = new BehaviorSubject<boolean>(false);
+
+  readonly footerLoading$:   Observable<FooterLoadingButton> = this._footerLoading$.asObservable();
+  readonly testModeLoading$: Observable<boolean>             = this._testModeLoading$.asObservable();
+
+  /** Sync read-throughs for spec assertions (the templates use the streams). */
+  get applyLoading():    boolean { return this._footerLoading$.value === 'apply'; }
+  get defaultsLoading(): boolean { return this._footerLoading$.value === 'defaults'; }
+  get testModeLoading(): boolean { return this._testModeLoading$.value; }
+
   private readonly destroy$ = new Subject<void>();
 
   constructor(
     readonly primary: PrimaryCommandsBoardService,
     readonly secondary: SecondaryCommandsBoardService,
+    private readonly api: SystemExperimentsApiService,
     data: SystemExperimentsDataService,
   ) {
     const grid$ = data.connect().pipe(
@@ -99,6 +121,8 @@ export class SystemExperimentsShellComponent implements OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+    this._footerLoading$.complete();
+    this._testModeLoading$.complete();
   }
 
   // CMD
@@ -129,16 +153,55 @@ export class SystemExperimentsShellComponent implements OnDestroy {
   onTestModeChange(value: string): void {
     // Fail-closed: anything other than the explicit "active" sentinel disables.
     const enabled = value === TEST_MODE_VALUE_ACTIVE;
+    const mode = enabled ? TEST_MODE_VALUE_ACTIVE : TEST_MODE_VALUE_INACTIVE;
+
+    // Local state flips immediately — the dropdown is a control, not a
+    // request-response. The POST mirrors the change to the backend; on
+    // failure we keep the new state (host should surface the error).
     this.testMode = enabled;
     this.cmdDisabled = !enabled;
     this.primary.setEnabled(enabled);
     this.secondary.setEnabled(enabled);
+
+    this._testModeLoading$.next(true);
+    this.api.postTestMode({ mode })
+      .pipe(
+        takeUntil(this.destroy$),
+        finalize(() => this._testModeLoading$.next(false)),
+      )
+      .subscribe({
+        next: () => { /* no-op */ },
+        error: () => { /* no-op — see method comment */ },
+      });
   }
 
-  // Footer dispatch — single shared footer routes to the active board.
+  // Footer dispatch.
 
-  onActiveDefaults(): void {
-    this.activeBoard.defaults();
+  /**
+   * GLOBAL "reset to defaults" — single POST, on success BOTH boards'
+   * forms revert to their bootstrap defaults and CMD (draft + saved)
+   * is cleared. On error nothing changes. Re-entry guarded so a double
+   * click cannot stack two requests.
+   */
+  onDefaults(): void {
+    if (this._footerLoading$.value !== null) {
+      return;
+    }
+    this._footerLoading$.next('defaults');
+    this.api.postDefault()
+      .pipe(
+        takeUntil(this.destroy$),
+        finalize(() => this._footerLoading$.next(null)),
+      )
+      .subscribe({
+        next: () => {
+          this.primary.defaults();
+          this.secondary.defaults();
+          this.cmdDraft = { sides: [], wheels: [] };
+          this.cmdSaved = { sides: [], wheels: [] };
+        },
+        error: () => { /* no-op */ },
+      });
   }
 
   onActiveCancel(): void {
@@ -146,11 +209,18 @@ export class SystemExperimentsShellComponent implements OnDestroy {
   }
 
   onActiveApply(): void {
+    if (this._footerLoading$.value !== null) {
+      return;
+    }
+    this._footerLoading$.next('apply');
     // Error branch is an explicit no-op: without it RxJS rethrows into the
     // global scope on a backend hiccup. Wire UI feedback (snackbar/toast)
     // in the host app so the shell stays chrome-agnostic.
     this.activeBoard.apply(this.cmdDraft)
-      .pipe(takeUntil(this.destroy$))
+      .pipe(
+        takeUntil(this.destroy$),
+        finalize(() => this._footerLoading$.next(null)),
+      )
       .subscribe({
         next: () => {
           this.cmdSaved = this.cmdDraft;

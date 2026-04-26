@@ -14,6 +14,8 @@ import { SystemExperimentsApiService } from './system-experiments-api.service';
 const TEST_API_CONFIG: SystemExperimentsApiConfig = {
   primaryPostUrl:   'https://api.test/system-experiments/primary',
   secondaryPostUrl: 'https://api.test/system-experiments/secondary',
+  defaultUrl:       'https://api.test/system-experiments/default',
+  testModeUrl:      'https://api.test/system-experiments/test-mode',
   getUrl:           'https://api.test/system-experiments/state',
   wsUrl:            'wss://api.test/system-experiments/stream',
 };
@@ -66,6 +68,42 @@ describe('SystemExperimentsApiService', () => {
   it('does not hit the network until the returned observable is subscribed', () => {
     service.postPrimary(SAMPLE_PAYLOAD); // no subscribe
     expect(httpMock.match(TEST_API_CONFIG.primaryPostUrl).length).toBe(0);
+  });
+
+  // ---------------------------------------------------------------------------
+  // postDefault — single global "reset to defaults" endpoint, empty body.
+  // ---------------------------------------------------------------------------
+
+  it('postDefault POSTs an empty body to the configured defaultUrl', () => {
+    service.postDefault().subscribe();
+
+    const req = httpMock.expectOne(TEST_API_CONFIG.defaultUrl);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({});
+    req.flush(null);
+  });
+
+  it('postDefault is lazy — no request until subscription', () => {
+    service.postDefault();
+    expect(httpMock.match(TEST_API_CONFIG.defaultUrl).length).toBe(0);
+  });
+
+  // ---------------------------------------------------------------------------
+  // postTestMode — POSTs the chosen mode on every Sys Mode dropdown change.
+  // ---------------------------------------------------------------------------
+
+  it('postTestMode POSTs the payload to the configured testModeUrl', () => {
+    service.postTestMode({ mode: 'inactive' }).subscribe();
+
+    const req = httpMock.expectOne(TEST_API_CONFIG.testModeUrl);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ mode: 'inactive' });
+    req.flush(null);
+  });
+
+  it('postTestMode is lazy — no request until subscription', () => {
+    service.postTestMode({ mode: 'active' });
+    expect(httpMock.match(TEST_API_CONFIG.testModeUrl).length).toBe(0);
   });
 
 });

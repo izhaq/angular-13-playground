@@ -27,7 +27,9 @@ export class PrimaryCommandsBoardService {
   constructor(private readonly api: SystemExperimentsApiService) {}
 
   defaults(): void {
-    this.formGroup.reset(buildPrimaryCommandsDefaults(), { emitEvent: false });
+    const seed = buildPrimaryCommandsDefaults();
+    this.formGroup.reset(seed, { emitEvent: false });
+    this.snapshot = this.formGroup.getRawValue();
   }
 
   cancel(): void {

@@ -1,33 +1,43 @@
 <div class="board-footer">
-  <button
-    mat-stroked-button
-    type="button"
-    class="board-footer__btn board-footer__btn--defaults"
-    [disabled]="disabled"
-    data-test-id="footer-defaults"
-    (click)="defaults.emit()">
-    {{ labels.defaults }}
-  </button>
+  <app-loading-overlay
+    [loading]="loading === 'defaults'"
+    spinnerTestId="footer-defaults-spinner">
+    <button
+      mat-stroked-button
+      type="button"
+      class="board-footer__btn board-footer__btn--defaults"
+      [disabled]="disabled || anyLoading"
+      data-test-id="footer-defaults"
+      (click)="defaults.emit()">
+      {{ labels.defaults }}
+    </button>
+  </app-loading-overlay>
 
   <span class="board-footer__spacer"></span>
 
-  <button
-    mat-stroked-button
-    type="button"
-    class="board-footer__btn board-footer__btn--cancel"
-    [disabled]="disabled"
-    data-test-id="footer-cancel"
-    (click)="cancel.emit()">
-    {{ labels.cancel }}
-  </button>
+  <app-loading-overlay>
+    <button
+      mat-stroked-button
+      type="button"
+      class="board-footer__btn board-footer__btn--cancel"
+      [disabled]="disabled || anyLoading"
+      data-test-id="footer-cancel"
+      (click)="cancel.emit()">
+      {{ labels.cancel }}
+    </button>
+  </app-loading-overlay>
 
-  <button
-    mat-flat-button
-    type="button"
-    class="board-footer__btn board-footer__btn--apply"
-    [disabled]="disabled || applyDisabled"
-    data-test-id="footer-apply"
-    (click)="apply.emit()">
-    {{ labels.apply }}
-  </button>
+  <app-loading-overlay
+    [loading]="loading === 'apply'"
+    spinnerTestId="footer-apply-spinner">
+    <button
+      mat-flat-button
+      type="button"
+      class="board-footer__btn board-footer__btn--apply"
+      [disabled]="disabled || applyDisabled || anyLoading"
+      data-test-id="footer-apply"
+      (click)="apply.emit()">
+      {{ labels.apply }}
+    </button>
+  </app-loading-overlay>
 </div>

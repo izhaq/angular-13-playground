@@ -46,10 +46,12 @@ import { TFF } from '../shared/option-values';
 describe('SystemExperimentsShellComponent', () => {
 
   const TEST_API_CONFIG: SystemExperimentsApiConfig = {
-    primaryPostUrl: '/api/test/primary',
+    primaryPostUrl:   '/api/test/primary',
     secondaryPostUrl: '/api/test/secondary',
-    getUrl: '/api/test/get',
-    wsUrl: 'ws://test/ws',
+    defaultUrl:       '/api/test/default',
+    testModeUrl:      '/api/test/test-mode',
+    getUrl:           '/api/test/get',
+    wsUrl:            'ws://test/ws',
   };
 
   let fixture: ComponentFixture<SystemExperimentsShellComponent>;
@@ -61,17 +63,21 @@ describe('SystemExperimentsShellComponent', () => {
     apiSpy = jasmine.createSpyObj<SystemExperimentsApiService>('SystemExperimentsApiService', [
       'postPrimary',
       'postSecondary',
+      'postDefault',
+      'postTestMode',
     ]);
-    apiSpy.postPrimary.and.callFake(() => {
+    // Microtask-resolved success keeps tests synchronous-ish without
+    // requiring `fakeAsync` everywhere — `await Promise.resolve()` is
+    // enough to flush the subscribe callback.
+    const asyncOk = () => {
       const s = new Subject<void>();
       queueMicrotask(() => { s.next(); s.complete(); });
       return s.asObservable();
-    });
-    apiSpy.postSecondary.and.callFake(() => {
-      const s = new Subject<void>();
-      queueMicrotask(() => { s.next(); s.complete(); });
-      return s.asObservable();
-    });
+    };
+    apiSpy.postPrimary.and.callFake(asyncOk);
+    apiSpy.postSecondary.and.callFake(asyncOk);
+    apiSpy.postDefault.and.callFake(asyncOk);
+    apiSpy.postTestMode.and.callFake(asyncOk);
 
     frames$ = new Subject<SystemExperimentsResponse>();
     const dataStub: Partial<SystemExperimentsDataService> = {
@@ -118,17 +124,12 @@ describe('SystemExperimentsShellComponent', () => {
   });
 
   it('seeds both forms with their canonical defaults via the services', () => {
-    // Assertion is at the shell boundary so a regression in either the
-    // service's seeding OR the shell's wiring would surface here.
     expect(component.primary.formGroup.getRawValue()).toEqual(buildPrimaryCommandsDefaults());
     expect(component.secondary.formGroup.getRawValue()).toEqual(buildSecondaryCommandsDefaults());
   });
 
   // ---------------------------------------------------------------------------
   // applyDisabled — Apply requires a complete CMD scope (side AND wheel).
-  // The server fans the POST out by (side, wheel) for additionalFields and
-  // by side for aCommands; an empty selection no-ops on the wire, so the
-  // button is gated client-side rather than letting users fire dud requests.
   // ---------------------------------------------------------------------------
 
   it('applyDisabled is true when CMD is fully empty (initial state)', () => {
@@ -152,10 +153,6 @@ describe('SystemExperimentsShellComponent', () => {
 
   // ---------------------------------------------------------------------------
   // Footer dispatch — the shared footer routes to the active service.
-  // The shell knows which service is active via `selectedTabIndex`;
-  // each handler is one line. We assert the routing decision (which
-  // service method got called) rather than the resulting state
-  // (that's the service spec's job).
   // ---------------------------------------------------------------------------
 
   it('onActiveApply routes to Primary while the Primary tab is active', () => {
@@ -178,15 +175,97 @@ describe('SystemExperimentsShellComponent', () => {
     expect(apiSpy.postPrimary).not.toHaveBeenCalled();
   });
 
-  it('onActiveDefaults calls defaults() on the active service only', () => {
-    component.selectedTabIndex = 0;
+  // ---------------------------------------------------------------------------
+  // Defaults flow — GLOBAL action. One POST, on success BOTH boards' forms
+  // are reset and CMD (draft + saved) is cleared. The active tab is irrelevant
+  // — clicking Default on Primary or Secondary yields the same outcome.
+  // On error nothing changes (no-op handler).
+  // ---------------------------------------------------------------------------
+
+  it('onDefaults POSTs once via postDefault (no per-board endpoints)', () => {
+    component.onDefaults();
+
+    expect(apiSpy.postDefault).toHaveBeenCalledTimes(1);
+    expect(apiSpy.postPrimary).not.toHaveBeenCalled();
+    expect(apiSpy.postSecondary).not.toHaveBeenCalled();
+  });
+
+  it('onDefaults resets BOTH boards\' forms on success, regardless of active tab', async () => {
+    component.selectedTabIndex = 0;   // Primary tab active
     const primarySpy = spyOn(component.primary, 'defaults').and.callThrough();
     const secondarySpy = spyOn(component.secondary, 'defaults').and.callThrough();
 
-    component.onActiveDefaults();
+    component.onDefaults();
+    await Promise.resolve(); await Promise.resolve();
 
     expect(primarySpy).toHaveBeenCalledTimes(1);
+    expect(secondarySpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('onDefaults clears cmdDraft + cmdSaved on success', async () => {
+    component.cmdDraft = { sides: ['left'], wheels: ['1'] };
+    component.cmdSaved = { sides: ['right'], wheels: ['2'] };
+
+    component.onDefaults();
+    await Promise.resolve(); await Promise.resolve();
+
+    expect(component.cmdDraft).toEqual({ sides: [], wheels: [] });
+    expect(component.cmdSaved).toEqual({ sides: [], wheels: [] });
+  });
+
+  it('onDefaults does NOT touch any state on error', async () => {
+    const failed = new Subject<void>();
+    apiSpy.postDefault.and.returnValue(failed.asObservable());
+    component.cmdDraft = { sides: ['left'], wheels: ['1'] };
+    component.cmdSaved = { sides: ['right'], wheels: ['2'] };
+    const primarySpy = spyOn(component.primary, 'defaults').and.callThrough();
+    const secondarySpy = spyOn(component.secondary, 'defaults').and.callThrough();
+
+    component.onDefaults();
+    failed.error(new Error('boom'));
+    await Promise.resolve();
+
+    expect(component.cmdDraft).toEqual({ sides: ['left'], wheels: ['1'] });
+    expect(component.cmdSaved).toEqual({ sides: ['right'], wheels: ['2'] });
+    expect(primarySpy).not.toHaveBeenCalled();
     expect(secondarySpy).not.toHaveBeenCalled();
+  });
+
+  it('onDefaults toggles defaultsLoading around the in-flight call', async () => {
+    const inFlight = new Subject<void>();
+    apiSpy.postDefault.and.returnValue(inFlight.asObservable());
+
+    component.onDefaults();
+    expect(component.defaultsLoading).toBe(true);
+
+    inFlight.next();
+    inFlight.complete();
+    await Promise.resolve();
+
+    expect(component.defaultsLoading).toBe(false);
+  });
+
+  it('onDefaults clears defaultsLoading on error too', async () => {
+    const inFlight = new Subject<void>();
+    apiSpy.postDefault.and.returnValue(inFlight.asObservable());
+
+    component.onDefaults();
+    expect(component.defaultsLoading).toBe(true);
+
+    inFlight.error(new Error('boom'));
+    await Promise.resolve();
+
+    expect(component.defaultsLoading).toBe(false);
+  });
+
+  it('onDefaults ignores re-entry while a call is in flight', () => {
+    const inFlight = new Subject<void>();
+    apiSpy.postDefault.and.returnValue(inFlight.asObservable());
+
+    component.onDefaults();
+    component.onDefaults(); // re-entry — must be a no-op
+
+    expect(apiSpy.postDefault).toHaveBeenCalledTimes(1);
   });
 
   it('onActiveCancel calls cancel() on the active service only', () => {
@@ -201,9 +280,7 @@ describe('SystemExperimentsShellComponent', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // cmdSaved commit — the ONE piece of cross-board state the shell
-  // commits in response to Apply. Snapshot commit lives inside the
-  // service and is tested there; the shell only commits cmdSaved.
+  // cmdSaved commit + Apply loading toggle.
   // ---------------------------------------------------------------------------
 
   it('onActiveApply commits cmdSaved on success', async () => {
@@ -216,7 +293,6 @@ describe('SystemExperimentsShellComponent', () => {
   });
 
   it('onActiveApply does NOT commit cmdSaved on error', async () => {
-    apiSpy.postPrimary.and.returnValue(new Subject<void>().asObservable());
     const failed = new Subject<void>();
     apiSpy.postPrimary.and.returnValue(failed.asObservable());
 
@@ -225,12 +301,48 @@ describe('SystemExperimentsShellComponent', () => {
     failed.error(new Error('boom'));
     await Promise.resolve();
 
-    expect(component.cmdSaved).toEqual({ sides: [], wheels: [] });   // unchanged from initial
+    expect(component.cmdSaved).toEqual({ sides: [], wheels: [] });   // unchanged
+  });
+
+  it('onActiveApply toggles applyLoading around the in-flight call', async () => {
+    const inFlight = new Subject<void>();
+    apiSpy.postPrimary.and.returnValue(inFlight.asObservable());
+    component.cmdDraft = { sides: ['left'], wheels: ['1'] };
+
+    component.onActiveApply();
+    expect(component.applyLoading).toBe(true);
+
+    inFlight.next(); inFlight.complete();
+    await Promise.resolve();
+
+    expect(component.applyLoading).toBe(false);
+  });
+
+  it('onActiveApply clears applyLoading on error too', async () => {
+    const inFlight = new Subject<void>();
+    apiSpy.postPrimary.and.returnValue(inFlight.asObservable());
+    component.cmdDraft = { sides: ['left'], wheels: ['1'] };
+
+    component.onActiveApply();
+    inFlight.error(new Error('boom'));
+    await Promise.resolve();
+
+    expect(component.applyLoading).toBe(false);
+  });
+
+  it('onActiveApply ignores re-entry while a call is in flight', () => {
+    const inFlight = new Subject<void>();
+    apiSpy.postPrimary.and.returnValue(inFlight.asObservable());
+    component.cmdDraft = { sides: ['left'], wheels: ['1'] };
+
+    component.onActiveApply();
+    component.onActiveApply();
+
+    expect(apiSpy.postPrimary).toHaveBeenCalledTimes(1);
   });
 
   // ---------------------------------------------------------------------------
-  // Tab switching — leaving tab is reset to its snapshot via the
-  // active controller's cancel(); shared CMD state is untouched.
+  // Tab switching.
   // ---------------------------------------------------------------------------
 
   it('switching tabs preserves cmdDraft and cmdSaved (CMD is shared)', () => {
@@ -249,7 +361,6 @@ describe('SystemExperimentsShellComponent', () => {
 
     component.onTabChange(1);
 
-    // Leaving tab (Primary) is reset to its snapshot — initially defaults.
     expect(component.primary.formGroup.getRawValue()['tff'])
       .toBe(buildPrimaryCommandsDefaults()['tff']);
     expect(component.selectedTabIndex).toBe(1);
@@ -266,13 +377,7 @@ describe('SystemExperimentsShellComponent', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // Test/Live mode — fans out to both services + CMD disable flag.
-  //
-  // Handler now takes a dropdown option value string ('active' / 'inactive')
-  // instead of a boolean. Behaviour invariants (which downstream calls
-  // happen, what state is reached) are unchanged — only the input shape
-  // moved. Anything other than the explicit 'active' sentinel is treated
-  // as disabled (fail-closed); we cover that with a stray-value case.
+  // Test/Live mode dropdown — fans out to both services + CMD disable flag.
   // ---------------------------------------------------------------------------
 
   it('selecting Not Active disables both services\' forms and CMD section', () => {
@@ -307,14 +412,63 @@ describe('SystemExperimentsShellComponent', () => {
   });
 
   it('any value other than "active" is treated as disabled (fail-closed translation)', () => {
-    // Defensive: the handler does `value === 'active'` so an unexpected
-    // wire value can't accidentally enable. This pins that decision
-    // against future refactors that might switch to a `!== 'inactive'`
-    // shape (which would silently flip the default).
     component.onTestModeChange('something-unexpected');
 
     expect(component.testMode).toBe(false);
     expect(component.primary.formGroup.disabled).toBe(true);
     expect(component.secondary.formGroup.disabled).toBe(true);
+  });
+
+  // ---------------------------------------------------------------------------
+  // Test-mode POST — every state change fires postTestMode with the new
+  // mode in the payload. Loading flag toggles around the call. Errors are
+  // swallowed (no rollback of local state).
+  // ---------------------------------------------------------------------------
+
+  it('onTestModeChange POSTs the chosen mode (active)', () => {
+    component.onTestModeChange('active');
+
+    expect(apiSpy.postTestMode).toHaveBeenCalledTimes(1);
+    expect(apiSpy.postTestMode.calls.mostRecent().args[0]).toEqual({ mode: 'active' });
+  });
+
+  it('onTestModeChange POSTs the chosen mode (inactive)', () => {
+    component.onTestModeChange('inactive');
+
+    expect(apiSpy.postTestMode).toHaveBeenCalledTimes(1);
+    expect(apiSpy.postTestMode.calls.mostRecent().args[0]).toEqual({ mode: 'inactive' });
+  });
+
+  it('onTestModeChange normalises stray values to "inactive" in the wire payload', () => {
+    component.onTestModeChange('something-unexpected');
+
+    expect(apiSpy.postTestMode.calls.mostRecent().args[0]).toEqual({ mode: 'inactive' });
+  });
+
+  it('onTestModeChange toggles testModeLoading around the in-flight call', async () => {
+    const inFlight = new Subject<void>();
+    apiSpy.postTestMode.and.returnValue(inFlight.asObservable());
+
+    component.onTestModeChange('inactive');
+    expect(component.testModeLoading).toBe(true);
+
+    inFlight.next(); inFlight.complete();
+    await Promise.resolve();
+
+    expect(component.testModeLoading).toBe(false);
+  });
+
+  it('onTestModeChange swallows errors and does NOT roll back local state', async () => {
+    const inFlight = new Subject<void>();
+    apiSpy.postTestMode.and.returnValue(inFlight.asObservable());
+
+    component.onTestModeChange('inactive');
+    inFlight.error(new Error('boom'));
+    await Promise.resolve();
+
+    // Local state stayed in the new mode; loading cleared via finalize.
+    expect(component.testMode).toBe(false);
+    expect(component.testModeLoading).toBe(false);
+    expect(component.cmdDisabled).toBe(true);
   });
 });

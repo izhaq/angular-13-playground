@@ -28,6 +28,8 @@ describe('PrimaryCommandsBoardService', () => {
     api = jasmine.createSpyObj<SystemExperimentsApiService>('SystemExperimentsApiService', [
       'postPrimary',
       'postSecondary',
+      'postDefault',
+      'postTestMode',
     ]);
     api.postPrimary.and.returnValue(of(undefined));
     service = new PrimaryCommandsBoardService(api);
@@ -55,8 +57,18 @@ describe('PrimaryCommandsBoardService', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // defaults() — independent of snapshot, always restores canonical values.
+  // defaults() — local-only reset (the global POST is owned by the shell).
+  // Wipes the form back to canonical values AND advances the snapshot, so a
+  // subsequent Cancel restores defaults rather than the pre-Default state.
   // ---------------------------------------------------------------------------
+
+  it('defaults() does NOT hit the network — the global POST lives at the shell', () => {
+    service.defaults();
+
+    expect(api.postPrimary).not.toHaveBeenCalled();
+    expect(api.postSecondary).not.toHaveBeenCalled();
+    expect(api.postDefault).not.toHaveBeenCalled();
+  });
 
   it('defaults() resets the form to canonical values regardless of prior Apply', async () => {
     service.formGroup.patchValue({ tff: TFF.LightActive });
@@ -66,6 +78,17 @@ describe('PrimaryCommandsBoardService', () => {
     service.defaults();
 
     expect(service.formGroup.getRawValue()).toEqual(buildPrimaryCommandsDefaults());
+  });
+
+  it('defaults() advances the snapshot — Cancel after Defaults restores defaults, NOT the pre-Defaults snapshot', async () => {
+    service.formGroup.patchValue({ tff: TFF.LightActive });
+    await service.apply(cmd).toPromise();   // snapshot = LightActive
+
+    service.defaults();
+
+    service.formGroup.patchValue({ tff: TFF.Dominate });
+    service.cancel();
+    expect(service.formGroup.getRawValue()['tff']).toBe(buildPrimaryCommandsDefaults()['tff']);
   });
 
   // ---------------------------------------------------------------------------

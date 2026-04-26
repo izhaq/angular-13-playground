@@ -5,6 +5,7 @@ import {
   BoardPostPayload,
   SystemExperimentsApiConfig,
   SystemExperimentsResponse,
+  TestModePayload,
 } from '../../features/system-experiments/api/api-contract';
 import { SystemExperimentsApiService } from '../../features/system-experiments/api/system-experiments-api.service';
 import { SystemExperimentsDataService } from '../../features/system-experiments/api/system-experiments-data.service';
@@ -104,11 +105,23 @@ export class MockSystemExperimentsApiService {
     console.info('[system-experiments mock] postSecondary', payload);
     return of(void 0);
   }
+  postDefault(): Observable<void> {
+    // eslint-disable-next-line no-console
+    console.info('[system-experiments mock] postDefault');
+    return of(void 0);
+  }
+  postTestMode(payload: TestModePayload): Observable<void> {
+    // eslint-disable-next-line no-console
+    console.info('[system-experiments mock] postTestMode', payload);
+    return of(void 0);
+  }
 }
 
 export const MOCK_SYSTEM_EXPERIMENTS_API_CONFIG: SystemExperimentsApiConfig = {
   primaryPostUrl:   '/mock/system-experiments/primary',
   secondaryPostUrl: '/mock/system-experiments/secondary',
+  defaultUrl:       '/mock/system-experiments/default',
+  testModeUrl:      '/mock/system-experiments/test-mode',
   getUrl:           '/mock/system-experiments/get',
   wsUrl:            'ws://mock/system-experiments/ws',
 };

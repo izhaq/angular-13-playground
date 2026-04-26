@@ -5,7 +5,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { By } from '@angular/platform-browser';
 
 import { SYSTEM_EXPERIMENTS_LABELS as L } from '../../shared/labels';
-import { BoardFooterComponent } from './board-footer.component';
+import { AppLoadingOverlayComponent } from '../../../../components/app-loading-overlay/app-loading-overlay.component';
+import { BoardFooterComponent, FooterLoadingButton } from './board-footer.component';
 
 /**
  * Host wrapper so inputs flow through Angular's binding system. Required
@@ -17,6 +18,7 @@ import { BoardFooterComponent } from './board-footer.component';
     <system-experiments-board-footer
       [disabled]="disabled"
       [applyDisabled]="applyDisabled"
+      [loading]="loading"
       (defaults)="events.push('defaults')"
       (cancel)="events.push('cancel')"
       (apply)="events.push('apply')">
@@ -26,6 +28,7 @@ import { BoardFooterComponent } from './board-footer.component';
 class HostComponent {
   disabled = false;
   applyDisabled = false;
+  loading: FooterLoadingButton = null;
   events: string[] = [];
   @ViewChild(BoardFooterComponent, { static: true }) footer!: BoardFooterComponent;
 }
@@ -36,7 +39,7 @@ describe('BoardFooterComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      declarations: [BoardFooterComponent, HostComponent],
+      declarations: [BoardFooterComponent, AppLoadingOverlayComponent, HostComponent],
       imports: [NoopAnimationsModule, MatButtonModule],
     }).compileComponents();
 
@@ -49,6 +52,12 @@ describe('BoardFooterComponent', () => {
     return fixture.debugElement.query(
       By.css(`[data-test-id="footer-${action}"]`),
     ).nativeElement;
+  }
+
+  function spinner(action: 'defaults' | 'apply'): HTMLElement | null {
+    return fixture.debugElement.nativeElement.querySelector(
+      `[data-test-id="footer-${action}-spinner"]`,
+    );
   }
 
   it('renders three buttons with stable test ids (singleton — no board namespace)', () => {
@@ -90,22 +99,86 @@ describe('BoardFooterComponent', () => {
   });
 
   it('keeps Apply disabled when either disabled OR applyDisabled is true', () => {
-    // disabled wins on its own
     host.disabled = true;
     host.applyDisabled = false;
     fixture.detectChanges();
     expect(btn('apply').disabled).toBe(true);
 
-    // applyDisabled wins on its own
     host.disabled = false;
     host.applyDisabled = true;
     fixture.detectChanges();
     expect(btn('apply').disabled).toBe(true);
 
-    // Both off → enabled
     host.disabled = false;
     host.applyDisabled = false;
     fixture.detectChanges();
+    expect(btn('apply').disabled).toBe(false);
+  });
+
+  // ---------------------------------------------------------------------------
+  // loading — single-flight footer. The matching button gets the spinner
+  // overlay; the other two are disabled but show no spinner of their own.
+  // ---------------------------------------------------------------------------
+
+  it('renders neither spinner when loading is null', () => {
+    expect(spinner('defaults')).toBeNull();
+    expect(spinner('apply')).toBeNull();
+  });
+
+  it('renders ONLY the defaults spinner when loading === "defaults"', () => {
+    host.loading = 'defaults';
+    fixture.detectChanges();
+
+    expect(spinner('defaults')).not.toBeNull();
+    expect(spinner('apply')).toBeNull();
+  });
+
+  it('renders ONLY the apply spinner when loading === "apply"', () => {
+    host.loading = 'apply';
+    fixture.detectChanges();
+
+    expect(spinner('apply')).not.toBeNull();
+    expect(spinner('defaults')).toBeNull();
+  });
+
+  it('marks ONLY the matching loading-overlay host with `.is-loading`', () => {
+    host.loading = 'apply';
+    fixture.detectChanges();
+
+    const wrappingOverlay = (action: 'defaults' | 'cancel' | 'apply'): HTMLElement => {
+      return btn(action).closest('app-loading-overlay') as HTMLElement;
+    };
+
+    expect(wrappingOverlay('apply').classList.contains('is-loading')).toBe(true);
+    expect(wrappingOverlay('defaults').classList.contains('is-loading')).toBe(false);
+    expect(wrappingOverlay('cancel').classList.contains('is-loading')).toBe(false);
+  });
+
+  it('disables ALL three buttons while ANY action is in flight (single-flight footer)', () => {
+    host.loading = 'apply';
+    fixture.detectChanges();
+
+    expect(btn('apply').disabled).toBe(true);
+    expect(btn('defaults').disabled).toBe(true);
+    expect(btn('cancel').disabled).toBe(true);
+
+    host.loading = 'defaults';
+    fixture.detectChanges();
+
+    expect(btn('apply').disabled).toBe(true);
+    expect(btn('defaults').disabled).toBe(true);
+    expect(btn('cancel').disabled).toBe(true);
+  });
+
+  it('clears the cross-button disable when loading returns to null', () => {
+    host.loading = 'apply';
+    fixture.detectChanges();
+    expect(btn('cancel').disabled).toBe(true);
+
+    host.loading = null;
+    fixture.detectChanges();
+    expect(btn('cancel').disabled).toBe(false);
+    expect(btn('defaults').disabled).toBe(false);
     expect(btn('apply').disabled).toBe(false);
   });
 });

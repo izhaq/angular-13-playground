@@ -27,6 +27,8 @@ describe('SecondaryCommandsBoardService', () => {
     api = jasmine.createSpyObj<SystemExperimentsApiService>('SystemExperimentsApiService', [
       'postPrimary',
       'postSecondary',
+      'postDefault',
+      'postTestMode',
     ]);
     api.postSecondary.and.returnValue(of(undefined));
     service = new SecondaryCommandsBoardService(api);
@@ -45,6 +47,14 @@ describe('SecondaryCommandsBoardService', () => {
     expect(service.formGroup.getRawValue()).toEqual(buildSecondaryCommandsDefaults());
   });
 
+  it('defaults() does NOT hit the network — the global POST lives at the shell', () => {
+    service.defaults();
+
+    expect(api.postPrimary).not.toHaveBeenCalled();
+    expect(api.postSecondary).not.toHaveBeenCalled();
+    expect(api.postDefault).not.toHaveBeenCalled();
+  });
+
   it('defaults() resets the form to canonical values regardless of prior Apply', async () => {
     service.formGroup.patchValue({ linkHealth: NORMAL_FORCED.Forced });
     await service.apply(cmd).toPromise();
@@ -54,6 +64,18 @@ describe('SecondaryCommandsBoardService', () => {
     service.defaults();
 
     expect(service.formGroup.getRawValue()).toEqual(buildSecondaryCommandsDefaults());
+  });
+
+  it('defaults() advances the snapshot — Cancel after Defaults restores defaults, NOT the pre-Defaults snapshot', async () => {
+    service.formGroup.patchValue({ linkHealth: NORMAL_FORCED.Forced });
+    await service.apply(cmd).toPromise();   // snapshot = Forced
+
+    service.defaults();
+
+    service.formGroup.patchValue({ linkHealth: NORMAL_FORCED.Normal });
+    service.cancel();
+    expect(service.formGroup.getRawValue()['linkHealth'])
+      .toBe(buildSecondaryCommandsDefaults()['linkHealth']);
   });
 
   it('apply() POSTs sides + wheels + the FormGroup\'s raw value via postSecondary', () => {

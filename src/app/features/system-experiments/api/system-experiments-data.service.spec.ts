@@ -19,6 +19,8 @@ import { SystemExperimentsDataService } from './system-experiments-data.service'
 const TEST_API_CONFIG: SystemExperimentsApiConfig = {
   primaryPostUrl:   'https://api.test/system-experiments/primary',
   secondaryPostUrl: 'https://api.test/system-experiments/secondary',
+  defaultUrl:       'https://api.test/system-experiments/default',
+  testModeUrl:      'https://api.test/system-experiments/test-mode',
   getUrl:           'https://api.test/system-experiments/state',
   wsUrl:            'wss://api.test/system-experiments/stream',
 };

@@ -2,13 +2,27 @@
 
   <header class="system-experiments-shell__chrome">
     <span class="system-experiments-shell__test-mode-label">{{ labels.testMode }}</span>
-    <app-dropdown
-      class="system-experiments-shell__test-mode"
-      testId="shell-test-mode-select"
-      [options]="testModeOptions"
-      [value]="testModeValue"
-      (changed)="onTestModeChange($event)">
-    </app-dropdown>
+    <!--
+      `ng-container` object-wrapper coerces (testModeLoading$ | async) — which
+      is `boolean | null` — into a non-null `boolean`. Using `*ngIf` directly
+      on the dropdown would unmount it on every loading flip, dropping focus
+      and animation state.
+    -->
+    <ng-container *ngIf="{ loading: (testModeLoading$ | async) ?? false } as testMode">
+      <app-loading-overlay
+        class="system-experiments-shell__test-mode-control"
+        [loading]="testMode.loading"
+        spinnerTestId="shell-test-mode-spinner">
+        <app-dropdown
+          class="system-experiments-shell__test-mode"
+          testId="shell-test-mode-select"
+          [options]="testModeOptions"
+          [value]="testModeValue"
+          [disabled]="testMode.loading"
+          (changed)="onTestModeChange($event)">
+        </app-dropdown>
+      </app-loading-overlay>
+    </ng-container>
   </header>
 
   <mat-tab-group
@@ -65,7 +79,8 @@
     class="system-experiments-shell__footer"
     [disabled]="!testMode"
     [applyDisabled]="applyDisabled"
-    (defaults)="onActiveDefaults()"
+    [loading]="footerLoading$ | async"
+    (defaults)="onDefaults()"
     (cancel)="onActiveCancel()"
     (apply)="onActiveApply()">
   </system-experiments-board-footer>

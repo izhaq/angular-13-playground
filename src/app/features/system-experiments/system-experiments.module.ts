@@ -10,6 +10,7 @@ import { webSocket } from 'rxjs/webSocket';
 import {
   AppDropdownCvaModule,
   AppDropdownModule,
+  AppLoadingOverlayModule,
   AppMultiDropdownModule,
 } from './_external/ui-primitives';
 import { BoardFooterComponent } from './components/board-footer/board-footer.component';
@@ -51,6 +52,7 @@ const defaultWebSocketFactory: SystemExperimentsWebSocketFactory =
     AppDropdownModule,
     AppMultiDropdownModule,
     AppDropdownCvaModule,
+    AppLoadingOverlayModule,
   ],
   exports: [
     BoardComponent,

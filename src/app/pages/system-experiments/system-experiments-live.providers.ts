@@ -23,6 +23,8 @@ const WS_BASE = 'ws://localhost:3000';
 export const LIVE_SYSTEM_EXPERIMENTS_API_CONFIG: SystemExperimentsApiConfig = {
   primaryPostUrl:   `${HTTP_BASE}/api/system-experiments/primary`,
   secondaryPostUrl: `${HTTP_BASE}/api/system-experiments/secondary`,
+  defaultUrl:       `${HTTP_BASE}/api/system-experiments/default`,
+  testModeUrl:      `${HTTP_BASE}/api/system-experiments/test-mode`,
   getUrl:           `${HTTP_BASE}/api/system-experiments/get`,
   wsUrl:            `${WS_BASE}/api/system-experiments/ws`,
 };

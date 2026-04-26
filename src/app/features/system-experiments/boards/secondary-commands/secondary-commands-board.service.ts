@@ -23,7 +23,9 @@ export class SecondaryCommandsBoardService {
   constructor(private readonly api: SystemExperimentsApiService) {}
 
   defaults(): void {
-    this.formGroup.reset(buildSecondaryCommandsDefaults(), { emitEvent: false });
+    const seed = buildSecondaryCommandsDefaults();
+    this.formGroup.reset(seed, { emitEvent: false });
+    this.snapshot = this.formGroup.getRawValue();
   }
 
   cancel(): void {

@@ -98,9 +98,15 @@ export interface BoardPostPayload {
   fields: Record<string, string | string[]>;
 }
 
+export interface TestModePayload {
+  mode: 'active' | 'inactive';
+}
+
 export interface SystemExperimentsApiConfig {
   primaryPostUrl: string;
   secondaryPostUrl: string;
+  defaultUrl: string;
+  testModeUrl: string;
   getUrl: string;
   wsUrl: string;
 }

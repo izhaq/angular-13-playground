@@ -12,27 +12,7 @@ import {
   buildSecondaryCommandsDefaults,
 } from './secondary-commands.fields';
 
-/**
- * Per-board service for the Secondary Commands tab.
- *
- * Same shape as `PrimaryCommandsBoardService` — kept as a deliberate
- * sibling rather than collapsed into a shared base class. Two reasons:
- *
- *   1. The boards differ ONLY in which API endpoint Apply hits and
- *      which sibling fields module seeds the FormGroup. A base class
- *      would parameterise on a 1-line difference and add generics +
- *      an abstract method to do it. The repeated 30-line file is
- *      easier to read and easier to evolve when one board eventually
- *      grows a behaviour the other doesn't.
- *   2. Same call we made for the form components themselves (plan §6 /
- *      §13: "don't generalize until the third use case"). Two boards,
- *      two services. If a third board lands and the surface is
- *      genuinely identical, that's the moment to reach for a base.
- *
- * See `PrimaryCommandsBoardService` for the full rationale on
- * lifetime, snapshot semantics, and why `apply()` returns
- * `Observable<void>` rather than committing cross-board state itself.
- */
+/** Mirror of `PrimaryCommandsBoardService` — same shape, different fields/endpoint. */
 @Injectable()
 export class SecondaryCommandsBoardService {
 

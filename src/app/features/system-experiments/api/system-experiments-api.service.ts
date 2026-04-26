@@ -8,11 +8,7 @@ import {
 } from './api-contract';
 import { SYSTEM_EXPERIMENTS_API_CONFIG } from './api-tokens';
 
-/**
- * POST endpoint for each board. URLs come from the injected `SYSTEM_EXPERIMENTS_API_CONFIG`
- * token so the host project can wire its own routes at module setup — no hardcoded
- * URLs, no environment-file coupling.
- */
+/** POST endpoint for each board. URLs come from `SYSTEM_EXPERIMENTS_API_CONFIG`. */
 @Injectable()
 export class SystemExperimentsApiService {
 

@@ -11,29 +11,23 @@ import {
   Wheel,
 } from './models';
 
-// ---------------------------------------------------------------------------
-// Field categorization (matches the front-end's boards/*/fields.ts)
-// ---------------------------------------------------------------------------
+// Field categorization (matches the front-end's boards/*/fields.ts).
+// Multi-location keys (e.g. `linkHealth`) appear in multiple sets — one
+// POST writes the value to every matching slot via independent passes
+// in `applySecondary`.
 
 const PRIMARY_STANDARD_KEYS: ReadonlyArray<keyof PrimaryStandardFields> = [
   'tff', 'mlmTransmit', 'videoRec', 'videoRecType', 'mtrRec',
   'speedPwrOnOff', 'forceTtl', 'nuu', 'muDump', 'sendMtrTss', 'abort',
 ];
 
-/**
- * Primary "Cmd to GS" form-only fields. They ride along on the POST
- * payload but never land in the wire response — discard on the server.
- */
+/** Form-only — ride along on the POST but never land in the wire response. */
 const PRIMARY_CMD_TO_GS_KEYS: ReadonlySet<string> = new Set([
   'teo', 'gsMtrRec', 'aiMtrRec',
 ]);
 
 const SECONDARY_ADDITIONAL_KEYS: ReadonlyArray<keyof SecondaryAdditionalFields> = [
   'whlCriticalFail', 'whlWarningFail', 'whlFatalFail',
-  // Multi-location: same key participates in all three secondary structures.
-  // The applySecondary fan-out (additionalFields + aCommands + GDL) is three
-  // independent passes — membership in N keysets means the value is written
-  // to all N matching slots in one POST.
   'linkHealth',
 ];
 
@@ -52,10 +46,6 @@ const PRIMARY_STANDARD_KEY_SET = new Set<string>(PRIMARY_STANDARD_KEYS);
 const SECONDARY_ADDITIONAL_KEY_SET = new Set<string>(SECONDARY_ADDITIONAL_KEYS);
 const SECONDARY_ACOMMANDS_KEY_SET = new Set<string>(SECONDARY_ACOMMANDS_KEYS);
 const SECONDARY_GDL_KEY_SET = new Set<string>(SECONDARY_GDL_KEYS);
-
-// ---------------------------------------------------------------------------
-// Initial state — same shape the front-end mock used to ship
-// ---------------------------------------------------------------------------
 
 function emptyMCommand(): MCommandItem {
   return {
@@ -76,9 +66,8 @@ function emptyMCommand(): MCommandItem {
       whlCriticalFail: 'no',
       whlWarningFail: 'normal',
       whlFatalFail: 'no',
-      // Multi-location seed — same key, same default, in all three structures.
-      // This is what makes the field render across all 11 secondary columns
-      // from boot, before the user touches the form.
+      // Multi-location seed — same key in all three structures so the field
+      // renders across all 11 secondary columns from boot.
       linkHealth: 'normal',
     },
   };
@@ -116,16 +105,11 @@ export function buildInitialState(): SystemExperimentsResponse {
   };
 }
 
-// ---------------------------------------------------------------------------
-// Apply functions
-// ---------------------------------------------------------------------------
-
 function entityIdxFor(side: Side): 0 | 1 {
   return side === 'left' ? 0 : 1;
 }
 
 function cmdIdxFor(wheel: Wheel): 0 | 1 | 2 | 3 {
-  // wheels are '1'..'4' → 0..3
   return (Number(wheel) - 1) as 0 | 1 | 2 | 3;
 }
 
@@ -207,10 +191,6 @@ export function applySecondary(
     right[key] = value;
   }
 }
-
-// ---------------------------------------------------------------------------
-// Validation
-// ---------------------------------------------------------------------------
 
 const VALID_SIDES: ReadonlySet<string> = new Set(['left', 'right']);
 const VALID_WHEELS: ReadonlySet<string> = new Set(['1', '2', '3', '4']);

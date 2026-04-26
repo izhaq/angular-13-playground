@@ -8,20 +8,8 @@ import { BoardId, GridColId } from '../../shared/ids';
 import { GridColumn, GridRow } from '../../shared/models';
 
 /**
- * Dumb, presentational read-only grid. Data shape is dictated by the
- * `GridColumn[]` + `GridRow[]` inputs the shell precomputes from the
- * WebSocket stream — no fetching, no transforms, no board-specific code.
- *
- * Layout: a single CSS Grid container with one extra leading column for
- * the row labels (so total columns = `columns.length + 1`).
- *
- * Local UI state:
- *   - `hoveredColId`  — column-wide highlight on cell mouseenter
- *   - `selectedCellId` — last clicked cell ("fieldKey|colId")
- *
- * All clickable elements expose namespaced `data-test-id`s so Playwright
- * can target a specific board's grid even when both boards are mounted
- * simultaneously by Material tabs.
+ * Dumb, presentational read-only grid. Single CSS Grid container with one
+ * extra leading column for the row labels (so total columns = `columns.length + 1`).
  */
 @Component({
   selector: 'system-experiments-status-grid',

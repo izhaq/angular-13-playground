@@ -1,14 +1,6 @@
 /**
- * Canonical option value maps for the System Experiments feature.
- *
- * Centralizes the string values that flow between forms, grid cells, and the
- * backend — these are wire values the API expects, not arbitrary labels.
- *
- * Pattern: `as const` maps with a derived literal-union type. Preferred over
- * `enum` to avoid `const enum` build pitfalls and keep the JS output minimal.
- *
- * Display abbreviations live on `DropdownOption.abbr` in each board's
- * options file because abbreviations differ between boards.
+ * Canonical option value maps — the strings the backend wire format expects.
+ * Display abbreviations live on `DropdownOption.abbr` per board.
  */
 
 export const YES_NO = { No: 'no', Yes: 'yes' } as const;

@@ -3,24 +3,14 @@ import { GridColId } from './ids';
 import { Side, Wheel } from './option-values';
 
 /**
- * Internal view models and configuration shapes — what we own.
- *
- * Anything that flows over the network lives in `api/api-contract.ts`.
- * This file is for types that exist only inside the feature.
+ * Internal view models — types that exist only inside the feature.
+ * Wire-crossing types live in `api/api-contract.ts`.
  */
-
-// ---------------------------------------------------------------------------
-// CMD Selection (shared across tabs, lives in shell component state)
-// ---------------------------------------------------------------------------
 
 export interface CmdSelection {
   sides: Side[];
   wheels: Wheel[];
 }
-
-// ---------------------------------------------------------------------------
-// Grid View Models
-// ---------------------------------------------------------------------------
 
 export interface GridColumn {
   id: GridColId;
@@ -33,23 +23,14 @@ export interface GridRow {
   values: Record<string, string>;
 }
 
-// ---------------------------------------------------------------------------
-// Field Configuration (drives form rendering)
-// ---------------------------------------------------------------------------
-
 /**
- * A dropdown option that is also rendered in the status grid.
- * Extends the generic DropdownOption by making `abbr` required — the grid
- * uses `abbr` as the cell text, so a missing abbr would render blank.
+ * A dropdown option that is also rendered in the status grid. Extends the
+ * generic DropdownOption by making `abbr` required — the grid uses `abbr`
+ * as the cell text, so a missing one would render blank.
  */
 export type LabeledOption = DropdownOption & { abbr: string };
 
-/**
- * No "this field belongs in the grid" flag here on purpose. Form-only fields
- * (e.g. Primary's "Cmd to GS" sub-section) are kept in their own array and
- * just not passed to the grid row builder. The form renders ALL_FIELDS, the
- * grid renders the subset that actually has wire data behind it.
- */
+// No `inGrid` flag — form-only fields just stay out of `MAIN_FIELDS`.
 interface BaseFieldConfig {
   key: string;
   label: string;
@@ -66,9 +47,5 @@ export interface MultiSelectField extends BaseFieldConfig {
   defaultValue: string[];
 }
 
-/**
- * Discriminated union: narrowing on `type` enforces `defaultValue` shape
- * at compile time (single → string, multi → string[]).
- */
 export type FieldConfig = SingleSelectField | MultiSelectField;
 export type FieldType = FieldConfig['type'];

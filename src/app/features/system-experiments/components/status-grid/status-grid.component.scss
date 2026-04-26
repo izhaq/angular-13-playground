@@ -1,26 +1,8 @@
-// System Experiments color palette (mirrors `src/styles/_dropdowns.scss`):
-//   text on dark surface  → #e6e6e6
-//   text on light surface → #1f1f1f
-//   grid card background  → #ffffff
-//   grid border           → #cccccc
-//   grid hover background → #eef4ff
-//   grid selected outline → #1976d2
-// Hardcoded inline below — duplication is deliberate. The host system
-// this feature migrates into has its own design tokens; replacing colors
-// is a one-pass find/replace per hex, no shared partial needed.
-
-// Component-internal layout values. Sized for the 1120 × 500 shell envelope:
-//   The grid lives in the right pane (~640px wide). With an 11-column
-//   secondary grid + the row-label column we need to fit inside that
-//   without horizontal scroll: 11 × 44 + 90 = 574px ✓.
-//   If the host gives us a different envelope, retune $label-col-min and
-//   $data-col-min here (TS reads them via CSS custom properties on :host).
-$label-col-min: 90px;   // fits the longest label ("Critical Fail" et al.)
+// Sized for the 1120 × 500 shell envelope: 11 cols × 44 + 90 = 574px,
+// fits inside the ~640px right pane without horizontal scroll. Retune
+// $label-col-min / $data-col-min if the host gives a different envelope.
+$label-col-min: 90px;
 $data-col-min:  44px;
-// Tight cell height so the Secondary grid (header + 14 data rows = 15
-// rows total) fits in the 1120 × 500 envelope's ~380px grid pane height
-// without vertical scroll. Primary (header + 11 = 12 rows) gets even
-// more breathing room.
 $cell-min-h:    24px;
 $cell-pad-y:    3px;
 $cell-pad-x:    10px;
@@ -32,8 +14,6 @@ $border-width:  1px;
   height: 100%;
   overflow: auto;
 
-  // Cell minimums published as custom properties so `.status-grid` (and
-  // anyone styling it) can read them without referring to SCSS variables.
   --grid-label-col-min: #{$label-col-min};
   --grid-data-col-min:  #{$data-col-min};
 }
@@ -42,29 +22,17 @@ $border-width:  1px;
 //   - Row labels live on the dark page background — no fill, no borders.
 //   - The data area (header row + data cells) is its own self-bordered card.
 //   - The corner cell (where the label column meets the header row) is empty.
-//
-// Rather than draw an outer border on the grid container (which would wrap
-// the label column too), each data cell carries its own borders and the
-// first data column (`--first-col`) adds a `border-left` so the data area
-// reads as a closed rectangle.
 .status-grid {
   display: grid;
-  // Track template: one row-label column (sized to content with a floor)
-  // + N data columns (`--col-count` is set by the host template via
-  // `[style.--col-count]="columns.length"`). Keeping the template in CSS
-  // means the component has no `ngOnInit` and reacts automatically when
-  // the column count changes.
+  // `--col-count` is set by the host template via [style.--col-count] —
+  // keeps the track count in CSS so the component has no `ngOnInit`.
   grid-template-columns:
     minmax(var(--grid-label-col-min), max-content)
     repeat(var(--col-count), minmax(var(--grid-data-col-min), 1fr));
-  // Fill the host so `1fr` rows have a real height to distribute. Without
-  // this the grid would size to its intrinsic content (≈ rows × cell-min-h)
-  // and the rows could never grow.
+  // `height: 100%` so `1fr` rows have a real height to distribute against;
+  // `minmax($cell-min-h, 1fr)` so rows always fit in the pane and grow to
+  // fill it when there's slack.
   height: 100%;
-  // Each row is at least `$cell-min-h` (so Secondary's 15 rows always fit
-  // in the ~380px pane without scroll), and each row gets a `1fr` share
-  // when the pane has slack — Primary's 12 rows each grow to ~32px,
-  // visually using the whole vertical budget instead of leaving dead space.
   grid-auto-rows: minmax($cell-min-h, 1fr);
   font-size: $font-size;
 
@@ -72,8 +40,6 @@ $border-width:  1px;
   &__col-header,
   &__row-label,
   &__cell {
-    // Flexbox lets the text stay vertically centered when the row grows
-    // taller than its intrinsic content height (1fr distribution).
     display: flex;
     align-items: center;
     padding: $cell-pad-y $cell-pad-x;
@@ -84,7 +50,6 @@ $border-width:  1px;
     text-overflow: ellipsis;
   }
 
-  // Borderless / transparent: lets the dark page background show through.
   &__corner {
     background: transparent;
   }
@@ -96,7 +61,6 @@ $border-width:  1px;
     padding-left: 0;
   }
 
-  // Data cells (header + body) form the bordered card.
   &__col-header,
   &__cell {
     background: #ffffff;
@@ -117,7 +81,6 @@ $border-width:  1px;
     border-bottom: $border-width solid #cccccc;
   }
 
-  // Closes the left edge of the bordered card.
   &__col-header--first-col,
   &__cell--first-col {
     border-left: $border-width solid #cccccc;

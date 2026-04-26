@@ -1,19 +1,7 @@
-// System Experiments color palette (mirrors `src/styles/_dropdowns.scss`):
-//   control surface       → #2d2d2d
-//   control border        → #3a3a3a
-//   text on dark surface  → #e6e6e6
-//   accent (hover)        → #1e88e5
-//   control radius        → 2px
-// Hardcoded inline below — duplication is deliberate. The host system
-// this feature migrates into has its own design tokens; replacing values
-// is a one-pass find/replace, no shared partial needed.
 $btn-min-width:        80px;
 $btn-line-height:      26px;
 $btn-disabled-opacity: 0.5;
 $gap:                  8px;
-// Vertical padding sets the breathing room around the buttons. ~8px each
-// side keeps the footer ≈ 42px tall — comfortable but still compact for
-// the 500px envelope.
 $pad-y:                8px;
 $pad-x:                12px;
 
@@ -31,10 +19,6 @@ $pad-x:                12px;
     flex: 1 1 auto;
   }
 
-  // Component-scoped attribute selectors give us higher specificity than
-  // `.mat-stroked-button` / `.mat-flat-button` without `!important`.
-  // All three buttons share the same dark navy resting style and the
-  // same accent hover treatment.
   &__btn {
     min-width: $btn-min-width;
     background: #2d2d2d;
@@ -49,11 +33,9 @@ $pad-x:                12px;
     border-color: #1e88e5;
   }
 
-  // Material's `mat-flat-button[disabled]` ships with its own near-black
-  // text + light-gray background — invisible on top of our dark surface.
-  // Pin our colors through the disabled state and let opacity alone carry
-  // the "muted" cue. Specificity matches Material's own rule (component
-  // host attribute + `[disabled]`) so no `!important` is needed.
+  // Material's `mat-flat-button[disabled]` ships near-black text on a light-
+  // gray background — invisible on top of our dark surface. Pin our colors
+  // through the disabled state and let opacity carry the "muted" cue.
   &__btn[disabled] {
     background: #2d2d2d;
     color: #e6e6e6;

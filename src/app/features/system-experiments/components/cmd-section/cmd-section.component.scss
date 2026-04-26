@@ -1,18 +1,8 @@
-// System Experiments color palette (mirrors `src/styles/_dropdowns.scss`):
-//   control radius        → 2px (boxed cmd title border)
-// Hardcoded inline below — duplication is deliberate. The host system
-// this feature migrates into has its own design tokens; replacing values
-// is a one-pass find/replace, no shared partial needed.
-// Matches the form's `$control-col-width` (100px) so the CMD dropdowns
-// read at the same width as the rows below them on the left pane.
 $field-width:     100px;
-$gap:             12px;   // outer flex gap (label ↔ controls)
-$controls-gap:    8px;    // inter-dropdown gap inside controls
-// Symmetric vertical padding inside the panel — outer top/bottom balance
-// (vs the body padding above and the divider below) is handled by the
-// board's `.board__cmd { padding-bottom: ... }` rule.
+$gap:             12px;
+$controls-gap:    8px;
 $pad-y:           6px;
-$pad-x:           0;      // horizontal alignment is owned by the form below
+$pad-x:           0;
 $title-font-size: 12px;
 
 :host {
@@ -25,9 +15,6 @@ $title-font-size: 12px;
   gap: $gap;
   padding: $pad-y $pad-x;
 
-  // Plain text label — the boxed pill style is gone; the entire CMD
-  // panel now reads as a section thanks to the horizontal divider added
-  // in `board.component.scss` (.board__cmd::after).
   &__title {
     flex: 0 0 auto;
     font-weight: 600;
@@ -42,9 +29,8 @@ $title-font-size: 12px;
     gap: $controls-gap;
   }
 
-  // Override the dropdown host's `width: 100%` (set in
-  // app-multi-dropdown.component.scss for layouts where it should fill).
-  // In CMD we want narrow, fixed-width fields sitting next to the label.
+  // Override the dropdown host's default `width: 100%` so the fields stay
+  // narrow and sit next to the label.
   &__field {
     flex: 0 0 auto;
     width: $field-width;

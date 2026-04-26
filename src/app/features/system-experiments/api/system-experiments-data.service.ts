@@ -14,27 +14,13 @@ import {
 } from './api-tokens';
 
 /**
- * Single source of truth for the right-hand grid data.
+ * Single source of truth for the right-hand grid data: GETs the seed
+ * response, then concatenates the WebSocket stream of live frames.
  *
- * On subscribe:
- *   1. GETs the seed `SystemExperimentsResponse` (one emission)
- *   2. Concatenates the WebSocket stream of live frames (same shape)
- *
- * The WS auto-reconnects with a 3 s delay on error (network blip, server
- * restart), capped at `MAX_RECONNECT_ATTEMPTS` so a dead backend can't
- * generate an unbounded reconnect loop (~60 × 3 s ≈ 3 minutes of trying
- * before the stream errors out). `resetOnSuccess: true` zeros the counter
- * on a successful reconnect, so a flaky-but-mostly-up backend can recover
- * indefinitely.
- *
- * Note: retry policy lives here for the default factory only. Hosts that
- * inject their own `SYSTEM_EXPERIMENTS_WS_FACTORY` returning an already-
- * managed observable can rely on their own reconnect strategy — the cap
- * still applies as a defensive ceiling above whatever they do.
- *
- * Multiple subscribers share one upstream connection — the shell can
- * subscribe once and pass the stream down to both tabs without opening a
- * second socket.
+ * WS auto-reconnects with a 3 s delay on error, capped at
+ * `MAX_RECONNECT_ATTEMPTS` so a dead backend can't generate an unbounded
+ * loop. `resetOnSuccess: true` zeros the counter on a successful
+ * reconnect so a flaky-but-mostly-up backend can recover indefinitely.
  */
 @Injectable()
 export class SystemExperimentsDataService {

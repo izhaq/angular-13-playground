@@ -1,30 +1,7 @@
-// Shell sizing budget for the 1120 × 500 envelope:
-//   chrome header  ~48px  (test-mode dropdown row, left-aligned — the
-//                          dropdown uses Material's mat-form-field which
-//                          reads at ~40px tall; +4/4 vertical padding
-//                          rounds the row out)
-//   tab header     ~36px  (compacted via the `app-dashboard-tabs` opt-in
-//                          on the mat-tab-group below — see
-//                          src/styles/_app-dashboard-tabs.scss)
-//   board content  ~374px (everything inside the active tab)
-//   footer         ~42px  (single shared `BoardFooterComponent` — see
-//                          board-footer.component.scss; ~26 line-height
-//                          + 8/8 vertical padding)
-//   ───────────────────
-//   total          500px
-//
-// The host fills whatever the parent gives it (height: 100%); the inner
-// board grows to fill the remaining height after chrome + tab header.
-// Page-level sizing (1150 × 550) lives on the host page so the shell
-// stays portable.
-
 :host {
   display: block;
   width: 100%;
   height: 100%;
-  // Dark gray surface, lifted one step above the page background (#1a1a1a)
-  // so the shell reads as a card. The dropdowns, form labels, grid row
-  // labels and footer buttons all assume a dark surface for contrast.
   background: #242424;
   color: #e6e6e6;
   overflow: hidden;
@@ -37,15 +14,8 @@
   height: 100%;
 }
 
-// Top chrome row — owns the Sys Mode dropdown on the LEFT. Slim so the
-// tab body has as much vertical room as possible. No bottom border —
-// the tab header that follows already supplies a visual divider.
-//
-// `gap` is tight (4px) because Material's `mat-form-field` already
-// carries ~12px of internal left-padding inside the field outline —
-// adding a generous flex gap on top reads as a double-spacing.
-// `align-items: center` vertically centers the label against the
-// form-field's mid-line.
+// `gap` is tight (4px) because Material's `mat-form-field` already carries
+// ~12px of internal left-padding inside the field outline.
 .system-experiments-shell__chrome {
   display: flex;
   align-items: center;
@@ -56,37 +26,19 @@
   flex-shrink: 0;
 }
 
-// Inline label preceding the dropdown ("Test Mode"). Plain text — no
-// `<label for>` because the dropdown is composite and Material's
-// internal label/aria already handles a11y for the select.
 .system-experiments-shell__test-mode-label {
   font-size: 12px;
   color: #e6e6e6;
   white-space: nowrap;
 }
 
-// Shrink-wrap the dropdown to its own content. Two reasons:
-//
-// 1. `app-dropdown` is `display: block; width: 100%;` so without an
-//    override it would span the entire chrome row.
-// 2. The global `.app-dropdown-wrapper` rule (src/styles/_dropdowns.scss)
-//    sets `justify-content: flex-end` — designed for in-form rows where
-//    the label sits left and the field pins right. If we constrained
-//    the host to a fixed pixel width, the wrapper would right-align
-//    the field inside that box and produce a visible gap between our
-//    inline "Sys Mode" label and the field's left edge. `max-content`
-//    leaves no slack inside the wrapper, so the right-align rule has
-//    nothing to push and the field hugs the label.
+// `max-content` (not a fixed width): the global `.app-dropdown-wrapper` in
+// `_dropdowns.scss` uses `justify-content: flex-end`, so any slack inside
+// the host would push the field away from the inline label.
 .system-experiments-shell__test-mode {
   width: max-content;
 }
 
-// Tab header look (height + colors) is opted-in via the
-// `app-dashboard-tabs` class on the mat-tab-group element (see
-// system-experiments-shell.component.html). That partial lives globally
-// because Material's `.mat-tab-*` internals sit behind this
-// component's encapsulation boundary, and the project rule is
-// no `::ng-deep`.
 .system-experiments-shell__tabs {
   flex: 1;
   min-height: 0;
@@ -94,14 +46,8 @@
   flex-direction: column;
 }
 
-// Single shared footer rendered below the tab strip. The divider runs
-// edge-to-edge across the shell so the footer reads as a chrome-level
-// action bar — distinct from the per-tab content area above it. Lives
-// here (not on `BoardFooterComponent`) because the line belongs to the
-// SHELL's structure: footer is a sibling of the tab-group, not part of
-// the projected board content. Using ::before (instead of `border-top`)
-// keeps the line an explicit visual element we can inset later if the
-// design needs it.
+// Shared footer's top divider runs edge-to-edge so the footer reads as a
+// shell-level action bar, distinct from the per-tab content above it.
 .system-experiments-shell__footer {
   position: relative;
   display: block;
@@ -114,8 +60,6 @@
     left: 0;
     right: 0;
     height: 1px;
-    // Mirrors `$divider` in board.component.scss — same rgba-style brightness
-    // so all dividers across the shell read as one family.
     background: #4a4a4a;
   }
 }

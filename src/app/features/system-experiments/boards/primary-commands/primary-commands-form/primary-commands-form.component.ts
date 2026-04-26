@@ -10,25 +10,8 @@ import {
 } from '../primary-commands.fields';
 
 /**
- * Dumb form component for the Primary Commands board.
- *
- * Vertical list of label + dropdown rows, broken into two sections —
- * the main fields and the "Cmd to GS" sub-section. The sub-section's
- * three fields are part of the Apply payload but intentionally NOT in
- * the grid (the per-board service only feeds main fields to the row
- * builder).
- *
- * Disable/enable is driven by the FormGroup itself — the per-board
- * service calls `formGroup.disable()` / `.enable()` (via its
- * `setEnabled` wrapper) when test mode flips, and Angular's
- * `FormGroup.statusChanges` propagates the disabled state down to
- * every control. The component does nothing but render: it takes a
- * FormGroup as an input and projects each declared `FieldConfig` into
- * a dropdown bound by `formControlName`. FormGroup *shape* (which
- * controls + which defaults) lives in the sibling fields module
- * (`primary-commands.fields.ts`); the per-board service composes them
- * via the shared `buildFormGroup` primitive. See plan §15 for why the
- * form stays a pure renderer rather than exposing a shape factory.
+ * Dumb renderer for the Primary form. FormGroup is supplied by the shell;
+ * disable/enable propagates via `FormGroup.statusChanges`.
  */
 @Component({
   selector: 'system-experiments-primary-commands-form',

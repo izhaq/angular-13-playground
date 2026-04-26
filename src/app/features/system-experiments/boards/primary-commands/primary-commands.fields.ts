@@ -18,7 +18,7 @@ import {
   YES_NO_OPTIONS,
 } from './primary-commands.options';
 
-/** Main scrollable column of Primary Commands. Drives the 8-column grid. */
+/** Drives the 8-column grid. */
 export const PRIMARY_COMMANDS_MAIN_FIELDS: FieldConfig[] = [
   { key: 'tff',           label: L.tff,           type: 'single', options: TFF_OPTIONS,            defaultValue: TFF.NotActive },
   { key: 'mlmTransmit',   label: L.mlmTransmit,   type: 'single', options: YES_NO_OPTIONS,         defaultValue: YES_NO.No },
@@ -33,10 +33,7 @@ export const PRIMARY_COMMANDS_MAIN_FIELDS: FieldConfig[] = [
   { key: 'abort',         label: L.abort,         type: 'single', options: YES_NO_OPTIONS,         defaultValue: YES_NO.No },
 ];
 
-/**
- * "Cmd to GS" sub-section — submitted with the form but excluded from the grid.
- * Kept in its own array so the grid row builder is never asked about them.
- */
+/** Submitted with the form but excluded from the grid. */
 export const PRIMARY_COMMANDS_CMD_TO_GS_FIELDS: FieldConfig[] = [
   { key: 'teo',      label: L.teo,      type: 'single', options: YES_NO_OPTIONS, defaultValue: YES_NO.No },
   { key: 'gsMtrRec', label: L.gsMtrRec, type: 'single', options: YES_NO_OPTIONS, defaultValue: YES_NO.No },
@@ -48,7 +45,6 @@ export const PRIMARY_COMMANDS_ALL_FIELDS: FieldConfig[] = [
   ...PRIMARY_COMMANDS_CMD_TO_GS_FIELDS,
 ];
 
-/** Returns a fresh defaults map; callers may mutate freely. */
 export function buildPrimaryCommandsDefaults(): Record<string, string | string[]> {
   return buildDefaultValues(PRIMARY_COMMANDS_ALL_FIELDS);
 }

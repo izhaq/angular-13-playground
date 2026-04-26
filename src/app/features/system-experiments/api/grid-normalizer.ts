@@ -3,46 +3,24 @@ import { SystemExperimentsResponse } from './api-contract';
 import { FieldConfig, GridColumn, GridRow } from '../shared/models';
 
 /**
- * Two-step pipeline that turns a wire response into rendered grid rows:
+ * Two-step pipeline: wire → flat-grid → rows.
  *
- *   normalizeResponse(response)  →  FlatGrid     (knows about wire shape)
- *   buildRows(fields, grid, columns) → GridRow[] (knows about fields + columns)
+ *   normalizeResponse(response)         → FlatGrid     (knows wire shape)
+ *   buildRows(fields, grid, columns)    → GridRow[]    (knows fields + columns)
  *
  * Splitting the concerns means the row builder is fully generic — same
- * function for Primary (8 cols) and Secondary (11 cols), no per-board
- * variants, no `gridColGroup` routing metadata. To pull a field out of the
- * grid (e.g. Primary's "Cmd to GS" form-only fields), just don't pass it in
- * the `fields` argument.
+ * function for Primary (8 cols) and Secondary (11 cols). To pull a field
+ * out of the grid (e.g. Primary's "Cmd to GS" form-only fields), just
+ * don't pass it in the `fields` argument.
  */
 
-/**
- * Raw wire values for a single grid column, keyed by field key.
- *
- * Multi-select fields (e.g. `videoRecType`) carry `string[]` here — the
- * widening lives at this internal boundary only. `GridRow.values` (the
- * shape the grid actually renders) stays `Record<string, string>`
- * because `abbrFor` joins arrays into a single comma-separated string.
- */
+/** Multi-select fields carry `string[]` here; joined to comma-string downstream. */
 export type CellValues = Record<string, string | string[]>;
 
 /** All grid cells keyed by column id. Missing columns / fields → empty cells. */
 export type FlatGrid = Partial<Record<GridColId, CellValues>>;
 
-// ---------------------------------------------------------------------------
-// Step 1 — wire normalization
-// ---------------------------------------------------------------------------
-
-/**
- * The ONE place that knows the wire response shape. Flattens the per-entity
- * wire layout into a column-keyed map the grid can index by `(colId, fieldKey)`.
- *
- * Wire layout reminder:
- *   - `entities[0].mCommands[i].standardFields|additionalFields` → left col i+1
- *   - `entities[1].mCommands[i].standardFields|additionalFields` → right col i+1
- *   - `entities[0].aCommands` → TLL
- *   - `entities[1].aCommands` → TLR
- *   - `entities[0]` flat GDL props → GDL  (entities[1]'s duplicate is ignored)
- */
+/** The ONE place that knows the wire response shape. */
 export function normalizeResponse(response: SystemExperimentsResponse): FlatGrid {
   const [left, right] = response.entities;
   const grid: FlatGrid = {};
@@ -64,29 +42,17 @@ export function normalizeResponse(response: SystemExperimentsResponse): FlatGrid
   grid[COL_IDS.tll] = { ...left.aCommands  } as CellValues;
   grid[COL_IDS.tlr] = { ...right.aCommands } as CellValues;
 
-  // GDL: the backend's flat GDL props on the entity, minus the non-GDL
-  // wrappers (entityId / mCommands / aCommands). Spread-rest is fine here
-  // because the wire contract is stable — `MultiLocationFields` keys
-  // intentionally land here when present on entities[0]. If the contract
-  // ever grows other non-GDL flat props, switch this to an explicit
-  // whitelist of allowed keys.
+  // GDL flat props on entities[0], minus the non-GDL wrappers. Spread-rest
+  // is fine because the wire contract is stable — `MultiLocationFields`
+  // keys intentionally land here when present. If the contract grows other
+  // non-GDL flat props, switch to an explicit allow-list of keys.
   const { entityId: _id, mCommands: _m, aCommands: _a, ...gdlProps } = left;
   grid[COL_IDS.gdl] = gdlProps as unknown as CellValues;
 
   return grid;
 }
 
-// ---------------------------------------------------------------------------
-// Step 2 — generic row building
-// ---------------------------------------------------------------------------
-
-/**
- * Builds one `GridRow` per field. For each `(field, column)` pair, looks up
- * the raw wire value in the normalized grid and renders its abbreviation.
- *
- * Caller passes only the fields that should appear as grid rows. Form-only
- * fields stay out of this argument — there is no flag to filter on.
- */
+/** Caller passes ONLY the fields that should appear as grid rows. */
 export function buildRows(
   fields: FieldConfig[],
   grid: FlatGrid,
@@ -114,16 +80,13 @@ function cellValuesForField(
 
 /**
  * Cell rendering rule:
- *   - missing / empty wire value → ''
- *   - single value matches a known option → option's `abbr`
- *   - single value present but unknown → first 3 chars of the value
- *     (so QA can spot drift instead of staring at silently-empty cells)
- *   - multi value (array) → each element resolved via the same rule
- *     above, then joined with ',' (no space — keeps the cell as
- *     compact as possible against the narrow Secondary grid columns)
- *
- * Defensive on shape: `single` fields that happen to receive an array
- * still render correctly (joined). Empty array → ''.
+ *   - missing / empty → ''
+ *   - known option   → option's `abbr`
+ *   - unknown value  → first 3 chars (so QA spots drift instead of staring
+ *                      at silently-empty cells)
+ *   - array          → each element resolved per the rules above, joined
+ *                      with ',' (no space — keeps cells compact against
+ *                      the narrow Secondary grid columns)
  */
 function abbrFor(field: FieldConfig, value: string | string[] | undefined): string {
   if (value === undefined || value === '') return '';

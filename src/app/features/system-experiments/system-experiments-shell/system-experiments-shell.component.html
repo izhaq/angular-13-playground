@@ -65,13 +65,6 @@
 
   </mat-tab-group>
 
-  <!--
-    Single shared footer for both tabs. Defaults / Cancel / Apply are
-    identical across boards (same disabled rules, same labels) — the
-    only per-board variance is which form's handlers run, and that
-    routing is trivial via `selectedTabIndex`. See onActive* dispatch
-    methods on the component.
-  -->
   <system-experiments-board-footer
     class="system-experiments-shell__footer"
     [disabled]="!testMode"

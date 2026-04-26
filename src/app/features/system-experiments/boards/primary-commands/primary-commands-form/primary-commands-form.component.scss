@@ -25,11 +25,8 @@ $label-col-width:  140px;
 // longest label "Not Active" with its caret comfortably; the freed
 // horizontal space goes to the grid pane (see board.component.scss).
 $control-col-width: 100px;
-$sub-header-mt:    4px;
-$sub-header-pad-y: 2px;
-$sub-header-pad-x: 8px;
-$sub-header-fs:    12px;
-$control-radius:   2px;
+$divider-my:       6px;
+$divider-color:    #4a4a4a;
 
 :host {
   display: block;
@@ -75,19 +72,11 @@ $control-radius:   2px;
     min-width: 0;
   }
 
-  // Boxed sub-section header for the "Cmd to GS" group. Styled to match
-  // the cmd-section title so the two boxed pills read as one visual
-  // family. Only Primary uses this — Secondary's form is flat.
-  &__sub-header {
-    margin: $sub-header-mt 0 0;
-    padding: $sub-header-pad-y $sub-header-pad-x;
-    font-size: $sub-header-fs;
-    font-weight: 600;
-    line-height: 1;
-    color: #e6e6e6;
-    border: 1px solid currentColor;
-    border-radius: $control-radius;
-    align-self: flex-start;
-    width: max-content;
+  // Separator between main fields and the "Cmd to GS" sub-section.
+  // Mirrors the board-level dividers (#4a4a4a in board.component.scss).
+  &__divider {
+    border: 0;
+    border-top: 1px solid $divider-color;
+    margin: $divider-my 0;
   }
 }

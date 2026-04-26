@@ -9,20 +9,17 @@ const ROUTE_PREFIX = '/api/system-experiments';
 const WS_PATH = `${ROUTE_PREFIX}/ws`;
 
 /**
- * Wires the System Experiments feature endpoints onto an existing express app +
- * http server. Self-contained — does NOT touch the existing `/api/config`,
- * `/api/rare-config`, or the `/api/ws` WebSocketServer.
+ * Wires the System Experiments endpoints onto an existing express app +
+ * http server.
  *
- * Endpoints registered:
  *   POST {prefix}/primary     — apply Primary form payload
  *   POST {prefix}/secondary   — apply Secondary form payload
  *   GET  {prefix}/get         — current full state (seed for the front-end)
- *   WS   {prefix}/ws          — broadcasts the full state after every POST
+ *   WS   {prefix}/ws          — broadcasts state after every POST
  *
- * WebSocket co-existence: this function uses `noServer: true` and adds a
- * scoped `upgrade` listener that only claims our path. The existing WSS
- * (created with `path: '/api/ws'`) ignores non-matching upgrades, so both
- * WS endpoints share the same HTTP server safely.
+ * WS co-existence: `noServer: true` + a scoped `upgrade` listener that only
+ * claims our path, so this WSS shares the HTTP server with the existing
+ * `/api/ws` WSS without conflict.
  */
 export function registerSystemExperimentsRoutes(app: Express, server: HttpServer): void {
   const state: SystemExperimentsResponse = buildInitialState();

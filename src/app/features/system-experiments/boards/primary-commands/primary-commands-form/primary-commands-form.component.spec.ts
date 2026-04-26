@@ -10,7 +10,6 @@ import {
   AppMultiDropdownModule,
 } from '../../../_external/ui-primitives';
 import { BOARD_IDS } from '../../../shared/ids';
-import { SYSTEM_EXPERIMENTS_LABELS as L } from '../../../shared/labels';
 import { buildFormGroup } from '../../build-form-group';
 import {
   PRIMARY_COMMANDS_ALL_FIELDS,
@@ -85,14 +84,13 @@ describe('PrimaryCommandsFormComponent', () => {
     expect(all.length).toBe(PRIMARY_COMMANDS_ALL_FIELDS.length);
   });
 
-  it('renders the "Cmd to GS" sub-section header above its three fields', () => {
-    // Section headers use the `section-{boardId}-{name}` pattern so they
+  it('renders the "Cmd to GS" sub-section divider above its three fields', () => {
+    // Section markers use the `section-{boardId}-{name}` pattern so they
     // never collide with the `form-{boardId}-{fieldKey}` field test ids.
-    const header = fixture.debugElement.query(
-      By.css(`[data-test-id="section-${BOARD_IDS.primary}-cmd-to-gs"]`),
+    const divider = fixture.debugElement.query(
+      By.css(`hr[data-test-id="section-${BOARD_IDS.primary}-cmd-to-gs"]`),
     );
-    expect(header).withContext('expected Cmd-to-GS section header').not.toBeNull();
-    expect(header.nativeElement.textContent.trim()).toBe(L.cmdToGs);
+    expect(divider).withContext('expected Cmd-to-GS section divider').not.toBeNull();
 
     for (const field of PRIMARY_COMMANDS_CMD_TO_GS_FIELDS) {
       expect(dropdownByTestId(field.key)).not.toBeNull();

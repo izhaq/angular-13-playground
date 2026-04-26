@@ -79,6 +79,9 @@ $grid-pad-left: 12px;
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
+  // Breathing room below the CMD-panel divider so the first form row
+  // doesn't sit flush against it.
+  padding-top: 8px;
 }
 
 .board__grid {

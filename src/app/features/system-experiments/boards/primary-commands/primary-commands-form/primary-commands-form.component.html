@@ -31,10 +31,9 @@
       </ng-container>
     </div>
 
-    <h3 class="primary-commands-form__sub-header"
-        [attr.data-test-id]="'section-' + boardId + '-cmd-to-gs'">
-      {{ labels.cmdToGs }}
-    </h3>
+    <hr class="primary-commands-form__divider"
+        [attr.data-test-id]="'section-' + boardId + '-cmd-to-gs'" />
+
 
     <div *ngFor="let field of cmdToGsFields; trackBy: trackByKey"
          class="primary-commands-form__row">

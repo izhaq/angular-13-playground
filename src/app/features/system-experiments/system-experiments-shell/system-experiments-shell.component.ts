@@ -14,9 +14,19 @@ import { PRIMARY_COMMANDS_COLUMNS } from '../boards/primary-commands/primary-com
 import { SecondaryCommandsBoardService } from '../boards/secondary-commands/secondary-commands-board.service';
 import { SECONDARY_COMMANDS_ALL_FIELDS } from '../boards/secondary-commands/secondary-commands.fields';
 import { SECONDARY_COMMANDS_COLUMNS } from '../boards/secondary-commands/secondary-commands.columns';
+import { DropdownOption } from '../_external/ui-primitives';
 import { BOARD_IDS } from '../shared/ids';
 import { SYSTEM_EXPERIMENTS_LABELS } from '../shared/labels';
 import { CmdSelection, GridColumn, GridRow } from '../shared/models';
+
+/**
+ * Wire values for the Test Mode dropdown. Kept as a literal union so the
+ * handler can do an exhaustive `=== 'active'` check without falling back
+ * to a stringly-typed comparison and so the spec can reference the same
+ * names. Labels live in `SYSTEM_EXPERIMENTS_LABELS` for i18n parity.
+ */
+const TEST_MODE_VALUE_ACTIVE = 'active';
+const TEST_MODE_VALUE_INACTIVE = 'inactive';
 
 /**
  * Smart orchestrator for the System Experiments dashboard — Phase 8 shape.
@@ -71,6 +81,24 @@ export class SystemExperimentsShellComponent implements OnDestroy {
   readonly primaryColumns: GridColumn[] = PRIMARY_COMMANDS_COLUMNS;
   readonly secondaryColumns: GridColumn[] = SECONDARY_COMMANDS_COLUMNS;
 
+  /**
+   * Options for the Test Mode dropdown — same two states the legacy
+   * slide-toggle had. Kept on the component (not in a fields module)
+   * because there's only one consumer and the option wire values are
+   * a UI concern of THIS shell, not a feature-wide vocabulary.
+   */
+  readonly testModeOptions: DropdownOption[] = [
+    { value: TEST_MODE_VALUE_ACTIVE,   label: SYSTEM_EXPERIMENTS_LABELS.testModeActive },
+    { value: TEST_MODE_VALUE_INACTIVE, label: SYSTEM_EXPERIMENTS_LABELS.testModeNotActive },
+  ];
+
+  /**
+   * Boolean is the internal source of truth — the footer's
+   * `[disabled]="!testMode"` and the per-board `setEnabled(testMode)`
+   * fan-out both want a boolean. The dropdown's value string is
+   * derived in `testModeValue` so we don't carry two facts about the
+   * same concept.
+   */
   testMode = true;
 
   cmdDraft: CmdSelection = { sides: [], wheels: [] };
@@ -159,18 +187,32 @@ export class SystemExperimentsShellComponent implements OnDestroy {
   }
 
   // ---------------------------------------------------------------------------
-  // Test / Live mode toggle
+  // Test / Live mode dropdown
   // ---------------------------------------------------------------------------
 
-  onTestModeChange(testMode: boolean): void {
-    this.testMode = testMode;
-    this.cmdDisabled = !testMode;
+  /**
+   * String view of `testMode` for the dropdown's `[value]` binding. Computed
+   * (not stored) so `testMode` stays the single source of truth — flipping
+   * the boolean elsewhere automatically refreshes the dropdown without an
+   * extra assignment to keep two fields in sync.
+   */
+  get testModeValue(): string {
+    return this.testMode ? TEST_MODE_VALUE_ACTIVE : TEST_MODE_VALUE_INACTIVE;
+  }
+
+  onTestModeChange(value: string): void {
+    // Translate the dropdown's option string → boolean at the boundary.
+    // Anything other than the explicit "active" sentinel disables — keeps
+    // the fail-closed default if the wire ever sees an unexpected value.
+    const enabled = value === TEST_MODE_VALUE_ACTIVE;
+    this.testMode = enabled;
+    this.cmdDisabled = !enabled;
     // Fan-out to both per-board services — test-mode is a global UI
     // state. `setEnabled` wraps `enable() / disable()` with
     // `emitEvent: false` so reactive subscribers don't see a phantom
     // edit cycle.
-    this.primary.setEnabled(testMode);
-    this.secondary.setEnabled(testMode);
+    this.primary.setEnabled(enabled);
+    this.secondary.setEnabled(enabled);
   }
 
   // ---------------------------------------------------------------------------

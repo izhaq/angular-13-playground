@@ -266,33 +266,55 @@ describe('SystemExperimentsShellComponent', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // Test/Live mode — fans out to both controllers + CMD disable flag.
+  // Test/Live mode — fans out to both services + CMD disable flag.
+  //
+  // Handler now takes a dropdown option value string ('active' / 'inactive')
+  // instead of a boolean. Behaviour invariants (which downstream calls
+  // happen, what state is reached) are unchanged — only the input shape
+  // moved. Anything other than the explicit 'active' sentinel is treated
+  // as disabled (fail-closed); we cover that with a stray-value case.
   // ---------------------------------------------------------------------------
 
-  it('toggling test mode off disables both services\' forms and CMD section', () => {
-    component.onTestModeChange(false);
+  it('selecting Not Active disables both services\' forms and CMD section', () => {
+    component.onTestModeChange('inactive');
 
     expect(component.primary.formGroup.disabled).toBe(true);
     expect(component.secondary.formGroup.disabled).toBe(true);
     expect(component.cmdDisabled).toBe(true);
+    expect(component.testMode).toBe(false);
+    expect(component.testModeValue).toBe('inactive');
   });
 
-  it('toggling test mode back on re-enables both services\' forms and CMD section', () => {
-    component.onTestModeChange(false);
-    component.onTestModeChange(true);
+  it('selecting Active back re-enables both services\' forms and CMD section', () => {
+    component.onTestModeChange('inactive');
+    component.onTestModeChange('active');
 
     expect(component.primary.formGroup.disabled).toBe(false);
     expect(component.secondary.formGroup.disabled).toBe(false);
     expect(component.cmdDisabled).toBe(false);
+    expect(component.testMode).toBe(true);
+    expect(component.testModeValue).toBe('active');
   });
 
-  it('toggling test mode calls setEnabled on both services (single call site, no leak)', () => {
+  it('selecting Not Active calls setEnabled(false) on both services (single call site, no leak)', () => {
     const primarySpy = spyOn(component.primary, 'setEnabled').and.callThrough();
     const secondarySpy = spyOn(component.secondary, 'setEnabled').and.callThrough();
 
-    component.onTestModeChange(false);
+    component.onTestModeChange('inactive');
 
     expect(primarySpy).toHaveBeenCalledOnceWith(false);
     expect(secondarySpy).toHaveBeenCalledOnceWith(false);
+  });
+
+  it('any value other than "active" is treated as disabled (fail-closed translation)', () => {
+    // Defensive: the handler does `value === 'active'` so an unexpected
+    // wire value can't accidentally enable. This pins that decision
+    // against future refactors that might switch to a `!== 'inactive'`
+    // shape (which would silently flip the default).
+    component.onTestModeChange('something-unexpected');
+
+    expect(component.testMode).toBe(false);
+    expect(component.primary.formGroup.disabled).toBe(true);
+    expect(component.secondary.formGroup.disabled).toBe(true);
   });
 });

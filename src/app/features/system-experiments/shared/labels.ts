@@ -15,7 +15,21 @@
 export const SYSTEM_EXPERIMENTS_LABELS = {
 
   // -- Wrapper / Shell -------------------------------------------------------
-  testMode: 'Test Mode',
+  // Display copy is "Sys Mode"; the internal key is still `testMode`
+  // because the *concept* (a UI mode that gates editing) is unchanged —
+  // only the user-facing wording is. Renaming the key would cascade
+  // through the boolean field, handler name, option-value constants,
+  // CSS classes, and data-test-ids for no functional gain. Keep the
+  // label map doing its job: decouple display strings from internal
+  // naming.
+  testMode: 'Sys Mode',
+  // Option labels for the Test Mode dropdown. Same semantics as the
+  // legacy slide-toggle: "Active" enables forms / CMD / footer; "Not
+  // Active" disables them. Wire value strings ('active' / 'inactive')
+  // live next to the options array on the shell — labels are display-
+  // only and route through this map for i18n parity.
+  testModeActive: 'Active',
+  testModeNotActive: 'Not Active',
   tabPrimaryCommands: 'System Commands',
   tabSecondaryCommands: 'Failure & Antenna',
 

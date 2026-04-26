@@ -1,13 +1,14 @@
 <div class="system-experiments-shell">
 
   <header class="system-experiments-shell__chrome">
-    <mat-slide-toggle
+    <span class="system-experiments-shell__test-mode-label">{{ labels.testMode }}</span>
+    <app-dropdown
       class="system-experiments-shell__test-mode"
-      data-test-id="shell-test-mode-toggle"
-      [checked]="testMode"
-      (change)="onTestModeChange($event.checked)">
-      {{ labels.testMode }}
-    </mat-slide-toggle>
+      testId="shell-test-mode-select"
+      [options]="testModeOptions"
+      [value]="testModeValue"
+      (changed)="onTestModeChange($event)">
+    </app-dropdown>
   </header>
 
   <mat-tab-group

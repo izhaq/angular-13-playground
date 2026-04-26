@@ -3,6 +3,8 @@
 **Feature**: system-experiments-dashboard
 **Spec**: [spec.md](./spec.md)
 **Field Definitions**: [field-definitions.md](./field-definitions.md)
+**Migration guide**: [migration-guide.md](./migration-guide.md)
+**Domain-term swap (migration tool)**: [domain-terms.md](./domain-terms.md)
 **Date**: 2026-04-21
 **Status**: Phase 1 ✅ · Phase 2 ✅ · Phase 3 ✅ · Phase 4 ✅ · Phase 5 ✅ · Phase 6 ✅ · Phase 7 pending · Phase 8 pending (shell decomposition — deferred)
 

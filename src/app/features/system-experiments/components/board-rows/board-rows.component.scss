@@ -113,10 +113,21 @@ $cell-border:      1px solid #cccccc;
   border-right: $cell-border;
   border-bottom: $cell-border;
   cursor: pointer;
+  // Cell clips overflow so a too-wide span gets truncated by `text-overflow`
+  // on the span itself; truncation rules below own that responsibility.
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+// The tooltip anchor. Wraps just the text so `matTooltipPosition="after"`
+// opens flush against the text's right edge instead of the cell's
+// (which, with 1fr columns, can be far to the right of the text).
+.board-rows__data-cell-text {
+  display: inline-block;
+  max-width: 100%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  box-sizing: border-box;
 }
 
 .board-rows__data-cell--first {

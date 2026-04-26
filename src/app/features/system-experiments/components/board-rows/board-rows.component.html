@@ -2,18 +2,46 @@
      [formGroup]="formGroup"
      [style.--data-col-count]="columns.length">
 
-  <div class="board-rows__header-empty board-rows__header-empty--label" aria-hidden="true"></div>
-  <div class="board-rows__header-empty board-rows__header-empty--control" aria-hidden="true"></div>
+  <!-- Column headers -->
+  <ng-container *ngTemplateOutlet="headerRow"></ng-container>
 
-  <div *ngFor="let col of columns; let i = index; trackBy: trackByColId"
-       class="board-rows__header-cell"
-       [class.board-rows__header-cell--first]="i === 0"
-       [class.board-rows__header-cell--hovered]="hoveredColId === col.id"
-       [attr.data-test-id]="'grid-header-' + boardId + '-' + col.id">
-    {{ col.label }}
-  </div>
-
+  <!-- Grid rows: label + control + N data cells -->
   <ng-container *ngFor="let field of gridFields; trackBy: trackByFieldKey">
+    <ng-container *ngTemplateOutlet="labelControl; context: { field: field }"></ng-container>
+    <ng-container *ngTemplateOutlet="dataCells;    context: { field: field }"></ng-container>
+  </ng-container>
+
+  <!-- Cmd-to-GS divider -->
+  <ng-container *ngIf="formOnlyFields.length > 0">
+    <hr class="board-rows__divider"
+        [attr.data-test-id]="'section-' + boardId + '-cmd-to-gs'" />
+    <div class="board-rows__divider-spacer" aria-hidden="true"></div>
+  </ng-container>
+
+  <!-- Form-only rows: label + control + spacer -->
+  <ng-container *ngFor="let field of formOnlyFields; trackBy: trackByFieldKey">
+    <ng-container *ngTemplateOutlet="labelControl; context: { field: field }"></ng-container>
+    <div class="board-rows__form-only-spacer" aria-hidden="true"></div>
+  </ng-container>
+
+
+  <!-- Header row template -->
+  <ng-template #headerRow>
+    <div class="board-rows__header-empty board-rows__header-empty--label" aria-hidden="true"></div>
+    <div class="board-rows__header-empty board-rows__header-empty--control" aria-hidden="true"></div>
+
+    <div *ngFor="let col of columns; let i = index; trackBy: trackByColId"
+         class="board-rows__header-cell"
+         [class.board-rows__header-cell--first]="i === 0"
+         [class.board-rows__header-cell--hovered]="hoveredColId === col.id"
+         [attr.data-test-id]="'grid-header-' + boardId + '-' + col.id">
+      {{ col.label }}
+    </div>
+  </ng-template>
+
+
+  <!-- Label + control template (shared by grid and form-only rows) -->
+  <ng-template #labelControl let-field="field">
     <label class="board-rows__row-label"
            [attr.data-test-id]="'grid-label-' + boardId + '-' + field.key">
       {{ field.label }}
@@ -36,7 +64,11 @@
         </app-multi-dropdown>
       </ng-container>
     </div>
+  </ng-template>
 
+
+  <!-- Data cells template (one cell per column) -->
+  <ng-template #dataCells let-field="field">
     <div *ngFor="let col of columns; let i = index; trackBy: trackByColId"
          class="board-rows__data-cell"
          [class.board-rows__data-cell--first]="i === 0"
@@ -46,41 +78,13 @@
          (mouseenter)="onEnterColumn(col.id)"
          (mouseleave)="onLeaveColumn()"
          (click)="onCellClick(field.key, col.id)">
-      {{ cellValue(field.key, col.id) }}
+      <span class="board-rows__data-cell-text"
+            [matTooltip]="cellValue(field.key, col.id)"
+            matTooltipPosition="after"
+            matTooltipClass="board-rows-tooltip">
+        {{ cellValue(field.key, col.id) }}
+      </span>
     </div>
-  </ng-container>
-
-  <ng-container *ngIf="formOnlyFields.length > 0">
-    <hr class="board-rows__divider"
-        [attr.data-test-id]="'section-' + boardId + '-cmd-to-gs'" />
-    <div class="board-rows__divider-spacer" aria-hidden="true"></div>
-  </ng-container>
-
-  <ng-container *ngFor="let field of formOnlyFields; trackBy: trackByFieldKey">
-    <label class="board-rows__row-label"
-           [attr.data-test-id]="'grid-label-' + boardId + '-' + field.key">
-      {{ field.label }}
-    </label>
-
-    <div class="board-rows__row-control">
-      <ng-container [ngSwitch]="field.type">
-        <app-dropdown
-          *ngSwitchCase="'single'"
-          [options]="field.options"
-          [formControlName]="field.key"
-          [testId]="'form-' + boardId + '-' + field.key">
-        </app-dropdown>
-
-        <app-multi-dropdown
-          *ngSwitchCase="'multi'"
-          [options]="field.options"
-          [formControlName]="field.key"
-          [testId]="'form-' + boardId + '-' + field.key">
-        </app-multi-dropdown>
-      </ng-container>
-    </div>
-
-    <div class="board-rows__form-only-spacer" aria-hidden="true"></div>
-  </ng-container>
+  </ng-template>
 
 </div>

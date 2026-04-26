@@ -29,9 +29,11 @@ $system-experiments-theme: mat.define-light-theme((
 @include mat.tabs-theme($system-experiments-theme);
 @include mat.slide-toggle-theme($system-experiments-theme);
 @include mat.button-theme($system-experiments-theme);
+@include mat.tooltip-theme($system-experiments-theme);
 
 @import './styles/dropdowns';
 @import './styles/app-dashboard-tabs';
+@import './styles/tooltips';
 
 html,
 body {

@@ -1,0 +1,42 @@
+$bg: rgba(28, 28, 28, 0.97);
+
+// Targets `matTooltipClass="board-rows-tooltip"`. The tooltip element
+// is appended to the CDK overlay container at <body>, so styling it
+// has to live in a global stylesheet — `::ng-deep` from a component
+// wouldn't reach it (and is deprecated regardless).
+.mat-tooltip.board-rows-tooltip {
+  // `position: relative` + `overflow: visible` are needed so the
+  // ::before triangle (positioned absolutely outside the bubble's
+  // left edge) is anchored correctly and not clipped — Material's
+  // default tooltip uses `overflow: hidden`.
+  position: relative;
+  overflow: visible;
+
+  background: $bg;
+  color: #f5f5f5;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  padding: 7px 11px;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+
+  // Horizontal gap between tooltip and the hovered cell when the
+  // tooltip opens to the right (matTooltipPosition="after").
+  margin: 0 8px;
+
+  // Left-pointing arrow that hugs the tooltip's left edge so it
+  // points back at the cell. CSS-only triangle via border trick.
+  &::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: -5px;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    border-right: 5px solid $bg;
+  }
+}

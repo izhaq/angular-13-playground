@@ -4,6 +4,7 @@ import { NgModule } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTabsModule } from '@angular/material/tabs';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { webSocket } from 'rxjs/webSocket';
 
 import {
@@ -46,6 +47,7 @@ const defaultWebSocketFactory: SystemExperimentsWebSocketFactory =
     ReactiveFormsModule,
     MatButtonModule,
     MatTabsModule,
+    MatTooltipModule,
     AppDropdownModule,
     AppMultiDropdownModule,
     AppDropdownCvaModule,

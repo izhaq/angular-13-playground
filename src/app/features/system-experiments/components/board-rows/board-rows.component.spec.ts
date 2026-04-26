@@ -1,6 +1,7 @@
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { By } from '@angular/platform-browser';
 
 import {
@@ -78,6 +79,7 @@ describe('BoardRowsComponent', () => {
       imports: [
         ReactiveFormsModule,
         NoopAnimationsModule,
+        MatTooltipModule,
         AppDropdownModule,
         AppMultiDropdownModule,
         AppDropdownCvaModule,
@@ -152,6 +154,16 @@ describe('BoardRowsComponent', () => {
       By.css(`[data-test-id="grid-${component.boardId}-bar-${columns[0].id}"]`),
     );
     expect(cell.nativeElement.textContent.trim()).toBe('A,B');
+  });
+
+  it('exposes the cell value as a hover tooltip (matTooltip on the text span)', () => {
+    const span = fixture.debugElement.query(
+      By.css(
+        `[data-test-id="grid-${component.boardId}-bar-${columns[0].id}"] .board-rows__data-cell-text`,
+      ),
+    );
+    expect(span).withContext('expected text span inside data cell').not.toBeNull();
+    expect(span.attributes['ng-reflect-message']).toBe('A,B');
   });
 
   it('column hover toggles --col-hovered on every cell in that column', () => {

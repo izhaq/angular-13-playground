@@ -3,69 +3,70 @@ import {
   Component,
   OnDestroy,
 } from '@angular/core';
-import { FormGroup } from '@angular/forms';
 import { Observable, Subject } from 'rxjs';
 import { map, shareReplay, takeUntil } from 'rxjs/operators';
 
-import { BoardPostPayload } from '../api/api-contract';
-import { SystemExperimentsApiService } from '../api/system-experiments-api.service';
 import { SystemExperimentsDataService } from '../api/system-experiments-data.service';
 import { buildRows, normalizeResponse } from '../api/grid-normalizer';
-import { buildFormGroup } from '../boards/build-form-group';
-import {
-  PRIMARY_COMMANDS_ALL_FIELDS,
-  PRIMARY_COMMANDS_MAIN_FIELDS,
-  buildPrimaryCommandsDefaults,
-} from '../boards/primary-commands/primary-commands.fields';
+import { PrimaryCommandsBoardService } from '../boards/primary-commands/primary-commands-board.service';
+import { PRIMARY_COMMANDS_MAIN_FIELDS } from '../boards/primary-commands/primary-commands.fields';
 import { PRIMARY_COMMANDS_COLUMNS } from '../boards/primary-commands/primary-commands.columns';
-import {
-  SECONDARY_COMMANDS_ALL_FIELDS,
-  buildSecondaryCommandsDefaults,
-} from '../boards/secondary-commands/secondary-commands.fields';
+import { SecondaryCommandsBoardService } from '../boards/secondary-commands/secondary-commands-board.service';
+import { SECONDARY_COMMANDS_ALL_FIELDS } from '../boards/secondary-commands/secondary-commands.fields';
 import { SECONDARY_COMMANDS_COLUMNS } from '../boards/secondary-commands/secondary-commands.columns';
 import { BOARD_IDS } from '../shared/ids';
 import { SYSTEM_EXPERIMENTS_LABELS } from '../shared/labels';
 import { CmdSelection, GridColumn, GridRow } from '../shared/models';
 
 /**
- * Smart orchestrator for the System Experiments dashboard.
+ * Smart orchestrator for the System Experiments dashboard — Phase 8 shape.
  *
- * Owns:
- *   - both `FormGroup`s (created here, passed down to dumb forms)
- *   - last-applied snapshots (Cancel restores to snapshot, not to defaults)
+ * Owns chrome + cross-board state only:
+ *   - test/live mode (drives `setEnabled` on both per-board services + CMD)
  *   - CMD draft + saved selection (shared across both tabs)
- *   - test/live mode (drives `disable()` on both forms + CMD)
+ *   - selectedTabIndex (UI affordance for "which board am I on")
  *   - the grid row streams (one shared upstream → two per-board projections,
- *     consumed by the template via `async` pipe — no manual subscribe).
+ *     consumed by the template via `async` pipe — no manual subscribe)
  *   - the SHARED `BoardFooterComponent` (one instance, mounted outside
- *     the tab-group). The footer's disabled state is identical for both
- *     boards, so a per-tab footer would have been pure duplication;
- *     `onActive*` dispatchers route the three events to the active
- *     board's `onPrimary*` / `onSecondary*` handler.
+ *     the tab-group), with `onActive*` dispatch routing the three events
+ *     to the active board's service
  *
- * Three behaviours derived from spec / plan §5:
- *   - Apply  → POST `{ sides, wheels, fields }`; on success snapshot form
- *              + commit cmdDraft to cmdSaved.
- *   - Cancel → `formGroup.reset(snapshot)`. CMD is shared, so Cancel does
- *              NOT touch it (use a fresh selection on either tab to revert).
- *   - Defaults → reset to `buildXxxCommandsDefaults()` (independent of snapshot).
+ * Per-board state (FormGroup, snapshot, defaults / cancel / apply,
+ * payload composition) lives behind `PrimaryCommandsBoardService` /
+ * `SecondaryCommandsBoardService`. They're component-scoped via the
+ * `providers: []` on this component, so their lifetime matches the
+ * shell's — same observable behaviour as the per-board fields had
+ * before Phase 8, just relocated. See each service's header for the
+ * rationale (no shared base class, snapshot-after-success on
+ * `apply()`, etc.).
  *
- * Tab switching (per spec): unapplied per-tab form edits are lost; CMD
- * draft persists across tabs.
+ * Three behaviours derived from spec / plan §5 — now expressed at the
+ * shell as one-liners that delegate to the active board's service:
+ *   - Apply  → `activeBoard.apply(cmdDraft)`; on success, the shell
+ *              commits its OWN cross-board piece (`cmdSaved = cmdDraft`).
+ *              The service commits its own snapshot inside `apply()`.
+ *   - Cancel → `activeBoard.cancel()`. CMD is shared, so Cancel does
+ *              NOT touch it.
+ *   - Defaults → `activeBoard.defaults()` (independent of snapshot).
+ *
+ * Tab switching (per spec): unapplied per-tab form edits are lost;
+ * CMD draft persists across tabs. Implemented as `activeBoard.cancel()`
+ * before the index updates — same as before.
  */
 @Component({
   selector: 'system-experiments-shell',
   templateUrl: './system-experiments-shell.component.html',
   styleUrls: ['./system-experiments-shell.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  providers: [
+    PrimaryCommandsBoardService,
+    SecondaryCommandsBoardService,
+  ],
 })
 export class SystemExperimentsShellComponent implements OnDestroy {
 
   readonly boardIds = BOARD_IDS;
   readonly labels = SYSTEM_EXPERIMENTS_LABELS;
-
-  readonly primaryFormGroup: FormGroup = buildFormGroup(PRIMARY_COMMANDS_ALL_FIELDS);
-  readonly secondaryFormGroup: FormGroup = buildFormGroup(SECONDARY_COMMANDS_ALL_FIELDS);
 
   readonly primaryColumns: GridColumn[] = PRIMARY_COMMANDS_COLUMNS;
   readonly secondaryColumns: GridColumn[] = SECONDARY_COMMANDS_COLUMNS;
@@ -87,20 +88,24 @@ export class SystemExperimentsShellComponent implements OnDestroy {
    * two WebSocket connections — one frame fans out to both per-board
    * `buildRows` projections. Templates consume via `| async` so OnPush
    * marks happen automatically; no manual subscribe + markForCheck.
+   *
+   * Lives at shell scope (not in the per-board services) because the
+   * upstream is shared — moving it into a service would either
+   * duplicate the subscription or force the service to depend on the
+   * shell's stream. Cleaner to keep the read-side at shell scope and
+   * let services stay focused on the write-side (Apply / state).
    */
   readonly primaryRows$: Observable<GridRow[]>;
   readonly secondaryRows$: Observable<GridRow[]>;
 
-  private primarySnapshot: Record<string, unknown> = this.primaryFormGroup.getRawValue();
-  private secondarySnapshot: Record<string, unknown> = this.secondaryFormGroup.getRawValue();
-
   private readonly destroy$ = new Subject<void>();
 
   constructor(
-    private readonly api: SystemExperimentsApiService,
-    private readonly data: SystemExperimentsDataService,
+    readonly primary: PrimaryCommandsBoardService,
+    readonly secondary: SecondaryCommandsBoardService,
+    data: SystemExperimentsDataService,
   ) {
-    const grid$ = this.data.connect().pipe(
+    const grid$ = data.connect().pipe(
       map((response) => normalizeResponse(response)),
       shareReplay({ bufferSize: 1, refCount: true }),
     );
@@ -149,7 +154,7 @@ export class SystemExperimentsShellComponent implements OnDestroy {
   onTabChange(newIndex: number): void {
     // Per spec: unapplied per-tab form edits are lost on tab switch.
     // CMD draft is shared across tabs and is intentionally NOT touched here.
-    this.resetActiveFormToSnapshot();
+    this.activeBoard.cancel();
     this.selectedTabIndex = newIndex;
   }
 
@@ -160,100 +165,58 @@ export class SystemExperimentsShellComponent implements OnDestroy {
   onTestModeChange(testMode: boolean): void {
     this.testMode = testMode;
     this.cmdDisabled = !testMode;
-
-    const op = testMode ? 'enable' : 'disable';
-    // emitEvent: false — silences valueChanges so reactive subscribers (none
-    // today, but cheap insurance) don't see a phantom edit cycle from the
-    // toggle itself.
-    this.primaryFormGroup[op]({ emitEvent: false });
-    this.secondaryFormGroup[op]({ emitEvent: false });
+    // Fan-out to both per-board services — test-mode is a global UI
+    // state. `setEnabled` wraps `enable() / disable()` with
+    // `emitEvent: false` so reactive subscribers don't see a phantom
+    // edit cycle.
+    this.primary.setEnabled(testMode);
+    this.secondary.setEnabled(testMode);
   }
 
   // ---------------------------------------------------------------------------
   // Footer dispatch — single shared footer routes to the active board.
-  // The footer doesn't know which board it's acting on; the shell does
-  // (via `selectedTabIndex`). Keeping the dispatch trivial and per-event
-  // means each per-board handler stays a single, testable method — same
-  // shape as before the footer was unified.
+  // Each handler is one line because all per-board logic lives behind
+  // the service; the shell only knows "which one is active" and "what
+  // to do with cross-board state on apply success".
   // ---------------------------------------------------------------------------
 
   onActiveDefaults(): void {
-    this.selectedTabIndex === 0 ? this.onPrimaryDefaults() : this.onSecondaryDefaults();
+    this.activeBoard.defaults();
   }
 
   onActiveCancel(): void {
-    this.selectedTabIndex === 0 ? this.onPrimaryCancel() : this.onSecondaryCancel();
+    this.activeBoard.cancel();
   }
 
   onActiveApply(): void {
-    this.selectedTabIndex === 0 ? this.onPrimaryApply() : this.onSecondaryApply();
-  }
-
-  // ---------------------------------------------------------------------------
-  // Footer actions — Primary
-  // ---------------------------------------------------------------------------
-
-  onPrimaryDefaults(): void {
-    this.primaryFormGroup.reset(buildPrimaryCommandsDefaults(), { emitEvent: false });
-  }
-
-  onPrimaryCancel(): void {
-    this.primaryFormGroup.reset(this.primarySnapshot, { emitEvent: false });
-  }
-
-  onPrimaryApply(): void {
-    const payload = this.buildPayload(this.primaryFormGroup);
-    this.api.postPrimary(payload)
+    // Service commits its own snapshot inside `apply()`. The shell
+    // commits its own cross-board piece — `cmdSaved` — only on success.
+    // `takeUntil(destroy$)` cleans up if the shell is destroyed mid-flight.
+    //
+    // The error branch is an explicit no-op rather than missing — without
+    // an error handler RxJS rethrows into the global scope, which (on
+    // a real backend hiccup) would crash the page. Wire UI feedback
+    // here in the host app (snackbar / toast) — the shell stays
+    // chrome-agnostic and doesn't depend on a notification service.
+    this.activeBoard.apply(this.cmdDraft)
       .pipe(takeUntil(this.destroy$))
-      .subscribe(() => this.commitPrimary());
+      .subscribe({
+        next: () => {
+          this.cmdSaved = this.cmdDraft;
+        },
+        error: () => {
+          /* swallowed — see comment above */
+        },
+      });
   }
 
-  // ---------------------------------------------------------------------------
-  // Footer actions — Secondary
-  // ---------------------------------------------------------------------------
-
-  onSecondaryDefaults(): void {
-    this.secondaryFormGroup.reset(buildSecondaryCommandsDefaults(), { emitEvent: false });
-  }
-
-  onSecondaryCancel(): void {
-    this.secondaryFormGroup.reset(this.secondarySnapshot, { emitEvent: false });
-  }
-
-  onSecondaryApply(): void {
-    const payload = this.buildPayload(this.secondaryFormGroup);
-    this.api.postSecondary(payload)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(() => this.commitSecondary());
-  }
-
-  // ---------------------------------------------------------------------------
-  // Internals
-  // ---------------------------------------------------------------------------
-
-  private buildPayload(formGroup: FormGroup): BoardPostPayload {
-    return {
-      sides: this.cmdDraft.sides,
-      wheels: this.cmdDraft.wheels,
-      fields: formGroup.getRawValue() as Record<string, string | string[]>,
-    };
-  }
-
-  private commitPrimary(): void {
-    this.primarySnapshot = this.primaryFormGroup.getRawValue();
-    this.cmdSaved = this.cmdDraft;
-  }
-
-  private commitSecondary(): void {
-    this.secondarySnapshot = this.secondaryFormGroup.getRawValue();
-    this.cmdSaved = this.cmdDraft;
-  }
-
-  private resetActiveFormToSnapshot(): void {
-    if (this.selectedTabIndex === 0) {
-      this.primaryFormGroup.reset(this.primarySnapshot, { emitEvent: false });
-    } else {
-      this.secondaryFormGroup.reset(this.secondarySnapshot, { emitEvent: false });
-    }
+  /**
+   * The currently-active board's service. Typed as the service union
+   * so the call sites stay terse but type-safe — both services expose
+   * the identical shape, by design (see each service's header for why
+   * we keep them as siblings rather than a base class).
+   */
+  private get activeBoard(): PrimaryCommandsBoardService | SecondaryCommandsBoardService {
+    return this.selectedTabIndex === 0 ? this.primary : this.secondary;
   }
 }

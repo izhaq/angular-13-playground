@@ -108,8 +108,8 @@ system-experiments/
 │   ├── labels.ts                          # SYSTEM_EXPERIMENTS_LABELS centralized translation map
 │   └── option-values.ts                   # Canonical value maps + derived types (YES_NO, ON_OFF, SIDE, WHEEL, TFF, …)
 ├── boards/                                # One folder per dashboard tab — self-contained
-│   ├── build-defaults.ts                  # buildDefaultValues() — board-construction helper over FieldConfig[]
-│   ├── build-form-group.ts                # buildFormGroup() — board-construction helper over FieldConfig[]
+│   ├── build-defaults.ts                  # buildDefaultValues() — primitive consumed by each board's buildXxxCommandsDefaults()
+│   ├── build-form-group.ts                # buildFormGroup() — primitive consumed by each form component's static createFormGroup()
 │   ├── primary-commands/                  # Primary — "System Commands" tab (frequently used)
 │   │   ├── primary-commands.options.ts    # DropdownOption arrays (with `abbr`)
 │   │   ├── primary-commands.fields.ts     # PRIMARY_COMMANDS_*_FIELDS configs + buildPrimaryCommandsDefaults()
@@ -248,24 +248,29 @@ Flat `const` object. Every user-visible string — field names, option labels, b
 
 ## 5. Component Design
 
-### `SystemExperimentsShellComponent` (Smart)
+### `SystemExperimentsShellComponent` (Smart) — post-Phase-8 shape
 
-**Owns:**
-- `testMode: boolean` (toggle)
+**Owns (chrome + cross-board state only):**
+- `testMode: boolean` + `cmdDisabled: boolean` (toggle + derived flag)
 - `cmdDraft: CmdSelection` (live edits to CMD dropdowns)
-- `cmdSaved: CmdSelection` (persisted on Apply)
-- `primaryFormGroup` and `secondaryFormGroup` (created here, passed down)
-- `primarySnapshot` / `secondarySnapshot` (for Cancel — last saved state)
-- `gridData$: Observable<SystemExperimentsResponse>` via `SystemExperimentsDataService`
-- `primaryRows` / `secondaryRows` — precomputed from `gridData$` using pure util functions
+- `cmdSaved: CmdSelection` (persisted on Apply success)
+- `selectedTabIndex: number` + the tab-switch reset rule
+- `primaryRows$` / `secondaryRows$` — derived from ONE shared upstream WebSocket via `shareReplay({ bufferSize: 1, refCount: true })` and consumed via `| async` (no manual subscribe)
+- The singleton `BoardFooterComponent` + `onActive*` dispatch routing footer events to the active controller
 
-**Key logic:**
-- On Apply (from either tab): merge CMD + form values into payload, call `SystemExperimentsApiService`, snapshot form state on success
-- On Cancel: `formGroup.reset(snapshot)`
-- On Defaults: `formGroup.reset(DEFAULTS)`
-- On tab change: no special action for CMD (it persists). Form state is lost if not applied (per spec — the `FormGroup` is per-tab but lives at shell level, so Angular handles this naturally via the tab component lifecycle)
+**Composes (per-board state lives in services):**
+- `PrimaryCommandsBoardService` (component-scoped, exposed as `readonly primary`)
+- `SecondaryCommandsBoardService` (component-scoped, exposed as `readonly secondary`)
 
-**Template:** `mat-tab-group` with two `mat-tab`, each containing `<system-experiments-board>`. Test/live toggle is `mat-slide-toggle` above tabs.
+Each service owns: its `formGroup` (eagerly built from the sibling fields module via `buildFormGroup(_ALL_FIELDS)`), its last-applied `snapshot`, and its `defaults / cancel / apply / setEnabled` handlers. POST orchestration and snapshot commit on success live inside `apply()`. See §15 for the full rationale.
+
+**Key logic on the shell:**
+- On Apply (active tab): `activeBoard.apply(cmdDraft).subscribe({ next: () => cmdSaved = cmdDraft, error: noop })`. The service commits its own snapshot inside `apply()`'s `tap` before the shell's `next` fires.
+- On Cancel / Defaults: one-line delegate to `activeBoard.cancel()` / `activeBoard.defaults()`.
+- On tab change: `activeBoard.cancel()` (discards the leaving tab's unapplied edits per spec) before `selectedTabIndex` updates. CMD is shared and intentionally untouched.
+- On Test Mode toggle: fans out `setEnabled(testMode)` to both services + flips `cmdDisabled`.
+
+**Template:** `mat-tab-group` with two `mat-tab`, each containing `<system-experiments-board>` with the form bound via `[formGroup]="primary.formGroup"` / `[formGroup]="secondary.formGroup"`. Test/live toggle is `mat-slide-toggle` above tabs. The shared `<system-experiments-board-footer>` is mounted once outside the `mat-tab-group`.
 
 ### `SystemExperimentsBoardComponent` (Dumb Layout)
 
@@ -306,16 +311,17 @@ The shell holds a single instance and routes its three events to the active boar
 
 ### `PrimaryCommandsFormComponent` (Dumb — Primary)
 
-**Inputs:** `formGroup: FormGroup`, `disabled: boolean`
+**Inputs:** `formGroup: FormGroup`
+**Statics:** `createFormGroup(): FormGroup`, `defaultValues(): Record<string, string | string[]>`
 **No outputs** — parent reads `formGroup.getRawValue()` directly.
 
 Iterates `PRIMARY_COMMANDS_MAIN_FIELDS` config to render 11 dropdowns using `app-dropdown` / `app-multi-dropdown` with `formControlName`. Below the main fields, a bordered "Cmd to GS" section with 3 more dropdowns (`PRIMARY_COMMANDS_CMD_TO_GS_FIELDS`). Each dropdown gets `[attr.data-test-id]="'form-' + BOARD_IDS.primary + '-' + field.key"` (Secondary form uses `BOARD_IDS.secondary` — the board id is hard-coded per form, not threaded through as an input, since each form component owns exactly one board).
 
-When `disabled` changes: `formGroup.disable()` / `formGroup.enable()`.
+**Form-shape ownership** (post-§14.6): the component owns the *factory* via static `createFormGroup()` + canonical `defaultValues()`; the shell owns the *lifetime* (it holds the FormGroup instance across tab unmount/remount cycles, since Material lazy-renders mat-tab content). Disable/enable is driven on the FormGroup itself by the shell — no `[disabled]` input or `ngOnChanges` hook lives on this component.
 
 ### `SecondaryCommandsFormComponent` (Dumb — Secondary)
 
-Same pattern, 14 fields from `SECONDARY_COMMANDS_ALL_FIELDS` (composed of `SECONDARY_COMMANDS_8COL_FIELDS` + `SECONDARY_COMMANDS_TLL_TLR_FIELDS` + `SECONDARY_COMMANDS_GDL_FIELDS`). No sub-sections. All fields render as grid rows.
+Same pattern, 14 fields from `SECONDARY_COMMANDS_ALL_FIELDS` (composed of `SECONDARY_COMMANDS_8COL_FIELDS` + `SECONDARY_COMMANDS_TLL_TLR_FIELDS` + `SECONDARY_COMMANDS_GDL_FIELDS` + `SECONDARY_COMMANDS_MULTI_LOCATION_FIELDS`). Same static `createFormGroup()` / `defaultValues()` API as Primary. No sub-sections. All fields render as grid rows.
 
 ### `StatusGridComponent` (Dumb)
 
@@ -384,8 +390,8 @@ Called in `SystemExperimentsShellComponent` whenever `gridData$` emits — once 
 |-------|-------|-----------|
 | CMD draft | `SystemExperimentsShellComponent.cmdDraft` | Local property, updated on `CmdSectionComponent` output |
 | CMD saved | `SystemExperimentsShellComponent.cmdSaved` | Updated on Apply |
-| Form state (Primary) | `FormGroup` created in shell | Passed to `PrimaryCommandsFormComponent` |
-| Form state (Secondary) | `FormGroup` created in shell | Passed to `SecondaryCommandsFormComponent` |
+| Form state (Primary) | `FormGroup` instance owned by shell, shape factory owned by `PrimaryCommandsFormComponent.createFormGroup()` | Passed back to `PrimaryCommandsFormComponent` via `[formGroup]` |
+| Form state (Secondary) | `FormGroup` instance owned by shell, shape factory owned by `SecondaryCommandsFormComponent.createFormGroup()` | Passed back to `SecondaryCommandsFormComponent` via `[formGroup]` |
 | Form snapshots | Plain objects | For Cancel restore |
 | Test/Live mode | Shell boolean | Passed as `disabled` input |
 | Grid data | `async` pipe on `gridData$` | From `SystemExperimentsDataService` |
@@ -534,7 +540,7 @@ Both consume `FormGroup` + `disabled` as inputs. All dropdowns use `formControlN
 - `secondary-commands-form.component.spec.ts` (6 specs) — same shape for `SECONDARY_COMMANDS_ALL_FIELDS`, plus an explicit "no sub-section header" assertion since the secondary form is intentionally flat
 
 **Notes from Phase 5 implementation:**
-- **`buildFormGroup(fields)` util added in `shared/build-form-group.util.ts`** — takes a `FieldConfig[]` and returns a `FormGroup` with one `FormControl` per field, seeded to the field's `defaultValue`. Used by both form specs and (in Phase 6) the shell when it constructs each board's reactive form. Keeping the helper in one place means the wire-up is identical in tests and production — the shell can never build a different shape than the form expects to render.
+- **`buildFormGroup(fields)` util added in `boards/build-form-group.ts`** — takes a `FieldConfig[]` and returns a `FormGroup` with one `FormControl` per field, seeded to the field's `defaultValue`. **Post-§14.6**, its only consumers are each form component's static `createFormGroup()` factory; the shell calls those factories rather than `buildFormGroup` directly. Keeping the primitive centralised means every board materialises its FormGroup the same way (single `new FormControl` policy, single `defaultValue` mapping) even though each board's field list lives in its own module.
 - **Row markup is inlined in both ngFor blocks** (Primary's main + cmd-to-gs sections) rather than extracted to an `<ng-template>` rendered via `*ngTemplateOutlet`. Reason: embedded views created via `*ngTemplateOutlet` don't inherit the parent `formGroup` directive's DI scope, so `formControlName` falls back to "no parent formGroup" and throws at runtime. The duplication is small (~20 lines) and the simplicity is worth more than the DRY win.
 - **Section header test ids use a different prefix (`section-{boardId}-{name}`) from field test ids (`form-{boardId}-{fieldKey}`)** so a `[data-test-id^="form-{boardId}-"]` selector counts only field dropdowns. Originally tried `form-primary-cmd-to-gs-header` and the count assertion silently included it — caught by the spec on the first red, fixed by renaming.
 - **Form components own enable/disable on the FormGroup** via `ngOnChanges` watching either `disabled` or `formGroup` input changes. Uses `{ emitEvent: false }` because toggling test/live mode is a UI concern, not a value change — downstream `valueChanges` subscribers should not see a phantom event when the user flips the mode toggle.
@@ -575,7 +581,7 @@ Both consume `FormGroup` + `disabled` as inputs. All dropdowns use `formControlN
 
 **Tests:** No new tests — this phase is verification only. Confirm `ng test --no-watch --browsers=ChromeHeadless` and `ng build` are both clean.
 
-### Phase 8: Shell Decomposition — Per-Board Controllers (M) — pending
+### Phase 8: Shell Decomposition — Per-Board Controllers (M) — **done** (see §15)
 
 `SystemExperimentsShellComponent` accreted multiple responsibilities by Phase 6:
 
@@ -777,3 +783,134 @@ ngOnChanges(changes: SimpleChanges): void {
 **Test-id convention update** (`shared/ids.ts` doc comment): `footer-{boardId}-{action}` → `footer-{action}`. The other namespaced patterns (`form-`, `grid-`, `grid-header-`, `grid-label-`) keep the `boardId` prefix because both forms / grids are structurally separate per-tab and would silently collide if Material ever flipped to `preserveContent`.
 
 **Why this is independent of (and complementary to) Phase 8 / shell decomposition**: Whichever path Phase 8 takes (`BoardController` per board, or smart `BoardTabComponent` per board), the unified footer simplifies the controller's API. Each per-board concern now exposes only `defaults / cancel / apply` *methods*; it no longer needs to project a footer or expose three `(footerEvent)` outputs. Doing the unify first keeps each Phase 8 change surgical.
+
+### 14.6 Form components own their FormGroup *shape* (static factory) — **superseded by §15**
+
+> **Superseded by Phase 8 / §15.** This section described an intermediate state where each form component exposed `static createFormGroup()` / `static defaultValues()` and the shell called those statics instead of importing the field constants directly. When Phase 8 introduced per-board services as the new home for FormGroup ownership, the statics' only meaningful caller (the shell) went away — the new services are sibling files to the fields modules and call `buildFormGroup` directly. The statics were rolled back; form components are now pure renderers again. The original rationale below is preserved as historical context for why the intermediate step looked attractive at the time.
+
+**Where**: `boards/primary-commands/primary-commands-form/primary-commands-form.component.ts`, `boards/secondary-commands/secondary-commands-form/secondary-commands-form.component.ts`, `system-experiments-shell/system-experiments-shell.component.{ts,spec.ts}`, `boards/build-form-group.ts`, `src/app/demo/demo-page.component.ts`, plus both form `*.component.spec.ts`.
+
+**Before**: The shell imported `PRIMARY_COMMANDS_ALL_FIELDS`, `SECONDARY_COMMANDS_ALL_FIELDS`, `buildPrimaryCommandsDefaults`, `buildSecondaryCommandsDefaults` and `buildFormGroup`, then assembled the FormGroup itself:
+
+```ts
+readonly primaryFormGroup: FormGroup = buildFormGroup(PRIMARY_COMMANDS_ALL_FIELDS);
+readonly secondaryFormGroup: FormGroup = buildFormGroup(SECONDARY_COMMANDS_ALL_FIELDS);
+// ...
+this.primaryFormGroup.reset(buildPrimaryCommandsDefaults(), { emitEvent: false });
+```
+
+The shell knew the field-list constant name, the defaults-builder name, and the construction primitive. Three separate identifiers across two modules per board, all just to materialise one FormGroup.
+
+**After**: Each form component exposes two static methods that encapsulate "what shape is my form":
+
+```ts
+export class PrimaryCommandsFormComponent {
+  static createFormGroup(): FormGroup { return buildFormGroup(PRIMARY_COMMANDS_ALL_FIELDS); }
+  static defaultValues(): Record<string, string | string[]> { return buildPrimaryCommandsDefaults(); }
+  @Input() formGroup!: FormGroup;
+}
+```
+
+The shell drops three imports per board and reads as:
+
+```ts
+readonly primaryFormGroup: FormGroup = PrimaryCommandsFormComponent.createFormGroup();
+// ...
+this.primaryFormGroup.reset(PrimaryCommandsFormComponent.defaultValues(), { emitEvent: false });
+```
+
+**Why static and not instance**: Material lazy-renders mat-tab content — the inactive tab's form component does not exist yet, but the shell needs BOTH FormGroups available upfront so they survive tab unmount/remount cycles and stay reachable from Apply/Cancel/snapshot handlers regardless of which tab is currently visible. A `@ViewChild`/`@Output ready` "form owns the FormGroup" pattern would tie FG lifetime to component lifetime and break this. Static factory keeps the right split: the form module owns the *shape*, the shell owns the *lifetime*.
+
+**Why not Reactive Forms `ControlValueAccessor`**: CVA on the form components would hide the FormGroup behind `writeValue / registerOnChange`, force the shell to operate on opaque values instead of typed FormControls, double the wiring (`ngOnChanges` + change-emission plumbing inside each form), and gain nothing — the shell already needs the FormGroup itself for `disable() / enable()` and `reset(snapshot)`. Static factories give us the encapsulation win (shell stops importing field-config constants) without paying CVA's boilerplate or losing the typed FormGroup surface. See discussion in this thread for the full analysis.
+
+**Wins**:
+- Shell drops 3 imports per board (5 total): `PRIMARY_COMMANDS_ALL_FIELDS`, `SECONDARY_COMMANDS_ALL_FIELDS`, `buildPrimaryCommandsDefaults`, `buildSecondaryCommandsDefaults`, `buildFormGroup` — replaced by importing the form component classes that the shell was already (transitively) declaring via the module.
+- New form-shape additions live in one place: add a field to `xxx-commands.fields.ts`, no shell change needed. (Before: shell didn't need a code change either, but it imported the field list, so the dependency was visible in the shell's import block — easy to trip over during a future split.)
+- The form component class becomes the natural API surface for "everything about this form" — a clean target for Phase 8 to lift into a controller / smart `BoardTabComponent` later. Migration is mechanical: move the two statics + the `@Input formGroup` to the new owner, the shell calls a service method instead of `Foo.createFormGroup()`.
+
+**`build-form-group.ts` doc updated**: now documents that its only consumers are the per-board form components' `createFormGroup()` factories. The util stays — it's the shared primitive enforcing "single `new FormControl` policy" across boards — but its audience is constrained.
+
+**Spec rewrites**:
+- Both form specs: host wrappers now seed the FormGroup via `XxxCommandsFormComponent.createFormGroup()` instead of `buildFormGroup(XXX_ALL_FIELDS)` — same factory the shell uses, so any drift surfaces here too. Added a new `describe('static form-shape API')` block per form covering: `createFormGroup` returns a FormGroup with one control per declared field, seeded to defaults, fresh on every call (no shared state); `defaultValues` matches the seed values and is also fresh per call.
+- Shell spec: dropped `PRIMARY_COMMANDS_ALL_FIELDS`, `buildPrimaryCommandsDefaults`, `buildSecondaryCommandsDefaults` imports. Default-equivalence assertions now use `XxxCommandsFormComponent.defaultValues()`. The "Apply ships every field" assertion now uses `Object.keys(PrimaryCommandsFormComponent.defaultValues())` — testing that the shell's payload matches what the form declares is the right contract anyway.
+
+**Why this is a *small* refactor (and the right next step before Phase 8)**: This is a 1-import-list change, not an architectural shift. It does not move state ownership, change lifecycles, or alter component contracts. It just relocates the "what fields does this board have" knowledge from the shell back to the form module where it conceptually belongs. The shell becomes slightly easier to read and Phase 8 becomes slightly easier to plan; if Phase 8 doesn't happen, this still stands on its own as a pure encapsulation win. No new tests fail; no behaviour changes.
+
+---
+
+## 15. Phase 8 implementation notes — Per-board services
+
+> **Naming.** Originally drafted as `*BoardController` to match Phase 8's "controller" framing in §10. Renamed to `*BoardService` before merge to align with Angular's style guide (rule 02-04: `@Injectable()` classes use the `Service` suffix and `.service.ts` filename). The framing didn't change — these still play the per-board "controller" role conceptually — only the identifier and filename. Wherever this section refers to a "service", read it as "the per-board controller for this tab".
+
+**Where**: `boards/primary-commands/primary-commands-board.service.{ts,spec.ts}`, `boards/secondary-commands/secondary-commands-board.service.{ts,spec.ts}`, `system-experiments-shell/system-experiments-shell.component.{ts,html,spec.ts}`. Plus the §14.6 rollback: both form components stripped of their static factories, both form specs lose their static-API `describe` blocks, the demo and shell spec switch to `buildFormGroup` / `build*Defaults` directly.
+
+**Before** (post-§14.6 shape): The shell still owned every per-board concern as fields and methods on a single class — two FormGroups, two snapshots, six `onPrimary…` / `onSecondary…` handlers, two payload builds, and the test-mode `disable()` / `enable()` fan-out. About half the file existed twice (once per board) with `primary…` / `secondary…` prefixes — symmetric duplication that read fine line-by-line but obscured "what does the shell actually do" because the shape repeated. The full enumeration is the table at the top of §10's "Phase 8" section.
+
+**After**: Two component-scoped services — `PrimaryCommandsBoardService` and `SecondaryCommandsBoardService` — own everything per-board. Each has the same surface:
+
+```ts
+@Injectable()
+export class XxxCommandsBoardService {
+  readonly formGroup: FormGroup = buildFormGroup(XXX_COMMANDS_ALL_FIELDS);
+  private snapshot = this.formGroup.getRawValue();
+  constructor(private api: SystemExperimentsApiService) {}
+  defaults(): void;          // form.reset(buildXxxCommandsDefaults())
+  cancel(): void;            // form.reset(snapshot)
+  apply(cmd): Observable<void>;   // POST + tap(commit snapshot on success)
+  setEnabled(enabled): void; // form.enable/disable({ emitEvent: false })
+}
+```
+
+The shell composes them via component-scoped `providers` and exposes them as `readonly primary` / `readonly secondary` (constructor injection). Template bindings change one token: `[formGroup]="primary.formGroup"` instead of `[formGroup]="primaryFormGroup"`. Footer dispatch handlers collapse to one-liners that delegate to `activeBoard.{defaults,cancel,apply}()`.
+
+**Why services rather than fields-on-shell**: Two reasons that compose:
+
+1. *Independent unit testability.* The service is plain DI — `new XxxBoardService(apiSpy)` in a `beforeEach`, no TestBed, no fixture, no module wiring. Every per-board behaviour (snapshot commit on success, snapshot **non**-commit on error, `setEnabled` swallowing `valueChanges`, payload field set) gets pinned in milliseconds in a tight scope. The shell's spec stops carrying that weight and shrinks to dispatch + cross-board behaviour.
+2. *The shell's job becomes describable in one sentence.* "Owns chrome (tabs, test mode, CMD), the cross-board `cmdSaved` commit on Apply success, the shared grid stream, and the singleton footer's dispatch to the active service." Every word is observably true from reading the file. Pre-Phase-8 you couldn't say this without ignoring half the methods.
+
+**Why two sibling services, not one base class**: The boards differ ONLY in which API endpoint Apply hits (`postPrimary` / `postSecondary`) and which sibling fields module seeds the FormGroup. A base class would parameterise on a 1-line difference and add generics + an abstract method to do it. Two ~30-line files are easier to read and easier to evolve when one board eventually grows a behaviour the other doesn't. Same call we made for the form components themselves (§13: "don't generalize until the third use case"). When a third board lands and the surface is genuinely identical, that's the moment to reach for a base.
+
+**Why `apply()` returns `Observable<void>` rather than committing everything internally**: On Apply success the shell ALSO has to commit `cmdSaved` (the shared CMD scope across both tabs). That's cross-board state and must stay at shell scope — services don't know about CMD. If `apply()` swallowed the observable, the shell would lose the success hook and need a separate `(applied)` event/output to carry "applied" back up. Strictly worse. Keeping the observable hot lets the shell chain `.subscribe(() => this.cmdSaved = this.cmdDraft)` and gives the caller full control over teardown (`takeUntil(destroy$)`). The snapshot commit (per-board side effect) lives INSIDE `apply()`'s pipe via `tap`; the cross-board side effect (`cmdSaved`) lives at the shell's `.subscribe`. Each side effect is owned by the layer that owns the state it touches.
+
+**Lifetime parity with Phase 6**: Services are component-scoped via `providers: []` on the shell, so a new service is created each time the shell mounts and disposed with it. Same lifetime as the per-board fields had before — no change in observable semantics, no change in initial-frame timing or destroy ordering.
+
+**Why the eager FormGroup seeding stays**: Material lazy-renders mat-tab content — the inactive tab's form component does not exist yet. Both services materialise their FormGroups in field initialisers (`= buildFormGroup(XXX_COMMANDS_ALL_FIELDS)`), so both forms are reachable from Apply / snapshot logic regardless of which tab is currently visible. Same constraint that drove §14.6, just relocated from the shell to the services. Same constraint that keeps two snapshots (one per service) rather than a shared one — see §14.6 thread for why a single shared snapshot would either lose state on tab switch or require gnarly conditional logic.
+
+**Stays on the shell** (ownership matches scope):
+- `cmdDraft` / `cmdSaved` — shared across both tabs.
+- `testMode` / `cmdDisabled` — global UI state.
+- `selectedTabIndex` — chrome.
+- `primaryRows$` / `secondaryRows$` — derived from ONE shared upstream WebSocket via `shareReplay({ bufferSize: 1, refCount: true })`. Moving the read-side into services would either duplicate the subscription or force the service to depend on the shell's stream. Cleaner to keep the read-side at shell scope and let services stay focused on the write-side (Apply / state).
+- The singleton `BoardFooterComponent` and its `onActive*` dispatchers (introduced in §14.5).
+
+**Why §14.6's static factories were rolled back during this phase**: §14.6 introduced `static createFormGroup()` / `static defaultValues()` on each form component to remove the shell's coupling to the field constants. With Phase 8, the shell no longer constructs FormGroups — the per-board services do. The services live as siblings to the fields modules (`primary-commands/` contains both `primary-commands.fields.ts` AND `primary-commands-board.service.ts`), so the indirection that §14.6 was paying for had no recipient: the service IS in the same folder as the field constant, importing it directly is local coupling, not cross-folder coupling. The statics were left earning their keep only for the demo (one external consumer) and the form spec (drift-detection seam) — too thin to justify a contract that every board's form component had to maintain. Rolled back: form components revert to pure renderers, demo + form spec call `buildFormGroup` / `buildXxxCommandsDefaults` directly. The §14.6 spec block (5 specs per form, 10 total) is gone — the contract no longer exists. See discussion in this thread for the full trade-off analysis.
+
+**Pre-existing latent bug surfaced and fixed during this phase**: `onActiveApply` (and pre-Phase-8, `onPrimaryApply` / `onSecondaryApply`) called `.subscribe(() => commit)` with no error handler. RxJS rethrows unhandled subscriber errors into the global scope — on a real backend hiccup this would crash the page. Fixed by adopting the explicit-callbacks subscribe shape (`{ next, error }`) with the error branch as a documented no-op (with a TODO pointing the host app to wire snackbar / toast feedback there). Strictly safer; no observable change in the happy path.
+
+**File diff summary**:
+
+| File | Δ |
+|------|---|
+| `boards/primary-commands/primary-commands-board.service.ts` | **new**, ~115 LoC |
+| `boards/primary-commands/primary-commands-board.service.spec.ts` | **new**, 10 specs |
+| `boards/secondary-commands/secondary-commands-board.service.ts` | **new**, ~65 LoC |
+| `boards/secondary-commands/secondary-commands-board.service.spec.ts` | **new**, 9 specs |
+| `boards/primary-commands/primary-commands-form/primary-commands-form.component.ts` | -30 LoC (statics + their docs gone) |
+| `boards/secondary-commands/secondary-commands-form/secondary-commands-form.component.ts` | -25 LoC (mirror) |
+| `boards/.../primary-commands-form.component.spec.ts` | -5 static-API specs; host wrapper switches to `buildFormGroup` |
+| `boards/.../secondary-commands-form.component.spec.ts` | -5 mirror |
+| `system-experiments-shell.component.ts` | -65 LoC; collapses to chrome + dispatch |
+| `system-experiments-shell.component.html` | 2 token changes (`primaryFormGroup` → `primary.formGroup`) |
+| `system-experiments-shell.component.spec.ts` | -11 per-board action specs (now in service specs); +6 dispatch / commit / fan-out specs |
+| `boards/build-form-group.ts` | doc-only (audience: services + demo + form specs, no longer the form components' statics) |
+| `src/app/demo/demo-page.component.ts` | switches to `buildFormGroup` directly |
+| `plan.md` | this section + §6 update + §14.6 superseded note |
+
+Total test count: 128 → **137** (+19 from the two service specs and the new shell specs; -10 from the §14.6 static-API rollback).
+
+**Spec rewrite philosophy**: Per-board action mechanics (snapshot semantics, payload field set, defaults shape, `setEnabled` no-emit) all moved to the service specs. The shell spec keeps composition (both services wired), `applyDisabled` (CMD scope validation), `onActive*` dispatch (which service method got called), `cmdSaved` commit on success / non-commit on error (the only piece of cross-board Apply state owned by the shell), tab-switch reset (shell calls `activeBoard.cancel()`), and test-mode fan-out (`setEnabled(false)` called once on each service). Re-asserting service mechanics in the shell suite would make the suite re-fail on every service change for no diagnostic gain.
+
+**Out of scope for Phase 8** (still deferred per §10):
+- A formal state machine for the per-board lifecycle (`pristine → editing → posting → applied`). Premature until "show spinner during POST" or "block tab switch while POSTing" is asked for. Today the service's `apply()` is a one-shot observable; if those needs land, surface a `status$` BehaviorSubject on the service and let the footer subscribe.
+- Migration to typed reactive forms. Lands when the host project upgrades past Angular 14.
+- Extracting a `GridRowsService` so `data.connect()` doesn't live in the shell at all. Modest win — defer until the third consumer of grid rows exists.

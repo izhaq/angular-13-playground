@@ -14,6 +14,12 @@ import { buildFormGroup } from '../../build-form-group';
 import { SECONDARY_COMMANDS_ALL_FIELDS } from '../secondary-commands.fields';
 import { SecondaryCommandsFormComponent } from './secondary-commands-form.component';
 
+/**
+ * Host materialises the FormGroup the same way the per-board service
+ * does in production — `buildFormGroup(SECONDARY_COMMANDS_ALL_FIELDS)`
+ * — so any drift between the form's declared field shape and what the
+ * service builds surfaces as a real test failure here.
+ */
 @Component({
   template: `
     <system-experiments-secondary-commands-form [formGroup]="formGroup">
@@ -25,6 +31,7 @@ class HostComponent {
 }
 
 describe('SecondaryCommandsFormComponent', () => {
+
   let fixture: ComponentFixture<HostComponent>;
   let host: HostComponent;
 

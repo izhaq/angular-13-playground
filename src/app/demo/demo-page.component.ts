@@ -2,12 +2,12 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { FormControl, FormGroup } from '@angular/forms';
 
 import { DropdownOption } from '../components/app-dropdown/app-dropdown.models';
+import { buildFormGroup } from '../features/system-experiments/boards/build-form-group';
 import { PRIMARY_COMMANDS_ALL_FIELDS } from '../features/system-experiments/boards/primary-commands/primary-commands.fields';
 import { PRIMARY_COMMANDS_COLUMNS } from '../features/system-experiments/boards/primary-commands/primary-commands.columns';
 import { SECONDARY_COMMANDS_ALL_FIELDS } from '../features/system-experiments/boards/secondary-commands/secondary-commands.fields';
 import { SECONDARY_COMMANDS_COLUMNS } from '../features/system-experiments/boards/secondary-commands/secondary-commands.columns';
 import { BOARD_IDS, COL_IDS } from '../features/system-experiments/shared/ids';
-import { buildFormGroup } from '../features/system-experiments/boards/build-form-group';
 import { CmdSelection, GridColumn, GridRow } from '../features/system-experiments/shared/models';
 
 @Component({
@@ -103,11 +103,13 @@ export class DemoPageComponent {
   // System Experiments — Phase 5 form components
   // ---------------------------------------------------------------------------
   //
-  // Each form gets its own FormGroup seeded from the canonical defaults so
-  // the demo behaves the same way the shell will in Phase 6. Test-mode
-  // toggling drives `formGroup.disable()` / `.enable()` directly — the
-  // form components themselves don't expose a `[disabled]` input, the
-  // FormGroup is the single source of truth for that bit of state.
+  // Each form gets its own FormGroup built directly from the board's
+  // sibling fields module via the shared `buildFormGroup` primitive —
+  // exactly what the per-board services do in production (see plan §15).
+  // Test-mode toggling drives `formGroup.disable()` / `.enable()`
+  // directly — the form components themselves don't expose a
+  // `[disabled]` input, the FormGroup is the single source of truth
+  // for that bit of state.
 
   readonly primaryFormGroup: FormGroup = buildFormGroup(PRIMARY_COMMANDS_ALL_FIELDS);
   readonly secondaryFormGroup: FormGroup = buildFormGroup(SECONDARY_COMMANDS_ALL_FIELDS);

@@ -23,6 +23,11 @@ import { PrimaryCommandsFormComponent } from './primary-commands-form.component'
  * Host wrapper so inputs flow through Angular's binding system. Required
  * because the child uses OnPush — direct property mutation would not
  * dirty its view.
+ *
+ * The host materialises the FormGroup the same way the per-board
+ * service does in production — `buildFormGroup(PRIMARY_COMMANDS_ALL_FIELDS)`
+ * — so any drift between the form's declared field shape and what the
+ * service builds surfaces as a real test failure here.
  */
 @Component({
   template: `
@@ -35,6 +40,7 @@ class HostComponent {
 }
 
 describe('PrimaryCommandsFormComponent', () => {
+
   let fixture: ComponentFixture<HostComponent>;
   let host: HostComponent;
 

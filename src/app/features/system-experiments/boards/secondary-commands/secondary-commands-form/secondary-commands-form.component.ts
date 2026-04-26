@@ -10,9 +10,15 @@ import { SECONDARY_COMMANDS_ALL_FIELDS } from '../secondary-commands.fields';
  *
  * Flat list of label + dropdown rows — no sub-sections (every field is
  * part of both the Apply payload and the grid). Disable/enable is
- * driven by the FormGroup itself (the shell calls `formGroup.disable()`
- * / `.enable()` when test mode flips), keeping a single source of
- * truth and matching the Primary board's contract.
+ * driven by the FormGroup itself (the per-board service calls
+ * `formGroup.disable()` / `.enable()` via its `setEnabled` wrapper
+ * when test mode flips), keeping a single source of truth and matching
+ * the Primary board's contract.
+ *
+ * FormGroup shape (controls + defaults) lives in the sibling fields
+ * module (`secondary-commands.fields.ts`); the per-board service
+ * composes them via the shared `buildFormGroup` primitive. See
+ * `PrimaryCommandsFormComponent` for the full rationale (plan §15).
  */
 @Component({
   selector: 'system-experiments-secondary-commands-form',
@@ -21,6 +27,7 @@ import { SECONDARY_COMMANDS_ALL_FIELDS } from '../secondary-commands.fields';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SecondaryCommandsFormComponent {
+
   @Input() formGroup!: FormGroup;
 
   readonly boardId = BOARD_IDS.secondary;

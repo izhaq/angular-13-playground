@@ -13,25 +13,35 @@ import { SystemExperimentsApiConfig, SystemExperimentsResponse } from '../api/ap
 import { SystemExperimentsApiService } from '../api/system-experiments-api.service';
 import { SystemExperimentsDataService } from '../api/system-experiments-data.service';
 import { SystemExperimentsShellComponent } from './system-experiments-shell.component';
-import {
-  PRIMARY_COMMANDS_ALL_FIELDS,
-  buildPrimaryCommandsDefaults,
-} from '../boards/primary-commands/primary-commands.fields';
-import {
-  SECONDARY_COMMANDS_ALL_FIELDS,
-  buildSecondaryCommandsDefaults,
-} from '../boards/secondary-commands/secondary-commands.fields';
-import { BoardPostPayload } from '../api/api-contract';
-import { TFF, YES_NO } from '../shared/option-values';
+import { buildPrimaryCommandsDefaults } from '../boards/primary-commands/primary-commands.fields';
+import { buildSecondaryCommandsDefaults } from '../boards/secondary-commands/secondary-commands.fields';
+import { TFF } from '../shared/option-values';
 
 /**
- * Shell behavior is the contract between every dumb child and the user.
- * Tests assert observable outcomes — what the API gets called with, what
- * the form holds after each button click, what disable/tab transitions
- * produce — never internal mechanics. Stable when refactored.
+ * Post-Phase-8 shell tests. The shell now owns chrome + cross-board
+ * state only — per-board logic (apply, cancel, defaults, snapshot
+ * commit, payload composition, setEnabled) lives behind two
+ * services, each with its own spec.
  *
- * `SystemExperimentsDataService` is stubbed with a manual subject so the spec
- * controls when grid frames arrive without spinning up real timers/WS.
+ * What this suite asserts: composition + dispatch + cross-board
+ * fan-out. Specifically:
+ *   - both services are wired and exposed under `primary` / `secondary`
+ *   - `applyDisabled` reflects CMD scope completeness
+ *   - `onActive*` routes the footer event to the active service
+ *   - `onActiveApply` commits `cmdSaved` ONLY on success (the only
+ *     piece of cross-board state the shell owns relative to Apply)
+ *   - tab switch resets the leaving tab via `activeBoard.cancel()`
+ *   - test-mode fans out to both services
+ *
+ * What this suite intentionally does NOT re-test: per-board action
+ * mechanics (snapshot semantics, payload field set, defaults shape).
+ * Those live in `*-board.service.spec.ts` where they belong, and
+ * pinning them here too would make the suite re-fail on every service
+ * change for no diagnostic gain.
+ *
+ * `SystemExperimentsDataService` is stubbed with a manual subject so
+ * the spec controls when grid frames arrive without spinning up real
+ * timers/WS.
  */
 describe('SystemExperimentsShellComponent', () => {
 
@@ -90,20 +100,28 @@ describe('SystemExperimentsShellComponent', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // Initial state
+  // Initial composition — both services are wired and reach default state.
   // ---------------------------------------------------------------------------
 
-  it('starts with both forms enabled, test mode on, and CMD empty', () => {
+  it('composes both per-board services and exposes them under `primary` / `secondary`', () => {
+    expect(component.primary).toBeTruthy();
+    expect(component.secondary).toBeTruthy();
+    expect(component.primary).not.toBe(component.secondary as any);
+  });
+
+  it('starts with both services\' forms enabled, test mode on, and CMD empty', () => {
     expect(component.testMode).toBe(true);
-    expect(component.primaryFormGroup.disabled).toBe(false);
-    expect(component.secondaryFormGroup.disabled).toBe(false);
+    expect(component.primary.formGroup.disabled).toBe(false);
+    expect(component.secondary.formGroup.disabled).toBe(false);
     expect(component.cmdDraft).toEqual({ sides: [], wheels: [] });
     expect(component.cmdSaved).toEqual({ sides: [], wheels: [] });
   });
 
-  it('seeds both form groups with their canonical defaults', () => {
-    expect(component.primaryFormGroup.getRawValue()).toEqual(buildPrimaryCommandsDefaults());
-    expect(component.secondaryFormGroup.getRawValue()).toEqual(buildSecondaryCommandsDefaults());
+  it('seeds both forms with their canonical defaults via the services', () => {
+    // Assertion is at the shell boundary so a regression in either the
+    // service's seeding OR the shell's wiring would surface here.
+    expect(component.primary.formGroup.getRawValue()).toEqual(buildPrimaryCommandsDefaults());
+    expect(component.secondary.formGroup.getRawValue()).toEqual(buildSecondaryCommandsDefaults());
   });
 
   // ---------------------------------------------------------------------------
@@ -133,85 +151,14 @@ describe('SystemExperimentsShellComponent', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // Apply
+  // Footer dispatch — the shared footer routes to the active service.
+  // The shell knows which service is active via `selectedTabIndex`;
+  // each handler is one line. We assert the routing decision (which
+  // service method got called) rather than the resulting state
+  // (that's the service spec's job).
   // ---------------------------------------------------------------------------
 
-  it('Apply on Primary calls postPrimary with cmd draft + full form snapshot', () => {
-    component.cmdDraft = { sides: ['left'], wheels: ['1', '2'] };
-    component.primaryFormGroup.patchValue({ tff: TFF.Dominate });
-
-    component.onPrimaryApply();
-
-    expect(apiSpy.postPrimary).toHaveBeenCalledTimes(1);
-    const payload = apiSpy.postPrimary.calls.mostRecent().args[0] as BoardPostPayload;
-    expect(payload.sides).toEqual(['left']);
-    expect(payload.wheels).toEqual(['1', '2']);
-    // Edited field is set; every other default still ships in the payload.
-    expect(payload.fields['tff']).toBe(TFF.Dominate);
-    expect(Object.keys(payload.fields).sort()).toEqual(
-      PRIMARY_COMMANDS_ALL_FIELDS.map((f) => f.key).sort(),
-    );
-  });
-
-  it('Apply on Secondary calls postSecondary, not postPrimary', () => {
-    component.onSecondaryApply();
-    expect(apiSpy.postSecondary).toHaveBeenCalledTimes(1);
-    expect(apiSpy.postPrimary).not.toHaveBeenCalled();
-  });
-
-  it('Apply commits the form snapshot and the CMD draft on success', async () => {
-    component.cmdDraft = { sides: ['right'], wheels: ['3'] };
-    component.primaryFormGroup.patchValue({ mlmTransmit: YES_NO.Yes });
-
-    component.onPrimaryApply();
-    await Promise.resolve(); await Promise.resolve();
-
-    expect(component.cmdSaved).toEqual({ sides: ['right'], wheels: ['3'] });
-
-    // Editing again, then Cancel → reverts to the just-applied snapshot, not original defaults.
-    component.primaryFormGroup.patchValue({ mlmTransmit: YES_NO.No });
-    component.onPrimaryCancel();
-    expect(component.primaryFormGroup.getRawValue()['mlmTransmit']).toBe(YES_NO.Yes);
-  });
-
-  // ---------------------------------------------------------------------------
-  // Cancel
-  // ---------------------------------------------------------------------------
-
-  it('Cancel restores the form to its last-applied snapshot', () => {
-    component.primaryFormGroup.patchValue({ tff: TFF.LightActive, abort: YES_NO.Yes });
-    component.onPrimaryCancel();
-
-    const value = component.primaryFormGroup.getRawValue();
-    const defaults = buildPrimaryCommandsDefaults();
-    expect(value['tff']).toBe(defaults['tff']);
-    expect(value['abort']).toBe(defaults['abort']);
-  });
-
-  // ---------------------------------------------------------------------------
-  // Defaults
-  // ---------------------------------------------------------------------------
-
-  it('Defaults resets the form to the canonical defaults regardless of snapshot', async () => {
-    component.primaryFormGroup.patchValue({ tff: TFF.LightActive });
-    component.onPrimaryApply();
-    await Promise.resolve(); await Promise.resolve();
-    component.primaryFormGroup.patchValue({ tff: TFF.Dominate });
-
-    component.onPrimaryDefaults();
-
-    expect(component.primaryFormGroup.getRawValue()).toEqual(buildPrimaryCommandsDefaults());
-  });
-
-  // ---------------------------------------------------------------------------
-  // Single shared footer — onActive* dispatch routes to the active board.
-  // The shell mounts ONE BoardFooterComponent outside the tab-group; the
-  // three footer events fan out to onPrimary*/onSecondary* depending on
-  // selectedTabIndex. Asserting at the dispatch boundary keeps these tests
-  // independent of how the per-board handlers are implemented.
-  // ---------------------------------------------------------------------------
-
-  it('onActive* routes to Primary handlers while the Primary tab is active', () => {
+  it('onActiveApply routes to Primary while the Primary tab is active', () => {
     component.selectedTabIndex = 0;
     component.cmdDraft = { sides: ['left'], wheels: ['1'] };
 
@@ -221,7 +168,7 @@ describe('SystemExperimentsShellComponent', () => {
     expect(apiSpy.postSecondary).not.toHaveBeenCalled();
   });
 
-  it('onActive* routes to Secondary handlers while the Secondary tab is active', () => {
+  it('onActiveApply routes to Secondary while the Secondary tab is active', () => {
     component.selectedTabIndex = 1;
     component.cmdDraft = { sides: ['left'], wheels: ['1'] };
 
@@ -231,35 +178,59 @@ describe('SystemExperimentsShellComponent', () => {
     expect(apiSpy.postPrimary).not.toHaveBeenCalled();
   });
 
-  it('onActiveDefaults resets the active tab\'s form (Primary), not the other', () => {
+  it('onActiveDefaults calls defaults() on the active service only', () => {
     component.selectedTabIndex = 0;
-    component.primaryFormGroup.patchValue({ tff: TFF.Dominate });
-    component.secondaryFormGroup.patchValue({ whlCriticalFail: 'whatever' });
-    const secondaryBefore = component.secondaryFormGroup.getRawValue();
+    const primarySpy = spyOn(component.primary, 'defaults').and.callThrough();
+    const secondarySpy = spyOn(component.secondary, 'defaults').and.callThrough();
 
     component.onActiveDefaults();
 
-    expect(component.primaryFormGroup.getRawValue()).toEqual(buildPrimaryCommandsDefaults());
-    expect(component.secondaryFormGroup.getRawValue()).toEqual(secondaryBefore);
+    expect(primarySpy).toHaveBeenCalledTimes(1);
+    expect(secondarySpy).not.toHaveBeenCalled();
   });
 
-  it('onActiveCancel restores the active tab\'s snapshot only', async () => {
-    // Apply on Primary so primarySnapshot has a non-default value to restore to.
-    component.cmdDraft = { sides: ['left'], wheels: ['1'] };
-    component.primaryFormGroup.patchValue({ tff: TFF.Dominate });
-    component.onPrimaryApply();
-    await Promise.resolve(); await Promise.resolve();
+  it('onActiveCancel calls cancel() on the active service only', () => {
+    component.selectedTabIndex = 1;
+    const primarySpy = spyOn(component.primary, 'cancel').and.callThrough();
+    const secondarySpy = spyOn(component.secondary, 'cancel').and.callThrough();
 
-    // Now edit Primary again, then dispatch via the shared footer's cancel.
-    component.primaryFormGroup.patchValue({ tff: TFF.LightActive });
-    component.selectedTabIndex = 0;
     component.onActiveCancel();
 
-    expect(component.primaryFormGroup.getRawValue()['tff']).toBe(TFF.Dominate);
+    expect(secondarySpy).toHaveBeenCalledTimes(1);
+    expect(primarySpy).not.toHaveBeenCalled();
   });
 
   // ---------------------------------------------------------------------------
-  // Tab switching
+  // cmdSaved commit — the ONE piece of cross-board state the shell
+  // commits in response to Apply. Snapshot commit lives inside the
+  // service and is tested there; the shell only commits cmdSaved.
+  // ---------------------------------------------------------------------------
+
+  it('onActiveApply commits cmdSaved on success', async () => {
+    component.cmdDraft = { sides: ['right'], wheels: ['3'] };
+
+    component.onActiveApply();
+    await Promise.resolve(); await Promise.resolve();
+
+    expect(component.cmdSaved).toEqual({ sides: ['right'], wheels: ['3'] });
+  });
+
+  it('onActiveApply does NOT commit cmdSaved on error', async () => {
+    apiSpy.postPrimary.and.returnValue(new Subject<void>().asObservable());
+    const failed = new Subject<void>();
+    apiSpy.postPrimary.and.returnValue(failed.asObservable());
+
+    component.cmdDraft = { sides: ['left'], wheels: ['1'] };
+    component.onActiveApply();
+    failed.error(new Error('boom'));
+    await Promise.resolve();
+
+    expect(component.cmdSaved).toEqual({ sides: [], wheels: [] });   // unchanged from initial
+  });
+
+  // ---------------------------------------------------------------------------
+  // Tab switching — leaving tab is reset to its snapshot via the
+  // active controller's cancel(); shared CMD state is untouched.
   // ---------------------------------------------------------------------------
 
   it('switching tabs preserves cmdDraft and cmdSaved (CMD is shared)', () => {
@@ -272,30 +243,56 @@ describe('SystemExperimentsShellComponent', () => {
     expect(component.cmdDraft).toEqual({ sides: ['left', 'right'], wheels: ['1', '2'] });
   });
 
-  it('switching tabs discards unapplied form edits on the leaving tab', () => {
-    component.primaryFormGroup.patchValue({ tff: TFF.Dominate });
+  it('switching tabs discards unapplied form edits on the LEAVING tab (calls active.cancel())', () => {
+    component.selectedTabIndex = 0;
+    component.primary.formGroup.patchValue({ tff: TFF.Dominate });
+
     component.onTabChange(1);
-    expect(component.primaryFormGroup.getRawValue()['tff']).toBe(buildPrimaryCommandsDefaults()['tff']);
+
+    // Leaving tab (Primary) is reset to its snapshot — initially defaults.
+    expect(component.primary.formGroup.getRawValue()['tff'])
+      .toBe(buildPrimaryCommandsDefaults()['tff']);
+    expect(component.selectedTabIndex).toBe(1);
+  });
+
+  it('switching tabs does NOT touch the entering tab\'s form', () => {
+    component.selectedTabIndex = 0;
+    component.secondary.formGroup.patchValue({ whlCriticalFail: 'whatever' });
+    const secondaryBefore = component.secondary.formGroup.getRawValue();
+
+    component.onTabChange(1);
+
+    expect(component.secondary.formGroup.getRawValue()).toEqual(secondaryBefore);
   });
 
   // ---------------------------------------------------------------------------
-  // Test/Live mode
+  // Test/Live mode — fans out to both controllers + CMD disable flag.
   // ---------------------------------------------------------------------------
 
-  it('toggling test mode off disables both form groups and CMD section', () => {
+  it('toggling test mode off disables both services\' forms and CMD section', () => {
     component.onTestModeChange(false);
 
-    expect(component.primaryFormGroup.disabled).toBe(true);
-    expect(component.secondaryFormGroup.disabled).toBe(true);
+    expect(component.primary.formGroup.disabled).toBe(true);
+    expect(component.secondary.formGroup.disabled).toBe(true);
     expect(component.cmdDisabled).toBe(true);
   });
 
-  it('toggling test mode back on re-enables both form groups and CMD section', () => {
+  it('toggling test mode back on re-enables both services\' forms and CMD section', () => {
     component.onTestModeChange(false);
     component.onTestModeChange(true);
 
-    expect(component.primaryFormGroup.disabled).toBe(false);
-    expect(component.secondaryFormGroup.disabled).toBe(false);
+    expect(component.primary.formGroup.disabled).toBe(false);
+    expect(component.secondary.formGroup.disabled).toBe(false);
     expect(component.cmdDisabled).toBe(false);
+  });
+
+  it('toggling test mode calls setEnabled on both services (single call site, no leak)', () => {
+    const primarySpy = spyOn(component.primary, 'setEnabled').and.callThrough();
+    const secondarySpy = spyOn(component.secondary, 'setEnabled').and.callThrough();
+
+    component.onTestModeChange(false);
+
+    expect(primarySpy).toHaveBeenCalledOnceWith(false);
+    expect(secondarySpy).toHaveBeenCalledOnceWith(false);
   });
 });

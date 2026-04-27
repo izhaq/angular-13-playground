@@ -1,0 +1,10 @@
+<ng-content></ng-content>
+<span
+  *ngIf="loading"
+  class="loading-overlay__shade"
+  aria-hidden="true">
+  <span
+    class="loading-overlay__spinner"
+    [attr.data-test-id]="spinnerTestId || null">
+  </span>
+</span>

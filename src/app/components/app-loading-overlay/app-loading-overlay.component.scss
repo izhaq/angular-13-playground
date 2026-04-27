@@ -1,0 +1,39 @@
+$spinner-size: 16px;
+$spinner-stroke: 2px;
+$spinner-track: rgba(255, 255, 255, 0.25);
+$spinner-head:  #ffffff;
+$shade-bg:      rgba(0, 0, 0, 0.35);
+
+:host {
+  position: relative;
+  display: inline-block;
+}
+
+.loading-overlay__shade {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: $shade-bg;
+  border-radius: inherit;
+  // Critical: keep accepting clicks so the wrapped control can't be
+  // re-triggered while the call is in flight. The host element itself
+  // would otherwise let pointer events through to the projected content.
+  pointer-events: auto;
+  cursor: progress;
+}
+
+.loading-overlay__spinner {
+  display: inline-block;
+  width: $spinner-size;
+  height: $spinner-size;
+  border: $spinner-stroke solid $spinner-track;
+  border-top-color: $spinner-head;
+  border-radius: 50%;
+  animation: loading-overlay-spin 0.7s linear infinite;
+}
+
+@keyframes loading-overlay-spin {
+  to { transform: rotate(360deg); }
+}

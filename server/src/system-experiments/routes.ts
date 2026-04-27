@@ -1,12 +1,33 @@
-import type { Express } from 'express';
+import type { Express, Response } from 'express';
 import type { Server as HttpServer } from 'http';
 import { WebSocket, WebSocketServer } from 'ws';
 
 import { SystemExperimentsResponse } from './models';
-import { applyPrimary, applySecondary, buildInitialState, validatePayload } from './state';
+import {
+  applyPrimary,
+  applySecondary,
+  buildInitialState,
+  resetState,
+  validatePayload,
+  validateTestModePayload,
+} from './state';
 
 const ROUTE_PREFIX = '/api/system-experiments';
 const WS_PATH = `${ROUTE_PREFIX}/ws`;
+
+/**
+ * All POSTs in this feature respond after this many ms. Lets the front-end
+ * exercise its loading spinners (Apply / Default / Sys Mode dropdown).
+ * Override via env when running latency tests.
+ */
+const RESPONSE_DELAY_MS = Number(process.env['SYSEXP_RESPONSE_DELAY_MS'] || 2000);
+
+function respondAfterDelay<T>(res: Response, body: T, action: () => void = () => {}): void {
+  setTimeout(() => {
+    action();
+    res.json(body);
+  }, RESPONSE_DELAY_MS);
+}
 
 /**
  * Wires the System Experiments endpoints onto an existing express app +
@@ -78,14 +99,15 @@ export function registerSystemExperimentsRoutes(app: Express, server: HttpServer
       res.status(400).json({ error: result.error });
       return;
     }
-    applyPrimary(state, result.payload);
     console.log(
       `[system-experiments] POST /primary — sides=${result.payload.sides.join(',')}` +
       ` wheels=${result.payload.wheels.join(',')}` +
-      ` fields=${Object.keys(result.payload.fields).length}`,
+      ` fields=${Object.keys(result.payload.fields).length} (delay ${RESPONSE_DELAY_MS}ms)`,
     );
-    broadcast();
-    res.json({ status: 'accepted' });
+    respondAfterDelay(res, { status: 'accepted' }, () => {
+      applyPrimary(state, result.payload);
+      broadcast();
+    });
   });
 
   app.post(`${ROUTE_PREFIX}/secondary`, (req, res) => {
@@ -94,14 +116,39 @@ export function registerSystemExperimentsRoutes(app: Express, server: HttpServer
       res.status(400).json({ error: result.error });
       return;
     }
-    applySecondary(state, result.payload);
     console.log(
       `[system-experiments] POST /secondary — sides=${result.payload.sides.join(',')}` +
       ` wheels=${result.payload.wheels.join(',')}` +
-      ` fields=${Object.keys(result.payload.fields).length}`,
+      ` fields=${Object.keys(result.payload.fields).length} (delay ${RESPONSE_DELAY_MS}ms)`,
     );
-    broadcast();
-    res.json({ status: 'accepted' });
+    respondAfterDelay(res, { status: 'accepted' }, () => {
+      applySecondary(state, result.payload);
+      broadcast();
+    });
+  });
+
+  // Single global "back to bootstrap" reset. No payload. Wipes state and
+  // broadcasts so connected grids clear in lock-step with the response.
+  app.post(`${ROUTE_PREFIX}/default`, (_req, res) => {
+    console.log(`[system-experiments] POST /default (delay ${RESPONSE_DELAY_MS}ms)`);
+    respondAfterDelay(res, { status: 'accepted' }, () => {
+      resetState(state);
+      broadcast();
+    });
+  });
+
+  // Sys Mode dropdown change. Ack-only — server doesn't model the toggle,
+  // but the latency lets the front-end render its loading state.
+  app.post(`${ROUTE_PREFIX}/test-mode`, (req, res) => {
+    const result = validateTestModePayload(req.body);
+    if (!result.ok) {
+      res.status(400).json({ error: result.error });
+      return;
+    }
+    console.log(
+      `[system-experiments] POST /test-mode — mode=${result.payload.mode} (delay ${RESPONSE_DELAY_MS}ms)`,
+    );
+    respondAfterDelay(res, { status: 'accepted', mode: result.payload.mode });
   });
 
   app.get(`${ROUTE_PREFIX}/get`, (_req, res) => {

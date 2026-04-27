@@ -10,6 +10,7 @@ import { SystemExperimentsApiService } from '../api/system-experiments-api.servi
 import { SystemExperimentsDataService } from '../api/system-experiments-data.service';
 import { buildRows, normalizeResponse } from '../api/grid-normalizer';
 import { FooterLoadingButton } from '../components/board-footer/board-footer.component';
+import { CMD_ALL_SELECTED } from '../components/cmd-section/cmd-options';
 import { PrimaryCommandsBoardService } from '../boards/primary-commands/primary-commands-board.service';
 import {
   PRIMARY_COMMANDS_CMD_TO_GS_FIELDS,
@@ -179,9 +180,10 @@ export class SystemExperimentsShellComponent implements OnDestroy {
 
   /**
    * GLOBAL "reset to defaults" — single POST, on success BOTH boards'
-   * forms revert to their bootstrap defaults and CMD (draft + saved)
-   * is cleared. On error nothing changes. Re-entry guarded so a double
-   * click cannot stack two requests.
+   * forms revert to their bootstrap defaults and BOTH CMD dropdowns
+   * (draft + saved) are populated with every available option, mirroring
+   * a "select all" so the next Apply targets every cell. On error nothing
+   * changes. Re-entry guarded so a double click cannot stack two requests.
    */
   onDefaults(): void {
     if (this._footerLoading$.value !== null) {
@@ -197,8 +199,10 @@ export class SystemExperimentsShellComponent implements OnDestroy {
         next: () => {
           this.primary.defaults();
           this.secondary.defaults();
-          this.cmdDraft = { sides: [], wheels: [] };
-          this.cmdSaved = { sides: [], wheels: [] };
+          // Fresh objects per call so a future ChangeDetection on a child
+          // bound to `cmdDraft`/`cmdSaved` actually sees a new reference.
+          this.cmdDraft = { sides: [...CMD_ALL_SELECTED.sides], wheels: [...CMD_ALL_SELECTED.wheels] };
+          this.cmdSaved = { sides: [...CMD_ALL_SELECTED.sides], wheels: [...CMD_ALL_SELECTED.wheels] };
         },
         error: () => { /* no-op */ },
       });

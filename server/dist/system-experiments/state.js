@@ -1,26 +1,20 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.validatePayload = exports.applySecondary = exports.applyPrimary = exports.buildInitialState = void 0;
-// ---------------------------------------------------------------------------
-// Field categorization (matches the front-end's boards/*/fields.ts)
-// ---------------------------------------------------------------------------
+exports.validateTestModePayload = exports.validatePayload = exports.applySecondary = exports.applyPrimary = exports.resetState = exports.buildInitialState = void 0;
+// Field categorization (matches the front-end's boards/*/fields.ts).
+// Multi-location keys (e.g. `linkHealth`) appear in multiple sets — one
+// POST writes the value to every matching slot via independent passes
+// in `applySecondary`.
 const PRIMARY_STANDARD_KEYS = [
     'tff', 'mlmTransmit', 'videoRec', 'videoRecType', 'mtrRec',
     'speedPwrOnOff', 'forceTtl', 'nuu', 'muDump', 'sendMtrTss', 'abort',
 ];
-/**
- * Primary "Cmd to GS" form-only fields. They ride along on the POST
- * payload but never land in the wire response — discard on the server.
- */
+/** Form-only — ride along on the POST but never land in the wire response. */
 const PRIMARY_CMD_TO_GS_KEYS = new Set([
     'teo', 'gsMtrRec', 'aiMtrRec',
 ]);
 const SECONDARY_ADDITIONAL_KEYS = [
     'whlCriticalFail', 'whlWarningFail', 'whlFatalFail',
-    // Multi-location: same key participates in all three secondary structures.
-    // The applySecondary fan-out (additionalFields + aCommands + GDL) is three
-    // independent passes — membership in N keysets means the value is written
-    // to all N matching slots in one POST.
     'linkHealth',
 ];
 const SECONDARY_ACOMMANDS_KEYS = [
@@ -36,9 +30,6 @@ const PRIMARY_STANDARD_KEY_SET = new Set(PRIMARY_STANDARD_KEYS);
 const SECONDARY_ADDITIONAL_KEY_SET = new Set(SECONDARY_ADDITIONAL_KEYS);
 const SECONDARY_ACOMMANDS_KEY_SET = new Set(SECONDARY_ACOMMANDS_KEYS);
 const SECONDARY_GDL_KEY_SET = new Set(SECONDARY_GDL_KEYS);
-// ---------------------------------------------------------------------------
-// Initial state — same shape the front-end mock used to ship
-// ---------------------------------------------------------------------------
 function emptyMCommand() {
     return {
         standardFields: {
@@ -58,9 +49,8 @@ function emptyMCommand() {
             whlCriticalFail: 'no',
             whlWarningFail: 'normal',
             whlFatalFail: 'no',
-            // Multi-location seed — same key, same default, in all three structures.
-            // This is what makes the field render across all 11 secondary columns
-            // from boot, before the user touches the form.
+            // Multi-location seed — same key in all three structures so the field
+            // renders across all 11 secondary columns from boot.
             linkHealth: 'normal',
         },
     };
@@ -95,14 +85,19 @@ function buildInitialState() {
     };
 }
 exports.buildInitialState = buildInitialState;
-// ---------------------------------------------------------------------------
-// Apply functions
-// ---------------------------------------------------------------------------
+/**
+ * Wipes the live state back to bootstrap defaults in place. Mutates so
+ * the WS broadcast sees the same object reference everyone else holds.
+ */
+function resetState(state) {
+    const fresh = buildInitialState();
+    state.entities = fresh.entities;
+}
+exports.resetState = resetState;
 function entityIdxFor(side) {
     return side === 'left' ? 0 : 1;
 }
 function cmdIdxFor(wheel) {
-    // wheels are '1'..'4' → 0..3
     return (Number(wheel) - 1);
 }
 /**
@@ -174,9 +169,6 @@ function applySecondary(state, payload) {
     }
 }
 exports.applySecondary = applySecondary;
-// ---------------------------------------------------------------------------
-// Validation
-// ---------------------------------------------------------------------------
 const VALID_SIDES = new Set(['left', 'right']);
 const VALID_WHEELS = new Set(['1', '2', '3', '4']);
 function validatePayload(body) {
@@ -212,3 +204,15 @@ function validatePayload(body) {
     };
 }
 exports.validatePayload = validatePayload;
+const VALID_TEST_MODES = new Set(['active', 'inactive']);
+function validateTestModePayload(body) {
+    if (!body || typeof body !== 'object') {
+        return { ok: false, error: 'Body must be an object' };
+    }
+    const mode = body['mode'];
+    if (typeof mode !== 'string' || !VALID_TEST_MODES.has(mode)) {
+        return { ok: false, error: `mode must be one of ${[...VALID_TEST_MODES].join(',')}` };
+    }
+    return { ok: true, payload: { mode: mode } };
+}
+exports.validateTestModePayload = validateTestModePayload;

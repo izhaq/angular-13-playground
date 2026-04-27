@@ -15,6 +15,7 @@ import { SystemExperimentsDataService } from '../api/system-experiments-data.ser
 import { SystemExperimentsShellComponent } from './system-experiments-shell.component';
 import { buildPrimaryCommandsDefaults } from '../boards/primary-commands/primary-commands.fields';
 import { buildSecondaryCommandsDefaults } from '../boards/secondary-commands/secondary-commands.fields';
+import { CMD_ALL_SELECTED } from '../components/cmd-section/cmd-options';
 import { TFF } from '../shared/option-values';
 
 /**
@@ -202,15 +203,24 @@ describe('SystemExperimentsShellComponent', () => {
     expect(secondarySpy).toHaveBeenCalledTimes(1);
   });
 
-  it('onDefaults clears cmdDraft + cmdSaved on success', async () => {
+  it('onDefaults populates cmdDraft + cmdSaved with EVERY option on success', async () => {
     component.cmdDraft = { sides: ['left'], wheels: ['1'] };
     component.cmdSaved = { sides: ['right'], wheels: ['2'] };
 
     component.onDefaults();
     await Promise.resolve(); await Promise.resolve();
 
-    expect(component.cmdDraft).toEqual({ sides: [], wheels: [] });
-    expect(component.cmdSaved).toEqual({ sides: [], wheels: [] });
+    expect(component.cmdDraft).toEqual({
+      sides:  [...CMD_ALL_SELECTED.sides],
+      wheels: [...CMD_ALL_SELECTED.wheels],
+    });
+    expect(component.cmdSaved).toEqual({
+      sides:  [...CMD_ALL_SELECTED.sides],
+      wheels: [...CMD_ALL_SELECTED.wheels],
+    });
+    // Each emission gets fresh array references so OnPush children rebind.
+    expect(component.cmdDraft.sides).not.toBe(CMD_ALL_SELECTED.sides);
+    expect(component.cmdSaved.sides).not.toBe(component.cmdDraft.sides);
   });
 
   it('onDefaults does NOT touch any state on error', async () => {

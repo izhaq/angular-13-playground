@@ -8,6 +8,7 @@ import {
   PrimaryStandardFields,
   SecondaryAdditionalFields,
   Side,
+  TestModePayload,
   Wheel,
 } from './models';
 
@@ -103,6 +104,15 @@ export function buildInitialState(): SystemExperimentsResponse {
   return {
     entities: [emptyEntity('left'), emptyEntity('right')],
   };
+}
+
+/**
+ * Wipes the live state back to bootstrap defaults in place. Mutates so
+ * the WS broadcast sees the same object reference everyone else holds.
+ */
+export function resetState(state: SystemExperimentsResponse): void {
+  const fresh = buildInitialState();
+  state.entities = fresh.entities;
 }
 
 function entityIdxFor(side: Side): 0 | 1 {
@@ -231,4 +241,20 @@ export function validatePayload(body: unknown): {
       fields: fields as Record<string, string | string[]>,
     },
   };
+}
+
+const VALID_TEST_MODES: ReadonlySet<string> = new Set(['active', 'inactive']);
+
+export function validateTestModePayload(body: unknown): {
+  ok: true;
+  payload: TestModePayload;
+} | { ok: false; error: string } {
+  if (!body || typeof body !== 'object') {
+    return { ok: false, error: 'Body must be an object' };
+  }
+  const mode = (body as Record<string, unknown>)['mode'];
+  if (typeof mode !== 'string' || !VALID_TEST_MODES.has(mode)) {
+    return { ok: false, error: `mode must be one of ${[...VALID_TEST_MODES].join(',')}` };
+  }
+  return { ok: true, payload: { mode: mode as TestModePayload['mode'] } };
 }

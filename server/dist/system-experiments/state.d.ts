@@ -1,5 +1,10 @@
-import { BoardPostPayload, SystemExperimentsResponse } from './models';
+import { BoardPostPayload, SystemExperimentsResponse, TestModePayload } from './models';
 export declare function buildInitialState(): SystemExperimentsResponse;
+/**
+ * Wipes the live state back to bootstrap defaults in place. Mutates so
+ * the WS broadcast sees the same object reference everyone else holds.
+ */
+export declare function resetState(state: SystemExperimentsResponse): void;
 /**
  * Primary apply: fields fan out across every (side, wheel) cell selected
  * in the CMD section. Cmd-to-GS fields are silently dropped — they're
@@ -18,6 +23,13 @@ export declare function applySecondary(state: SystemExperimentsResponse, payload
 export declare function validatePayload(body: unknown): {
     ok: true;
     payload: BoardPostPayload;
+} | {
+    ok: false;
+    error: string;
+};
+export declare function validateTestModePayload(body: unknown): {
+    ok: true;
+    payload: TestModePayload;
 } | {
     ok: false;
     error: string;

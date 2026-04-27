@@ -1,10 +1,20 @@
-$spinner-size: 16px;
-$spinner-stroke: 2px;
-$spinner-track: rgba(255, 255, 255, 0.25);
-$spinner-head:  #ffffff;
-$shade-bg:      rgba(0, 0, 0, 0.35);
-
+// Tunable per-instance via CSS custom properties on the host. The defaults
+// target the common case (a 32–48px tall control like a button or dropdown):
+// the spinner takes ~40% of the host's height, but never smaller than the
+// floor or larger than the ceiling. Override the variables on the host to
+// customize without forking this stylesheet:
+//
+//   <app-loading-overlay style="--loading-overlay-target: 30%; --loading-overlay-max: 32px;">
+//
 :host {
+  --loading-overlay-min: 10px;
+  --loading-overlay-max: 22px;
+  --loading-overlay-target: 40%;
+  --loading-overlay-stroke: 2px;
+  --loading-overlay-track: rgba(255, 255, 255, 0.25);
+  --loading-overlay-head: #ffffff;
+  --loading-overlay-shade-bg: rgba(0, 0, 0, 0.35);
+
   position: relative;
   display: inline-block;
 }
@@ -15,7 +25,7 @@ $shade-bg:      rgba(0, 0, 0, 0.35);
   display: flex;
   align-items: center;
   justify-content: center;
-  background: $shade-bg;
+  background: var(--loading-overlay-shade-bg);
   border-radius: inherit;
   // Critical: keep accepting clicks so the wrapped control can't be
   // re-triggered while the call is in flight. The host element itself
@@ -25,11 +35,15 @@ $shade-bg:      rgba(0, 0, 0, 0.35);
 }
 
 .loading-overlay__spinner {
-  display: inline-block;
-  width: $spinner-size;
-  height: $spinner-size;
-  border: $spinner-stroke solid $spinner-track;
-  border-top-color: $spinner-head;
+  // Size tracks the host's height (which is normally the smaller dimension
+  // for buttons/dropdowns), then `aspect-ratio: 1` derives the width so the
+  // circle stays a circle. The clamp gives us a sensible floor for tiny
+  // chips and a ceiling so the spinner doesn't dwarf jumbo CTAs.
+  height: clamp(var(--loading-overlay-min), var(--loading-overlay-target), var(--loading-overlay-max));
+  width: auto;
+  aspect-ratio: 1;
+  border: var(--loading-overlay-stroke) solid var(--loading-overlay-track);
+  border-top-color: var(--loading-overlay-head);
   border-radius: 50%;
   animation: loading-overlay-spin 0.7s linear infinite;
 }

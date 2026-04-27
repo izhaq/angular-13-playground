@@ -70,3 +70,7 @@ export interface BoardPostPayload {
     wheels: Wheel[];
     fields: Record<string, string | string[]>;
 }
+/** Payload sent on every Sys Mode dropdown change. Mirrors the front-end. */
+export interface TestModePayload {
+    mode: 'active' | 'inactive';
+}

@@ -143,6 +143,8 @@ server.listen(PORT, () => {
 ║   API:   GET  /api/rare-config                           ║
 ║   API:   POST /api/system-experiments/primary            ║
 ║   API:   POST /api/system-experiments/secondary          ║
+║   API:   POST /api/system-experiments/default            ║
+║   API:   POST /api/system-experiments/test-mode          ║
 ║   API:   GET  /api/system-experiments/get                ║
 ║   API:   WS   /api/system-experiments/ws                 ║
 ║   API:   GET  /api/health                                ║

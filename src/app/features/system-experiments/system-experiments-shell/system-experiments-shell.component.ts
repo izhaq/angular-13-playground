@@ -4,11 +4,12 @@ import {
   OnDestroy,
 } from '@angular/core';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
-import { finalize, map, shareReplay, takeUntil } from 'rxjs/operators';
+import { finalize, map, shareReplay, take, takeUntil } from 'rxjs/operators';
 
 import { SystemExperimentsApiService } from '../api/system-experiments-api.service';
 import { SystemExperimentsDataService } from '../api/system-experiments-data.service';
 import { buildRows, normalizeResponse } from '../api/grid-normalizer';
+import { seedFromResponse } from '../api/response-form-seeders';
 import { FooterLoadingButton } from '../components/board-footer/board-footer.component';
 import { CMD_ALL_SELECTED } from '../components/cmd-section/cmd-options';
 import { PrimaryCommandsBoardService } from '../boards/primary-commands/primary-commands-board.service';
@@ -117,6 +118,18 @@ export class SystemExperimentsShellComponent implements OnDestroy {
     this.secondaryRows$ = grid$.pipe(
       map((grid) => buildRows(SECONDARY_COMMANDS_ALL_FIELDS, grid, SECONDARY_COMMANDS_COLUMNS)),
     );
+
+    // First-frame form seed. Subsequent frames update the grid only — the
+    // form is left alone so an in-flight user edit doesn't get clobbered
+    // by a WS push. `take(1)` releases its refCount on the shared upstream
+    // immediately, so the grid subscriptions keep the WS alive on their own.
+    data.connect()
+      .pipe(take(1), takeUntil(this.destroy$))
+      .subscribe((response) => {
+        const seeds = seedFromResponse(response);
+        this.primary.seed(seeds.primary);
+        this.secondary.seed(seeds.secondary);
+      });
   }
 
   ngOnDestroy(): void {

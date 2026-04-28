@@ -32,6 +32,16 @@ export class PrimaryCommandsBoardService {
     this.snapshot = this.formGroup.getRawValue();
   }
 
+  /**
+   * One-shot bootstrap from the GET response. Snapshot advances so the
+   * next `cancel()` reverts to the seeded values rather than to the
+   * compile-time defaults.
+   */
+  seed(values: Record<string, string | string[]>): void {
+    this.formGroup.reset(values, { emitEvent: false });
+    this.snapshot = this.formGroup.getRawValue();
+  }
+
   cancel(): void {
     this.formGroup.reset(this.snapshot, { emitEvent: false });
   }

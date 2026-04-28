@@ -92,6 +92,36 @@ describe('PrimaryCommandsBoardService', () => {
   });
 
   // ---------------------------------------------------------------------------
+  // seed() — bootstraps the form from the GET response. Same shape as
+  // defaults() (reset + advance snapshot) but the values come from the
+  // caller, not from the compile-time defaults.
+  // ---------------------------------------------------------------------------
+
+  it('seed() writes the supplied values into the form', () => {
+    service.seed({ ...buildPrimaryCommandsDefaults(), tff: TFF.Dominate, mlmTransmit: YES_NO.Yes });
+
+    expect(service.formGroup.getRawValue()['tff']).toBe(TFF.Dominate);
+    expect(service.formGroup.getRawValue()['mlmTransmit']).toBe(YES_NO.Yes);
+  });
+
+  it('seed() advances the snapshot — Cancel after seed restores the seeded values, NOT the pre-seed defaults', () => {
+    const seed = { ...buildPrimaryCommandsDefaults(), tff: TFF.Dominate };
+    service.seed(seed);
+
+    service.formGroup.patchValue({ tff: TFF.LightActive });
+    service.cancel();
+
+    expect(service.formGroup.getRawValue()['tff']).toBe(TFF.Dominate);
+  });
+
+  it('seed() does NOT hit the network', () => {
+    service.seed(buildPrimaryCommandsDefaults());
+
+    expect(api.postPrimary).not.toHaveBeenCalled();
+    expect(api.postDefault).not.toHaveBeenCalled();
+  });
+
+  // ---------------------------------------------------------------------------
   // apply() — payload composition + snapshot commit semantics.
   // ---------------------------------------------------------------------------
 

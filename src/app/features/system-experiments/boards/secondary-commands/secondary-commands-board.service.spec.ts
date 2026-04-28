@@ -78,6 +78,27 @@ describe('SecondaryCommandsBoardService', () => {
       .toBe(buildSecondaryCommandsDefaults()['linkHealth']);
   });
 
+  it('seed() writes the supplied values and advances the snapshot', () => {
+    const seed = { ...buildSecondaryCommandsDefaults(), linkHealth: NORMAL_FORCED.Forced, whlCriticalFail: YES_NO.Yes };
+
+    service.seed(seed);
+
+    expect(service.formGroup.getRawValue()['linkHealth']).toBe(NORMAL_FORCED.Forced);
+    expect(service.formGroup.getRawValue()['whlCriticalFail']).toBe(YES_NO.Yes);
+
+    // Cancel after seed restores the seeded values, not the bootstrap defaults.
+    service.formGroup.patchValue({ linkHealth: NORMAL_FORCED.Normal });
+    service.cancel();
+    expect(service.formGroup.getRawValue()['linkHealth']).toBe(NORMAL_FORCED.Forced);
+  });
+
+  it('seed() does NOT hit the network', () => {
+    service.seed(buildSecondaryCommandsDefaults());
+
+    expect(api.postSecondary).not.toHaveBeenCalled();
+    expect(api.postDefault).not.toHaveBeenCalled();
+  });
+
   it('apply() POSTs sides + wheels + the FormGroup\'s raw value via postSecondary', () => {
     service.formGroup.patchValue({ linkHealth: NORMAL_FORCED.Forced });
 

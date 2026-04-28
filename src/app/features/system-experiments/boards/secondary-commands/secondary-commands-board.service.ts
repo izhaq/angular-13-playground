@@ -28,6 +28,12 @@ export class SecondaryCommandsBoardService {
     this.snapshot = this.formGroup.getRawValue();
   }
 
+  /** See `PrimaryCommandsBoardService.seed` — same contract. */
+  seed(values: Record<string, string | string[]>): void {
+    this.formGroup.reset(values, { emitEvent: false });
+    this.snapshot = this.formGroup.getRawValue();
+  }
+
   cancel(): void {
     this.formGroup.reset(this.snapshot, { emitEvent: false });
   }

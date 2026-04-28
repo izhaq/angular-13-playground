@@ -16,7 +16,7 @@ import { SystemExperimentsShellComponent } from './system-experiments-shell.comp
 import { buildPrimaryCommandsDefaults } from '../boards/primary-commands/primary-commands.fields';
 import { buildSecondaryCommandsDefaults } from '../boards/secondary-commands/secondary-commands.fields';
 import { CMD_ALL_SELECTED } from '../components/cmd-section/cmd-options';
-import { TFF } from '../shared/option-values';
+import { NORMAL_FORCED, TFF, YES_NO } from '../shared/option-values';
 
 /**
  * Post-Phase-8 shell tests. The shell now owns chrome + cross-board
@@ -127,6 +127,111 @@ describe('SystemExperimentsShellComponent', () => {
   it('seeds both forms with their canonical defaults via the services', () => {
     expect(component.primary.formGroup.getRawValue()).toEqual(buildPrimaryCommandsDefaults());
     expect(component.secondary.formGroup.getRawValue()).toEqual(buildSecondaryCommandsDefaults());
+  });
+
+  // ---------------------------------------------------------------------------
+  // First-frame form seed — the GET response populates the FORM (not just
+  // the grid). Subsequent WS frames must NOT clobber the form so the user
+  // doesn't lose in-flight edits. Cancel after seed restores the seeded
+  // values (snapshot advances).
+  // ---------------------------------------------------------------------------
+
+  function buildResponse(overrides?: {
+    primaryTff?: string;
+    secondaryWhlCriticalFail?: string;
+    secondaryMasterTlFail?: string;
+    secondaryGdlFail?: string;
+    secondaryLinkHealth?: string;
+  }): SystemExperimentsResponse {
+    const blank = (id: 'left' | 'right') => ({
+      entityId: id,
+      mCommands: [
+        {
+          standardFields: {
+            tff: overrides?.primaryTff ?? 'not_active',
+            mlmTransmit: 'no',
+            videoRec: 'internal',
+            videoRecType: ['no'] as string[],
+            mtrRec: 'no',
+            speedPwrOnOff: 'on',
+            forceTtl: 'normal',
+            nuu: 'no',
+            muDump: 'no',
+            sendMtrTss: 'no',
+            abort: 'no',
+          },
+          additionalFields: {
+            whlCriticalFail: overrides?.secondaryWhlCriticalFail ?? 'no',
+            whlWarningFail: 'normal',
+            whlFatalFail: 'no',
+            linkHealth: overrides?.secondaryLinkHealth ?? 'normal',
+          },
+        },
+        ...[1, 2, 3].map(() => ({
+          standardFields: {
+            tff: 'not_active', mlmTransmit: 'no', videoRec: 'internal',
+            videoRecType: ['no'] as string[], mtrRec: 'no', speedPwrOnOff: 'on',
+            forceTtl: 'normal', nuu: 'no', muDump: 'no', sendMtrTss: 'no', abort: 'no',
+          },
+          additionalFields: { whlCriticalFail: 'no', whlWarningFail: 'normal', whlFatalFail: 'no', linkHealth: 'normal' },
+        })),
+      ] as SystemExperimentsResponse['entities'][0]['mCommands'],
+      aCommands: {
+        tlCriticalFail: 'no',
+        masterTlFail: overrides?.secondaryMasterTlFail ?? 'on',
+        msTlFail: 'normal',
+        tlTempFail: 'no',
+        tlToAgCommFail: 'no',
+        linkHealth: 'normal',
+      },
+      gdlFail: overrides?.secondaryGdlFail ?? 'normal',
+      gdlTempFail: 'normal',
+      antTransmitPwr: 'auto',
+      antSelectedCmd: 'normal',
+      gdlTransmitPwr: 'normal',
+      uuuAntSelect: 'normal',
+      linkHealth: 'normal',
+    });
+    return { entities: [blank('left'), blank('right')] };
+  }
+
+  it('first frame seeds the Primary form from entities[0].mCommands[0].standardFields', () => {
+    frames$.next(buildResponse({ primaryTff: TFF.Dominate }));
+
+    expect(component.primary.formGroup.getRawValue()['tff']).toBe(TFF.Dominate);
+  });
+
+  it('first frame seeds the Secondary form across all four slot families', () => {
+    frames$.next(buildResponse({
+      secondaryWhlCriticalFail: YES_NO.Yes,
+      secondaryMasterTlFail: 'off',
+      secondaryGdlFail: NORMAL_FORCED.Forced,
+      secondaryLinkHealth: NORMAL_FORCED.Forced,
+    }));
+
+    const value = component.secondary.formGroup.getRawValue();
+    expect(value['whlCriticalFail']).toBe(YES_NO.Yes);
+    expect(value['masterTlFail']).toBe('off');
+    expect(value['gdlFail']).toBe(NORMAL_FORCED.Forced);
+    expect(value['linkHealth']).toBe(NORMAL_FORCED.Forced);
+  });
+
+  it('subsequent frames do NOT re-seed the form (user edits survive WS pushes)', () => {
+    frames$.next(buildResponse({ primaryTff: TFF.Dominate }));
+    component.primary.formGroup.patchValue({ tff: TFF.LightActive });
+
+    frames$.next(buildResponse({ primaryTff: TFF.NotActive }));
+
+    expect(component.primary.formGroup.getRawValue()['tff']).toBe(TFF.LightActive);
+  });
+
+  it('seed advances the snapshot — Cancel after the first frame restores the seeded value', () => {
+    frames$.next(buildResponse({ primaryTff: TFF.Dominate }));
+
+    component.primary.formGroup.patchValue({ tff: TFF.LightActive });
+    component.primary.cancel();
+
+    expect(component.primary.formGroup.getRawValue()['tff']).toBe(TFF.Dominate);
   });
 
   // ---------------------------------------------------------------------------

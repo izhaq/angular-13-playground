@@ -2,6 +2,29 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { FormControl, FormGroup } from '@angular/forms';
 
 import { DropdownOption } from '../components/app-dropdown/app-dropdown.models';
+
+interface FlashRow {
+  id: number;
+  values: { [colId: string]: number };
+}
+
+const INITIAL_FLASH_COLS = ['A', 'B', 'C'];
+
+const INITIAL_FLASH_ROWS: ReadonlyArray<FlashRow> = [
+  { id: 1, values: { A: 100, B: 200, C: 300 } },
+  { id: 2, values: { A: 150, B: 250, C: 350 } },
+  { id: 3, values: { A: 175, B: 275, C: 375 } },
+  { id: 4, values: { A: 199, B: 299, C: 399 } },
+];
+
+// Smaller dataset for the "trackBy gotcha" usage demo — kept separate from
+// INITIAL_FLASH_ROWS so the usage section's mutations don't visually
+// interact with the main side-by-side demo above it.
+const INITIAL_USAGE_COLS = ['A', 'B'];
+const INITIAL_USAGE_ROWS: ReadonlyArray<FlashRow> = [
+  { id: 1, values: { A: 1, B: 2 } },
+  { id: 2, values: { A: 3, B: 4 } },
+];
 import { buildFormGroup } from '../features/system-experiments/boards/build-form-group';
 import {
   PRIMARY_COMMANDS_ALL_FIELDS,
@@ -157,4 +180,125 @@ export class DemoPageComponent {
       values: { [COL_IDS.gdl]: 'ON' },
     },
   ];
+
+  // ---------------------------------------------------------------------------
+  // Cell Flash on Change — Versions A & B side-by-side
+  // ---------------------------------------------------------------------------
+  //
+  // Two grids on the same data model so a single mutation drives both.
+  // Critical demo: "Re-broadcast same values" must NOT flash either grid
+  // (proves the directive's value-vs-reference comparison).
+  //
+  // See: specs/cell-flash-on-change/spec.md and tasks.md Task 4.1.
+
+  flashCols: string[] = [...INITIAL_FLASH_COLS];
+  flashRows: FlashRow[] = this.cloneFlashRows(INITIAL_FLASH_ROWS);
+  flashDuration = 10_000;
+
+  trackByFlashRowId = (_: number, row: FlashRow) => row.id;
+  trackByFlashCol = (_: number, col: string) => col;
+
+  mutateOneCell(): void {
+    this.flashRows = this.mutateOneRandomCellIn(this.flashRows, this.flashCols);
+  }
+
+  mutateAllCells(): void {
+    this.flashRows = this.flashRows.map((row) => ({
+      ...row,
+      values: this.flashCols.reduce<{ [colId: string]: number }>((acc, col) => {
+        acc[col] = this.randomCellValue();
+        return acc;
+      }, {}),
+    }));
+  }
+
+  // Re-emit the SAME primitive values. Angular's input-change check uses ===
+  // on the evaluated expression (a primitive number); === says "no change",
+  // so ngOnChanges never fires on either directive — proving the
+  // value-vs-reference distinction.
+  rebroadcastSameValues(): void {
+    this.flashRows = this.flashRows.map((row) => ({
+      ...row,
+      values: { ...row.values },
+    }));
+  }
+
+  resetFlashTable(): void {
+    this.flashCols = [...INITIAL_FLASH_COLS];
+    this.flashRows = this.cloneFlashRows(INITIAL_FLASH_ROWS);
+  }
+
+  // 100 rows × 10 cols = 1000 cells — perf stress for the "60 fps with 1k
+  // cells" claim. Open Chrome DevTools Performance tab while clicking
+  // "Mutate all cells" with this loaded to verify no main-thread long tasks.
+  spawnThousandCells(): void {
+    this.flashCols = Array.from({ length: 10 }, (_, i) => `C${i + 1}`);
+    this.flashRows = Array.from({ length: 100 }, (_, rowIdx) => ({
+      id: rowIdx + 1,
+      values: this.flashCols.reduce<{ [colId: string]: number }>((acc, col) => {
+        acc[col] = this.randomCellValue();
+        return acc;
+      }, {}),
+    }));
+  }
+
+  // ---------------------------------------------------------------------------
+  // Cell Flash on Change — Usage guide (trackBy gotcha live demo)
+  // ---------------------------------------------------------------------------
+  //
+  // Two tables on the same `usageRows` data — one with trackBy, one without.
+  // A single mutation hits both, but only the trackBy table flashes (the
+  // other rebuilds every <tr>, giving each new directive a "first emission"
+  // pass). Visceral proof of the requirement documented in the same section.
+
+  usageCols: string[] = [...INITIAL_USAGE_COLS];
+  usageRows: FlashRow[] = this.cloneFlashRows(INITIAL_USAGE_ROWS);
+
+  trackByUsageRowId = (_: number, row: FlashRow) => row.id;
+  trackByUsageCol = (_: number, col: string) => col;
+
+  // Bound as a TS string (not inlined in the template) because Angular's
+  // template parser decodes HTML entities before checking for `{{`, so any
+  // attempt to escape interpolation braces inline (`&#123;&#123;` etc.)
+  // gets resolved back to `{{` and the parser tries to evaluate it. A bound
+  // string is just text content — the browser's text rendering takes care
+  // of escaping `<` / `>` automatically.
+  readonly usageSnippet = [
+    `<td *ngFor="let col of cols; trackBy: trackByCol"`,
+    `    [appFlashOnChangeCss]="row.values[col]"`,
+    `    [flashDurationMs]="2000">`,
+    `  {{ row.values[col] }}`,
+    `</td>`,
+  ].join('\n');
+
+  mutateOneUsageCell(): void {
+    this.usageRows = this.mutateOneRandomCellIn(this.usageRows, this.usageCols);
+  }
+
+  resetUsageTable(): void {
+    this.usageRows = this.cloneFlashRows(INITIAL_USAGE_ROWS);
+  }
+
+  // Shared mutation helper used by both the main demo and the usage demo.
+  // Picks a random (row, col), returns a NEW array with the row replaced
+  // (immutable update — required for OnPush + the cell directives' Object.is
+  // check to register "value changed").
+  private mutateOneRandomCellIn(rows: FlashRow[], cols: string[]): FlashRow[] {
+    const rowIdx = Math.floor(Math.random() * rows.length);
+    const colIdx = Math.floor(Math.random() * cols.length);
+    const col = cols[colIdx];
+    return rows.map((row, i) =>
+      i === rowIdx
+        ? { ...row, values: { ...row.values, [col]: this.randomCellValue() } }
+        : row
+    );
+  }
+
+  private cloneFlashRows(rows: ReadonlyArray<FlashRow>): FlashRow[] {
+    return rows.map((r) => ({ ...r, values: { ...r.values } }));
+  }
+
+  private randomCellValue(): number {
+    return Math.floor(Math.random() * 1000);
+  }
 }

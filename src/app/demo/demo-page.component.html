@@ -16,6 +16,8 @@
       <li><a href="#multi-standalone">AppMultiDropdown — standalone</a></li>
       <li><a href="#multi-reactive">AppMultiDropdown — Reactive Forms (formControl)</a></li>
       <li><a href="#test-id">data-test-id (native attribute)</a></li>
+      <li><a href="#cell-flash">Cell flash on change — Version A vs. Version B</a></li>
+      <li><a href="#cell-flash-usage">Cell flash on change — Usage guide</a></li>
       <li><a href="#engine-cmd">SystemExperiments — CmdSectionComponent</a></li>
       <li><a href="#engine-footer">SystemExperiments — BoardFooterComponent</a></li>
       <li><a href="#engine-rows-primary">SystemExperiments — BoardRowsComponent (Primary)</a></li>
@@ -157,6 +159,216 @@ form.status = {{ form.status }}</pre>
         Inspect me — should have <code>data-test-id="demo-test-id-target"</code>
       </div>
     </div>
+  </section>
+
+  <section class="demo-section" id="cell-flash">
+    <h2>Cell flash on change directive — Version A vs. Version B</h2>
+    <p class="demo-section__desc">
+      Two side-by-side mock "live grids" on the same data model. Left grid uses
+      <code>[appFlashOnChangeCss]</code> (CSS keyframes + setTimeout); right grid uses
+      <code>[appFlashOnChangeWaapi]</code> (Web Animations API). "Re-broadcast same
+      values" proves the value-vs-reference comparison — neither grid flashes even
+      though the row references change. "Spawn 1000 cells" loads the perf stress test.
+    </p>
+
+    <div class="demo-section__example demo-flash">
+      <div class="demo-flash__panes">
+        <div class="demo-flash__pane">
+          <h3 class="demo-flash__pane-title">Version A — CSS + setTimeout</h3>
+          <div class="demo-flash__scroll">
+            <table class="demo-flash__table" data-test-id="demo-flash-table-css">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th *ngFor="let col of flashCols; trackBy: trackByFlashCol">{{ col }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let row of flashRows; trackBy: trackByFlashRowId">
+                  <th scope="row">#{{ row.id }}</th>
+                  <td
+                    *ngFor="let col of flashCols; trackBy: trackByFlashCol"
+                    [appFlashOnChangeCss]="row.values[col]"
+                    [flashDurationMs]="flashDuration">
+                    {{ row.values[col] }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="demo-flash__pane">
+          <h3 class="demo-flash__pane-title">Version B — Web Animations API</h3>
+          <div class="demo-flash__scroll">
+            <table class="demo-flash__table" data-test-id="demo-flash-table-waapi">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th *ngFor="let col of flashCols; trackBy: trackByFlashCol">{{ col }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let row of flashRows; trackBy: trackByFlashRowId">
+                  <th scope="row">#{{ row.id }}</th>
+                  <td
+                    *ngFor="let col of flashCols; trackBy: trackByFlashCol"
+                    [appFlashOnChangeWaapi]="row.values[col]"
+                    [flashDurationMs]="flashDuration">
+                    {{ row.values[col] }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <label class="demo-flash__control">
+        Flash duration (ms):
+        <input
+          type="number"
+          min="100"
+          step="100"
+          name="flashDuration"
+          [(ngModel)]="flashDuration">
+      </label>
+    </div>
+
+    <div class="demo-section__actions">
+      <button type="button" (click)="mutateOneCell()">Mutate one cell</button>
+      <button type="button" (click)="mutateAllCells()">Mutate all cells</button>
+      <button type="button" (click)="rebroadcastSameValues()">Re-broadcast same values (no flash)</button>
+      <button type="button" (click)="resetFlashTable()">Reset table</button>
+      <button type="button" (click)="spawnThousandCells()">Spawn 1000 cells (stress)</button>
+    </div>
+
+    <pre class="demo-section__state">cells: {{ flashRows.length * flashCols.length }} ({{ flashRows.length }} rows × {{ flashCols.length }} cols)
+flashDuration: {{ flashDuration }} ms</pre>
+  </section>
+
+  <section class="demo-section" id="cell-flash-usage">
+    <h2>Cell flash on change — Usage guide</h2>
+    <p class="demo-section__desc">
+      Storybook-style notes: how to use the directives correctly, what to
+      avoid, and a live demo of the most common silent failure (missing
+      <code>trackBy</code>).
+    </p>
+
+    <article class="demo-usage">
+      <h3 class="demo-usage__title">Usage</h3>
+      <pre class="demo-usage__code"><code>{{ usageSnippet }}</code></pre>
+      <p class="demo-usage__note">
+        <code>flashDurationMs</code> is optional — defaults to 10 000 ms.
+        Swap <code>appFlashOnChangeCss</code> for
+        <code>appFlashOnChangeWaapi</code> to use the Web Animations API
+        variant; the public API is identical.
+      </p>
+    </article>
+
+    <article class="demo-usage">
+      <h3 class="demo-usage__title">The <code>trackBy</code> gotcha — see it live</h3>
+      <p class="demo-usage__note">
+        Both tables below render the SAME <code>usageRows</code> array. Click
+        "Mutate one cell" — only the table with <code>trackBy</code> flashes.
+        The other rebuilds every <code>&lt;tr&gt;</code> on each emission, so
+        every cell directive sees its value as a "first emission" (no flash).
+        This is the silent failure you'll hit on real websocket-driven tables.
+      </p>
+
+      <div class="demo-flash__panes">
+        <div class="demo-flash__pane">
+          <h4 class="demo-flash__pane-title">With trackBy — flashes correctly</h4>
+          <div class="demo-flash__scroll">
+            <table class="demo-flash__table" data-test-id="usage-with-trackby">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th *ngFor="let col of usageCols; trackBy: trackByUsageCol">{{ col }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let row of usageRows; trackBy: trackByUsageRowId">
+                  <th scope="row">#{{ row.id }}</th>
+                  <td
+                    *ngFor="let col of usageCols; trackBy: trackByUsageCol"
+                    [appFlashOnChangeCss]="row.values[col]"
+                    [flashDurationMs]="flashDuration">
+                    {{ row.values[col] }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="demo-flash__pane">
+          <h4 class="demo-flash__pane-title">Without trackBy — never flashes</h4>
+          <div class="demo-flash__scroll">
+            <table class="demo-flash__table" data-test-id="usage-without-trackby">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th *ngFor="let col of usageCols">{{ col }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let row of usageRows">
+                  <th scope="row">#{{ row.id }}</th>
+                  <td
+                    *ngFor="let col of usageCols"
+                    [appFlashOnChangeCss]="row.values[col]"
+                    [flashDurationMs]="flashDuration">
+                    {{ row.values[col] }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="demo-section__actions">
+        <button type="button" (click)="mutateOneUsageCell()">Mutate one cell</button>
+        <button type="button" (click)="resetUsageTable()">Reset</button>
+      </div>
+    </article>
+
+    <div class="demo-usage__row">
+      <article class="demo-usage demo-usage--do">
+        <h3 class="demo-usage__title">Do</h3>
+        <ul>
+          <li>Bind a primitive: <code>string</code>, <code>number</code>, <code>boolean</code>, or <code>null</code>.</li>
+          <li>Set <code>trackBy</code> on every enclosing <code>*ngFor</code> / <code>mat-table</code> / virtual scroll.</li>
+          <li>Put the directive on the cell itself (e.g. <code>&lt;td&gt;</code>) — not on a wrapper.</li>
+          <li>Trust the default 10 s duration; only override for short-lived UIs.</li>
+          <li>Use <code>[appFlashOnChangeCss]</code> as the safe default. Reach for <code>[appFlashOnChangeWaapi]</code> only if you measure a perf win in your specific table.</li>
+        </ul>
+      </article>
+
+      <article class="demo-usage demo-usage--dont">
+        <h3 class="demo-usage__title">Don't</h3>
+        <ul>
+          <li>Pass an object/array — different references always trigger a flash, so every emission would flash.</li>
+          <li>Skip <code>trackBy</code> in <code>*ngFor</code> — every immutable update destroys the directive, suppressing every flash.</li>
+          <li>Put both <code>[appFlashOnChangeCss]</code> AND <code>[appFlashOnChangeWaapi]</code> on the same element — they'd double-animate.</li>
+          <li>Add it to <code>&lt;input&gt;</code> / form controls — animating their background fights browser-native styling. Wrap in a <code>&lt;div&gt;</code>.</li>
+          <li>Add it to a cell whose natural background is already amber — the flash will be invisible.</li>
+          <li>Rely on it for accessibility — the directive does NOT announce changes to screen readers.</li>
+        </ul>
+      </article>
+    </div>
+
+    <article class="demo-usage">
+      <h3 class="demo-usage__title">Pre-flight checklist</h3>
+      <ul>
+        <li>Bound value is a primitive (string / number / boolean / null).</li>
+        <li><code>trackBy</code> set on every enclosing list iterator.</li>
+        <li>Host element accepts <code>background-color</code> cleanly (not a form input, not already amber).</li>
+        <li>Parent component's change detection fires when the value changes (<code>OnPush</code> + new input ref / event / async pipe / <code>markForCheck</code>).</li>
+        <li>Only one of the two directives per element.</li>
+      </ul>
+    </article>
   </section>
 
   <section class="demo-section" id="engine-cmd">

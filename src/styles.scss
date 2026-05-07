@@ -34,6 +34,7 @@ $system-experiments-theme: mat.define-light-theme((
 @import './styles/dropdowns';
 @import './styles/app-dashboard-tabs';
 @import './styles/tooltips';
+@import './styles/cell-flash-on-change';
 
 html,
 body {

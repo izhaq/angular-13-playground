@@ -175,3 +175,178 @@
   border: 1px solid #d0d7de;
   border-radius: 6px;
 }
+
+// Cell flash on change — side-by-side Version A / Version B preview.
+// Lives inside a normal .demo-section__example so it inherits the dashed
+// frame; only the inner two-pane grid + table chrome is custom.
+.demo-flash {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
+  &__panes {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    // min-width: 0 so the flex children can actually shrink past their
+    // intrinsic content width (long-number rows would otherwise blow the
+    // layout out beyond the .demo-page container at 1k cells).
+    min-width: 0;
+  }
+
+  &__pane {
+    flex: 1 1 280px;
+    min-width: 0;
+  }
+
+  &__pane-title {
+    margin: 0 0 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #57606a;
+  }
+
+  // Bounds the table at 360px so the "spawn 1000 cells" case (100 rows ×
+  // 10 cols) renders inside a scrollable container instead of pushing the
+  // whole demo page down. All 1000 cells stay in the DOM (each gets its
+  // directive instance) — only the visible viewport scrolls.
+  &__scroll {
+    max-height: 360px;
+    overflow: auto;
+    background: #fff;
+    border: 1px solid #d0d7de;
+    border-radius: 4px;
+  }
+
+  &__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+
+    th, td {
+      padding: 6px 10px;
+      border-bottom: 1px solid #eaecef;
+      // RTL-safe: end-aligned numerics (logical property, mirrors in RTL).
+      text-align: end;
+    }
+
+    thead {
+      position: sticky;
+      top: 0;
+      background: #f6f8fa;
+      z-index: 1;
+    }
+
+    thead th {
+      font-weight: 600;
+      border-bottom: 2px solid #d0d7de;
+    }
+
+    tbody th {
+      font-weight: 500;
+      color: #57606a;
+      // Row labels start-aligned (left in LTR, right in RTL).
+      text-align: start;
+    }
+  }
+
+  &__control {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+
+    input[type="number"] {
+      width: 90px;
+      padding: 4px 8px;
+      border: 1px solid #d0d7de;
+      border-radius: 4px;
+      font: inherit;
+    }
+  }
+}
+
+// Storybook-style usage guide cards. Each `.demo-usage` is a self-contained
+// docs card; `.demo-usage--do` / `.demo-usage--dont` add an accent stripe via
+// `border-inline-start` so the visual cue mirrors automatically in RTL.
+.demo-usage {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px;
+  background: #fff;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+
+  &__title {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: #1f2328;
+
+    code {
+      // Prose-sized code inside a heading should match the surrounding font
+      // weight, not the heading weight, so it reads as inline code rather
+      // than as a bolded API name.
+      font-size: 13px;
+      font-weight: 400;
+    }
+  }
+
+  &__note {
+    margin: 0;
+    color: #57606a;
+    line-height: 1.55;
+    font-size: 13.5px;
+  }
+
+  &__code {
+    margin: 0;
+    padding: 12px 14px;
+    background: #0d1117;
+    color: #c9d1d9;
+    border-radius: 4px;
+    font-size: 12.5px;
+    line-height: 1.55;
+    overflow-x: auto;
+  }
+
+  // Two-column layout for the Do / Don't cards. Stacks below 640px so the
+  // narrow demo viewport doesn't squash the lists.
+  &__row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+
+    @media (max-width: 640px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  &--do {
+    border-inline-start: 4px solid #1f883d;
+  }
+
+  &--dont {
+    border-inline-start: 4px solid #cf222e;
+  }
+
+  ul {
+    margin: 0;
+    padding-inline-start: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    color: #57606a;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  // Pane titles inside the gotcha demo are h4 (semantically subordinate to
+  // the h3 sub-block heading). Slightly tighter than the main #cell-flash
+  // section's h3 pane titles (14px) so the visual hierarchy h2 > h3 > h4
+  // holds. Scoped to .demo-usage so the main section's h3s stay at 14px.
+  .demo-flash__pane-title {
+    font-size: 13px;
+  }
+}

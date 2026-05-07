@@ -1,0 +1,33 @@
+// Cell Flash on Change — Version A keyframes and class.
+//
+// Used only by [appFlashOnChangeCss]; Version B's keyframes live in TS
+// (see cell-flash-on-change-waapi.directive.ts).
+//
+// The directive sets `animation-duration` inline at flash time, overriding
+// the placeholder duration in the class. Soft amber matches FLASH_COLOR_RGBA
+// in cell-flash-on-change.types.ts — keep the two in sync.
+//
+// Reduced-motion users get a static colored hold instead of the fade
+// animation; the directive's setTimeout still removes the class after
+// the configured duration, snapping the highlight back to transparent.
+//
+// See: specs/cell-flash-on-change/spec.md §6
+
+@keyframes cell-flash-on-change-fade {
+  0%   { background-color: rgba(255, 213, 128, 0.85); }
+  100% { background-color: transparent; }
+}
+
+.cell-flash-on-change--flashing {
+  animation-name: cell-flash-on-change-fade;
+  animation-duration: 10s;            // overridden inline by the directive
+  animation-timing-function: ease-out;
+  animation-fill-mode: forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cell-flash-on-change--flashing {
+    animation: none;
+    background-color: rgba(255, 213, 128, 0.6);
+  }
+}

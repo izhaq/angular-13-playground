@@ -1,68 +1,49 @@
 @use '@angular/material' as mat;
-@import './styles/variables';
 
-// Define custom palettes based on Stitch colors
-$dark-primary: mat.define-palette(mat.$grey-palette, 400, 300, 500);
-$dark-accent: mat.define-palette(mat.$blue-grey-palette, 50, 100, 200);
-$dark-warn: mat.define-palette(mat.$red-palette, 300, 200, 400);
+// System Experiments is theme-agnostic — it ships only structural CSS and reads
+// colors from its component-level palettes. The PLAYGROUND (this app) is
+// the host, so it supplies the Material palette + per-component themes
+// the dashboard needs (tabs indicator, slide-toggle thumb, button ripples).
+//
+// Migration: the host project will replace this with its own theme file.
+// System Experiments picks up whatever the host registers.
+@include mat.core();
 
-// Angular Material 13 typography uses the 2014 level names
-$custom-typography: mat.define-typography-config(
-  $font-family: $font-family-body,
-  $display-4: mat.define-typography-level(32px, 40px, 800, $font-family-headline),
-  $display-3: mat.define-typography-level(28px, 36px, 700, $font-family-headline),
-  $display-2: mat.define-typography-level(24px, 32px, 700, $font-family-headline),
-  $display-1: mat.define-typography-level(20px, 28px, 600, $font-family-headline),
-  $headline: mat.define-typography-level(18px, 24px, 600, $font-family-headline),
-  $title: mat.define-typography-level(16px, 22px, 600, $font-family-headline),
-  $subheading-2: mat.define-typography-level(16px, 24px, 500, $font-family-body),
-  $subheading-1: mat.define-typography-level(14px, 20px, 500, $font-family-body),
-  $body-2: mat.define-typography-level(14px, 20px, 400, $font-family-body),
-  $body-1: mat.define-typography-level(14px, 20px, 400, $font-family-body),
-  $caption: mat.define-typography-level(12px, 16px, 400, $font-family-body),
-  $button: mat.define-typography-level(14px, 20px, 500, $font-family-body),
-);
+// Custom palette tuned to the system-experiments navy/accent so the Material
+// primitives (tab indicator, slide-toggle accent, ripple) sit naturally
+// against the dashboard's dark surface.
+$system-experiments-primary: mat.define-palette(mat.$blue-palette, 500, 300, 700);
+$system-experiments-accent:  mat.define-palette(mat.$blue-palette, 400, 200, 600);
+$system-experiments-warn:    mat.define-palette(mat.$red-palette);
 
-// Define the dark theme
-$dark-theme: mat.define-dark-theme((
+$system-experiments-theme: mat.define-light-theme((
   color: (
-    primary: $dark-primary,
-    accent: $dark-accent,
-    warn: $dark-warn,
+    primary: $system-experiments-primary,
+    accent:  $system-experiments-accent,
+    warn:    $system-experiments-warn,
   ),
-  typography: $custom-typography,
 ));
 
-@include mat.core();
-@include mat.all-component-themes($dark-theme);
+// Theme only the components we actually mount — keeps the bundle lean
+// vs `mat.all-component-themes(...)` (which costs 100+ kB).
+@include mat.tabs-theme($system-experiments-theme);
+@include mat.slide-toggle-theme($system-experiments-theme);
+@include mat.button-theme($system-experiments-theme);
+@include mat.tooltip-theme($system-experiments-theme);
 
 @import './styles/dropdowns';
-@import './styles/tabs';
+@import './styles/app-dashboard-tabs';
+@import './styles/tooltips';
+@import './styles/cell-flash-on-change';
 
-html, body {
+html,
+body {
   height: 100%;
 }
 
 body {
   margin: 0;
-  font-family: $font-family-body;
-  background-color: $background;
-  color: $primary-text;
-}
-
-// Override Material component backgrounds with Stitch surface tokens
-.mat-form-field-appearance-fill .mat-form-field-flex {
-  background-color: $surface-container;
-}
-
-.mat-select-panel {
-  background-color: $surface-container-high;
-}
-
-.mat-option {
-  color: $primary-text;
-}
-
-.mat-option:hover:not(.mat-option-disabled) {
-  background-color: $surface-container-highest;
+  // Match the system-experiments host page — the playground is one screen and
+  // both routes look better against the same dark surface.
+  background: #1a1a1a;
 }

@@ -1,0 +1,38 @@
+$field-width:     100px;
+$gap:             12px;
+$controls-gap:    8px;
+$pad-y:           6px;
+$pad-x:           0;
+$title-font-size: 12px;
+
+:host {
+  display: block;
+}
+
+.cmd-section {
+  display: flex;
+  align-items: center;
+  gap: $gap;
+  padding: $pad-y $pad-x;
+
+  &__title {
+    flex: 0 0 auto;
+    font-weight: 600;
+    font-size: $title-font-size;
+    line-height: 1;
+    color: #e6e6e6;
+  }
+
+  &__controls {
+    display: flex;
+    align-items: center;
+    gap: $controls-gap;
+  }
+
+  // Override the dropdown host's default `width: 100%` so the fields stay
+  // narrow and sit next to the label.
+  &__field {
+    flex: 0 0 auto;
+    width: $field-width;
+  }
+}

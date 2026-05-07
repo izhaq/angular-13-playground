@@ -9,7 +9,8 @@
     "test": "ng test",
     "server:build": "npx tsc --project server/tsconfig.json",
     "server:start": "npx ts-node --project server/tsconfig.json server/src/index.ts",
-    "server:prod": "node server/dist/index.js"
+    "server:prod": "node server/dist/index.js",
+    "swap-domain-terms": "node scripts/swap-domain-terms.js"
   },
   "private": true,
   "dependencies": {

@@ -1,0 +1,187 @@
+{
+  "_about": "PIZZA-BUSINESS test mapping. Filled-in copy of `domain-terms.map.json` so you can exercise scripts/swap-domain-terms.js against a fully-populated map. Domain story: a pizza chain dashboard managing two branches (Downtown / Uptown), each with 4 ovens; a manager fires Orders at a Branch + Oven, and a real-time grid shows pizza-prep + delivery + hotline status.",
+  "_match": {
+    "identifiers": "Match as TypeScript symbols only (\\b<id>\\b). Affects .ts/.html/.scss spec ids.",
+    "strings": "Match as exact string literals (quoted or unquoted in HTML text nodes). Case-sensitive.",
+    "css": "CSS class fragments — match inside .scss selectors AND .html class= attributes."
+  },
+
+  "feature": {
+    "_kind": "identifiers + strings + css",
+    "_note": "The product/feature name itself.",
+    "system-experiments": { "to": "pizza-dashboard" },
+    "SystemExperiments":  { "to": "PizzaDashboard" },
+    "systemExperiments":  { "to": "pizzaDashboard" },
+    "SYSTEM_EXPERIMENTS":  { "to": "PIZZA_DASHBOARD" }
+  },
+
+  "shellChrome": {
+    "_kind": "strings",
+    "Sys Mode":           { "to": "Service" },
+    "Active":             { "to": "Open" },
+    "Not Active":         { "to": "Closed" },
+    "System Commands":    { "to": "Order Tickets" },
+    "Failure & Antenna":  { "to": "Alerts & Hotline" }
+  },
+
+  "cmdConcept": {
+    "_kind": "identifiers + strings",
+    "Cmd":   { "to": "Order", "_kind": "string" },
+    "Cmd to GS": { "to": "Notes to Kitchen", "_kind": "string" },
+    "cmd":   { "to": "order", "_kind": "identifier" },
+    "cmd-side-select":  { "to": "order-branch-select", "_kind": "string" },
+    "cmd-wheel-select": { "to": "order-oven-select", "_kind": "string" },
+    "CmdSelection":     { "to": "OrderSelection", "_kind": "identifier" },
+    "CmdSectionComponent": { "to": "OrderSectionComponent", "_kind": "identifier" }
+  },
+
+  "sideAndWheel": {
+    "_kind": "identifiers + strings",
+    "_note": "Physical platform → pizza branches (left/right of city) and ovens (1-4).",
+    "Side":  { "to": "Branch",   "_kind": "identifier" },
+    "SIDE":  { "to": "BRANCH",   "_kind": "identifier" },
+    "side":  { "to": "branch",   "_kind": "identifier" },
+    "sides": { "to": "branches", "_kind": "identifier" },
+    "Wheel": { "to": "Oven",     "_kind": "identifier" },
+    "WHEEL": { "to": "OVEN",     "_kind": "identifier" },
+    "wheel":  { "to": "oven",    "_kind": "identifier" },
+    "wheels": { "to": "ovens",   "_kind": "identifier" },
+    "Left":  { "to": "Downtown", "_kind": "string" },
+    "Right": { "to": "Uptown",   "_kind": "string" },
+    "left":  { "to": "downtown", "_kind": "string" },
+    "right": { "to": "uptown",   "_kind": "string" }
+  },
+
+  "gridColumns": {
+    "_kind": "identifiers + strings",
+    "left1":  { "to": "downtown1" }, "left2":  { "to": "downtown2" }, "left3":  { "to": "downtown3" }, "left4":  { "to": "downtown4" },
+    "right1": { "to": "uptown1"   }, "right2": { "to": "uptown2"   }, "right3": { "to": "uptown3"   }, "right4": { "to": "uptown4"   },
+    "tll": { "to": "dispatchDowntown" },
+    "tlr": { "to": "dispatchUptown"   },
+    "gdl": { "to": "onlineOrders"     },
+    "L1": { "to": "DT1" }, "L2": { "to": "DT2" }, "L3": { "to": "DT3" }, "L4": { "to": "DT4" },
+    "R1": { "to": "UT1" }, "R2": { "to": "UT2" }, "R3": { "to": "UT3" }, "R4": { "to": "UT4" },
+    "TLL": { "to": "DSPd" },
+    "TLR": { "to": "DSPu" },
+    "GDL": { "to": "APP"  }
+  },
+
+  "wireContractTypes": {
+    "_kind": "identifiers",
+    "EntityId":                 { "to": "BranchId" },
+    "EntityData":               { "to": "BranchData" },
+    "MCommandItem":             { "to": "OrderTicket" },
+    "PrimaryStandardFields":    { "to": "BasePizzaFields" },
+    "SecondaryAdditionalFields":{ "to": "ExtraToppingFields" },
+    "ACommandsData":            { "to": "AlertData" },
+    "GdlFieldKey":              { "to": "DispatchFieldKey" },
+    "MultiLocationFields":      { "to": "MultiStationFields" },
+    "mCommands":                { "to": "orderTickets" },
+    "aCommands":                { "to": "alerts" },
+    "standardFields":           { "to": "basePizza" },
+    "additionalFields":         { "to": "extraToppings" },
+    "entities":                 { "to": "branches" },
+    "entityId":                 { "to": "branchId" }
+  },
+
+  "primaryFields": {
+    "_kind": "identifiers (field keys)",
+    "tff":           { "to": "cheese" },
+    "mlmTransmit":   { "to": "sendToOven" },
+    "videoRec":      { "to": "sauceSource" },
+    "videoRecType":  { "to": "toppings" },
+    "mtrRec":        { "to": "printReceipt" },
+    "speedPwrOnOff": { "to": "expressLane" },
+    "forceTtl":      { "to": "rushOrder" },
+    "nuu":           { "to": "coupon" },
+    "muDump":        { "to": "discount" },
+    "sendMtrTss":    { "to": "sendToSlicer" },
+    "abort":         { "to": "cancelOrder" },
+    "teo":           { "to": "tip" },
+    "gsMtrRec":      { "to": "managerReceipt" },
+    "aiMtrRec":      { "to": "autoReceipt" }
+  },
+
+  "primaryFieldLabels": {
+    "_kind": "strings",
+    "TFF":              { "to": "Cheese" },
+    "MLM transmit":     { "to": "Send to Oven" },
+    "Video rec":        { "to": "Sauce Source" },
+    "Video Rec Type":   { "to": "Toppings" },
+    "Mtr Rec":          { "to": "Print Receipt" },
+    "Speed PWR On/Off": { "to": "Express Lane" },
+    "Force TTL":        { "to": "Rush Order" },
+    "NUU":              { "to": "Coupon" },
+    "MU dump":          { "to": "Discount" },
+    "Send Mtr TSS":     { "to": "Send to Slicer" },
+    "Abort":            { "to": "Cancel" },
+    "Teo":              { "to": "Tip" },
+    "Ai Mtr Rec":       { "to": "Auto Receipt" }
+  },
+
+  "primaryOptionValuesAndLabels": {
+    "_kind": "strings",
+    "not_active":   { "to": "none" },                  "NACV": { "to": "NON" },
+    "light_active": { "to": "light" },  "Light Active": { "to": "Light" },  "LACV": { "to": "LGT" },
+    "dominate":     { "to": "extra" },  "Dominate":     { "to": "Extra" },  "DMN":  { "to": "XTR" },
+    "ir":           { "to": "pepperoni" }, "Infra Red": { "to": "Pepperoni" }, "IRD":  { "to": "PEP" },
+    "4k":           { "to": "mushroom"  }, "4K":        { "to": "Mushroom"  },
+    "hdr":          { "to": "olives"    }, "HDR":       { "to": "Olives"    },
+    "FORCED":       { "to": "RUSH" },
+    "FRC":          { "to": "RSH" },
+    "Int":          { "to": "Inh" },
+    "EXT":          { "to": "Vnd" }
+  },
+
+  "secondaryFields": {
+    "_kind": "identifiers (field keys)",
+    "whlCriticalFail": { "to": "ovenCriticalFail" },
+    "whlWarningFail":  { "to": "ovenWarningFail" },
+    "whlFatalFail":    { "to": "ovenDown" },
+    "tlCriticalFail":  { "to": "toppingCriticalFail" },
+    "masterTlFail":    { "to": "masterToppingFail" },
+    "msTlFail":        { "to": "subToppingFail" },
+    "tlTempFail":      { "to": "toppingTempFail" },
+    "tlToAgCommFail":  { "to": "toppingToManagerCommFail" },
+    "gdlFail":         { "to": "deliveryFail" },
+    "gdlTempFail":     { "to": "deliveryTempFail" },
+    "antTransmitPwr":  { "to": "orderHotline" },
+    "antSelectedCmd":  { "to": "hotlineSelected" },
+    "gdlTransmitPwr":  { "to": "deliveryHotline" },
+    "uuuAntSelect":    { "to": "backupHotline" },
+    "linkHealth":      { "to": "networkHealth" }
+  },
+
+  "secondaryFieldLabels": {
+    "_kind": "strings",
+    "Wheel Critical Fail":   { "to": "Oven Critical Fail" },
+    "Wheel Warning Fail":    { "to": "Oven Warning" },
+    "Wheel Fatal Fail":      { "to": "Oven Down" },
+    "TL Critical Fail":      { "to": "Topping Critical Fail" },
+    "Master TL Fail":        { "to": "Master Topping Fail" },
+    "MSs TL Fail":           { "to": "Sub Topping Fail" },
+    "TL Temp Fail":          { "to": "Topping Temp Fail" },
+    "TL to AGM Comm Fail":   { "to": "Topping to Manager Fail" },
+    "GDL Fail":              { "to": "Delivery Fail" },
+    "GDL Temp Fail":         { "to": "Delivery Temp Fail" },
+    "Ant Transmit Pwr":      { "to": "Order Hotline" },
+    "Ant Selected Cmd":      { "to": "Hotline Selected" },
+    "GDL Transmit Pwr":      { "to": "Delivery Hotline" },
+    "UUU Ant Select":        { "to": "Backup Hotline" },
+    "Link Health":           { "to": "Network Health" }
+  },
+
+  "secondaryOptionAbbreviations": {
+    "_kind": "strings",
+    "NRML": { "to": "NRM" },
+    "ATU":  { "to": "AUT" },
+    "MNL":  { "to": "MAN" }
+  },
+
+  "_known_overlaps": {
+    "_about": "These source strings appear in two contexts in the original; a single global swap will replace both. For a real-domain rename you'd usually de-duplicate the source labels first — for this pizza test it's fine.",
+    "Not Active": "shell `Sys Mode` chip + TFF cheese.None label → both become 'Closed'",
+    "Mtr Rec":    "field label is shared between `mtrRec` and `gsMtrRec` → both become 'Print Receipt' (gsMtrRec key still renames to `managerReceipt`)",
+    "FRC":        "abbr shared between Primary Force-TTL and Secondary Normal/Forced → both become 'RSH'"
+  }
+}

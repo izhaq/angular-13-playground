@@ -1,0 +1,59 @@
+// Sized for the 1120 × 500 shell envelope (canonical breakdown lives in
+// `system-experiments-shell.component.scss`). The CMD section sits on
+// top; the unified rows component (form + grid in one CSS grid) takes
+// the remainder.
+$body-pad-x:        16px;
+$body-pad-y:        8px;
+$divider:           #4a4a4a;
+$divider-inset-x:   8px;
+$rows-gap-top:      8px;
+
+:host {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.board {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  padding: $body-pad-y $body-pad-x;
+  box-sizing: border-box;
+
+  // `min-height: 0` / `min-width: 0` so a flex child can shrink below
+  // its intrinsic content size; without these the rows area can't
+  // scroll vertically and a wide grid would push the shell into
+  // horizontal scroll.
+  min-height: 0;
+  min-width: 0;
+}
+
+.board__cmd {
+  position: relative;
+  flex: 0 0 auto;
+  padding-bottom: $body-pad-y;
+
+  // Inset divider on `::after` (instead of `border-bottom`) so the line
+  // can be padded away from the shell edges.
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: $divider-inset-x;
+    right: $divider-inset-x;
+    height: 1px;
+    background: $divider;
+  }
+}
+
+.board__rows {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  // Breathing room below the CMD-panel divider so the column-header
+  // strip doesn't sit flush against it.
+  padding-top: $rows-gap-top;
+  overflow: auto;
+}

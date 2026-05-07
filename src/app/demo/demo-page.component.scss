@@ -1,0 +1,352 @@
+// Styles live entirely inside this file. Demo is not migrated, so nothing
+// global is touched.
+
+:host {
+  display: block;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: #1f2328;
+  background: #f6f8fa;
+  min-height: 100vh;
+}
+
+:host code {
+  background: rgba(175, 184, 193, 0.2);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+.demo-page {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 32px 24px 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+
+  &__header {
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      font-weight: 700;
+    }
+
+    p {
+      margin: 0;
+      color: #57606a;
+      line-height: 1.5;
+    }
+  }
+
+  &__toc {
+    background: #fff;
+    border: 1px solid #d0d7de;
+    border-radius: 8px;
+    padding: 16px 20px;
+
+    ul {
+      margin: 0;
+      padding-left: 18px;
+      display: grid;
+      gap: 6px;
+    }
+
+    a {
+      color: #0969da;
+      text-decoration: none;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+  }
+}
+
+.demo-section {
+  background: #fff;
+  border: 1px solid #d0d7de;
+  border-radius: 8px;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  scroll-margin-top: 16px;
+  // Allow oversize children (notably the 1150px board preview, which is
+  // wider than the 880px demo-page container) to scroll horizontally
+  // instead of overflowing the section card.
+  min-width: 0;
+  overflow-x: auto;
+
+  h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  &__desc {
+    margin: 0;
+    color: #57606a;
+    line-height: 1.5;
+  }
+
+  &__example {
+    padding: 16px;
+    background: #f6f8fa;
+    border: 1px dashed #d0d7de;
+    border-radius: 6px;
+  }
+
+  // Engine-sim previews: drop the demo chrome so the components sit on
+  // the actual surface they'll live on in the shell — directly on a dark
+  // page background. Intentionally darker than the dropdowns' navy from
+  // `_dropdowns.scss` (#1a2942) so the dropdowns visibly stand out.
+  &__example--system-experiments {
+    padding: 16px 20px;
+    border: none;
+    background: #0d1626;
+    color: #e6e6e6;
+  }
+
+  // Demo-only sizer for the status-grid preview: gives the host a finite
+  // height so its internal scroll behavior is observable. Extra vertical
+  // padding so the bordered grid card has the same breathing room around
+  // it as in the design.
+  &__example--grid {
+    height: 240px;
+    overflow: hidden;
+    padding: 24px;
+  }
+
+  // Demo-only sizer for the board-layout preview. Renders at the real
+  // production envelope (1150 × 550) so the grid pane has its full ~640px
+  // and the form pane its full ~460px — exactly what the host shell will
+  // give it. The parent section gets `overflow-x: auto` so narrower demo
+  // viewports just scroll horizontally instead of crushing the layout.
+  &__example--board {
+    width: 1150px;
+    max-width: none;
+    height: 550px;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  // Demo-only sizer for the standalone form previews — bounds the height
+  // so the disabled-toggle button stays in view without scrolling the
+  // whole page. The form's own host has overflow handling already.
+  &__example--form {
+    max-height: 380px;
+    overflow: auto;
+    padding: 0;
+  }
+
+  &__actions {
+    display: flex;
+    gap: 8px;
+
+    button {
+      font: inherit;
+      padding: 6px 14px;
+      border-radius: 6px;
+      border: 1px solid #d0d7de;
+      background: #f6f8fa;
+      cursor: pointer;
+
+      &:hover {
+        background: #eaeef2;
+      }
+    }
+  }
+
+  &__state {
+    margin: 0;
+    padding: 12px 14px;
+    background: #0d1117;
+    color: #c9d1d9;
+    border-radius: 6px;
+    font-size: 12px;
+    line-height: 1.5;
+    overflow-x: auto;
+  }
+}
+
+.demo-test-id-target {
+  padding: 12px 16px;
+  background: #fff;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+}
+
+// Cell flash on change — side-by-side Version A / Version B preview.
+// Lives inside a normal .demo-section__example so it inherits the dashed
+// frame; only the inner two-pane grid + table chrome is custom.
+.demo-flash {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
+  &__panes {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    // min-width: 0 so the flex children can actually shrink past their
+    // intrinsic content width (long-number rows would otherwise blow the
+    // layout out beyond the .demo-page container at 1k cells).
+    min-width: 0;
+  }
+
+  &__pane {
+    flex: 1 1 280px;
+    min-width: 0;
+  }
+
+  &__pane-title {
+    margin: 0 0 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #57606a;
+  }
+
+  // Bounds the table at 360px so the "spawn 1000 cells" case (100 rows ×
+  // 10 cols) renders inside a scrollable container instead of pushing the
+  // whole demo page down. All 1000 cells stay in the DOM (each gets its
+  // directive instance) — only the visible viewport scrolls.
+  &__scroll {
+    max-height: 360px;
+    overflow: auto;
+    background: #fff;
+    border: 1px solid #d0d7de;
+    border-radius: 4px;
+  }
+
+  &__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+
+    th, td {
+      padding: 6px 10px;
+      border-bottom: 1px solid #eaecef;
+      // RTL-safe: end-aligned numerics (logical property, mirrors in RTL).
+      text-align: end;
+    }
+
+    thead {
+      position: sticky;
+      top: 0;
+      background: #f6f8fa;
+      z-index: 1;
+    }
+
+    thead th {
+      font-weight: 600;
+      border-bottom: 2px solid #d0d7de;
+    }
+
+    tbody th {
+      font-weight: 500;
+      color: #57606a;
+      // Row labels start-aligned (left in LTR, right in RTL).
+      text-align: start;
+    }
+  }
+
+  &__control {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+
+    input[type="number"] {
+      width: 90px;
+      padding: 4px 8px;
+      border: 1px solid #d0d7de;
+      border-radius: 4px;
+      font: inherit;
+    }
+  }
+}
+
+// Storybook-style usage guide cards. Each `.demo-usage` is a self-contained
+// docs card; `.demo-usage--do` / `.demo-usage--dont` add an accent stripe via
+// `border-inline-start` so the visual cue mirrors automatically in RTL.
+.demo-usage {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px;
+  background: #fff;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+
+  &__title {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: #1f2328;
+
+    code {
+      // Prose-sized code inside a heading should match the surrounding font
+      // weight, not the heading weight, so it reads as inline code rather
+      // than as a bolded API name.
+      font-size: 13px;
+      font-weight: 400;
+    }
+  }
+
+  &__note {
+    margin: 0;
+    color: #57606a;
+    line-height: 1.55;
+    font-size: 13.5px;
+  }
+
+  &__code {
+    margin: 0;
+    padding: 12px 14px;
+    background: #0d1117;
+    color: #c9d1d9;
+    border-radius: 4px;
+    font-size: 12.5px;
+    line-height: 1.55;
+    overflow-x: auto;
+  }
+
+  // Two-column layout for the Do / Don't cards. Stacks below 640px so the
+  // narrow demo viewport doesn't squash the lists.
+  &__row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+
+    @media (max-width: 640px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  &--do {
+    border-inline-start: 4px solid #1f883d;
+  }
+
+  &--dont {
+    border-inline-start: 4px solid #cf222e;
+  }
+
+  ul {
+    margin: 0;
+    padding-inline-start: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    color: #57606a;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  // Pane titles inside the gotcha demo are h4 (semantically subordinate to
+  // the h3 sub-block heading). Slightly tighter than the main #cell-flash
+  // section's h3 pane titles (14px) so the visual hierarchy h2 > h3 > h4
+  // holds. Scoped to .demo-usage so the main section's h3s stay at 14px.
+  .demo-flash__pane-title {
+    font-size: 13px;
+  }
+}

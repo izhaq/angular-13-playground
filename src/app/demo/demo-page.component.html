@@ -1,0 +1,524 @@
+<main class="demo-page">
+  <header class="demo-page__header">
+    <h1>Component Playground</h1>
+    <p>
+      Live preview of every component in <code>src/app/components/</code>. This
+      page is not part of the migration — only the components themselves move.
+    </p>
+  </header>
+
+  <nav class="demo-page__toc" aria-label="Sections">
+    <ul>
+      <li><a href="#dropdown-standalone">AppDropdown — standalone (input/output)</a></li>
+      <li><a href="#dropdown-reactive">AppDropdown — Reactive Forms (formControl)</a></li>
+      <li><a href="#dropdown-ngmodel">AppDropdown — Template Forms ([(ngModel)])</a></li>
+      <li><a href="#dropdown-disabled">AppDropdown — disabled state</a></li>
+      <li><a href="#multi-standalone">AppMultiDropdown — standalone</a></li>
+      <li><a href="#multi-reactive">AppMultiDropdown — Reactive Forms (formControl)</a></li>
+      <li><a href="#test-id">data-test-id (native attribute)</a></li>
+      <li><a href="#cell-flash">Cell flash on change — Version A vs. Version B</a></li>
+      <li><a href="#cell-flash-usage">Cell flash on change — Usage guide</a></li>
+      <li><a href="#engine-cmd">SystemExperiments — CmdSectionComponent</a></li>
+      <li><a href="#engine-footer">SystemExperiments — BoardFooterComponent</a></li>
+      <li><a href="#engine-rows-primary">SystemExperiments — BoardRowsComponent (Primary)</a></li>
+      <li><a href="#engine-rows-secondary">SystemExperiments — BoardRowsComponent (Secondary)</a></li>
+      <li><a href="#engine-board">SystemExperiments — BoardComponent (full layout)</a></li>
+    </ul>
+  </nav>
+
+  <section class="demo-section" id="dropdown-standalone">
+    <h2>AppDropdown — standalone (input/output)</h2>
+    <p class="demo-section__desc">
+      Single-select dropdown driven by [value] / (changed). No forms involvement.
+    </p>
+
+    <div class="demo-section__example">
+      <app-dropdown
+        label="Fruit"
+        placeholder="Choose…"
+        testId="demo-standalone-single"
+        [options]="fruits"
+        [value]="standaloneSingle"
+        (changed)="standaloneSingle = $event">
+      </app-dropdown>
+    </div>
+
+    <pre class="demo-section__state">value = {{ standaloneSingle | json }}</pre>
+  </section>
+
+  <section class="demo-section" id="dropdown-reactive">
+    <h2>AppDropdown — Reactive Forms (formControl)</h2>
+    <p class="demo-section__desc">
+      Single-select dropdown bound through AppDropdownCvaDirective using a FormControl.
+    </p>
+
+    <form [formGroup]="form" class="demo-section__example">
+      <app-dropdown
+        label="Fruit"
+        placeholder="Choose…"
+        testId="demo-reactive-single"
+        formControlName="fruit"
+        [options]="fruits">
+      </app-dropdown>
+    </form>
+
+    <div class="demo-section__actions">
+      <button type="button" (click)="resetForm()">Reset form</button>
+      <button type="button" (click)="toggleFormDisabled()">Toggle disabled</button>
+    </div>
+
+    <pre class="demo-section__state">form.value = {{ form.value | json }}
+form.status = {{ form.status }}</pre>
+  </section>
+
+  <section class="demo-section" id="dropdown-ngmodel">
+    <h2>AppDropdown — Template Forms ([(ngModel)])</h2>
+    <p class="demo-section__desc">
+      Same component, two-way bound via ngModel through the same CVA directive.
+    </p>
+
+    <div class="demo-section__example">
+      <app-dropdown
+        label="Fruit"
+        placeholder="Choose…"
+        testId="demo-ngmodel-single"
+        name="ngModelFruit"
+        [options]="fruits"
+        [(ngModel)]="ngModelSingle">
+      </app-dropdown>
+    </div>
+
+    <pre class="demo-section__state">ngModel = {{ ngModelSingle | json }}</pre>
+  </section>
+
+  <section class="demo-section" id="dropdown-disabled">
+    <h2>AppDropdown — disabled state</h2>
+    <p class="demo-section__desc">
+      Disabled flag flows through to the underlying mat-select.
+    </p>
+
+    <div class="demo-section__example">
+      <app-dropdown
+        label="Fruit"
+        placeholder="Choose…"
+        testId="demo-disabled-single"
+        [options]="fruits"
+        [value]="'banana'"
+        [disabled]="true">
+      </app-dropdown>
+    </div>
+  </section>
+
+  <section class="demo-section" id="multi-standalone">
+    <h2>AppMultiDropdown — standalone</h2>
+    <p class="demo-section__desc">
+      Multi-select variant, driven by [value] / (changed) with a string[] value.
+    </p>
+
+    <div class="demo-section__example">
+      <app-multi-dropdown
+        label="Tags"
+        placeholder="Pick tags"
+        testId="demo-standalone-multi"
+        [options]="tags"
+        [value]="standaloneMulti"
+        (changed)="standaloneMulti = $event">
+      </app-multi-dropdown>
+    </div>
+
+    <pre class="demo-section__state">value = {{ standaloneMulti | json }}</pre>
+  </section>
+
+  <section class="demo-section" id="multi-reactive">
+    <h2>AppMultiDropdown — Reactive Forms (formControl)</h2>
+    <p class="demo-section__desc">
+      Multi-select bound via the shared AppDropdownCvaDirective using a FormControl&lt;string[]&gt;.
+    </p>
+
+    <form [formGroup]="form" class="demo-section__example">
+      <app-multi-dropdown
+        label="Tags"
+        placeholder="Pick tags"
+        testId="demo-reactive-multi"
+        formControlName="tags"
+        [options]="tags">
+      </app-multi-dropdown>
+    </form>
+
+    <pre class="demo-section__state">form.value.tags = {{ form.value.tags | json }}</pre>
+  </section>
+
+  <section class="demo-section" id="test-id">
+    <h2>data-test-id (native attribute)</h2>
+    <p class="demo-section__desc">
+      Plain data-test-id attribute. Inspect the box below in DevTools.
+    </p>
+
+    <div class="demo-section__example">
+      <div class="demo-test-id-target" data-test-id="demo-test-id-target">
+        Inspect me — should have <code>data-test-id="demo-test-id-target"</code>
+      </div>
+    </div>
+  </section>
+
+  <section class="demo-section" id="cell-flash">
+    <h2>Cell flash on change directive — Version A vs. Version B</h2>
+    <p class="demo-section__desc">
+      Two side-by-side mock "live grids" on the same data model. Left grid uses
+      <code>[appFlashOnChangeCss]</code> (CSS keyframes + setTimeout); right grid uses
+      <code>[appFlashOnChangeWaapi]</code> (Web Animations API). "Re-broadcast same
+      values" proves the value-vs-reference comparison — neither grid flashes even
+      though the row references change. "Spawn 1000 cells" loads the perf stress test.
+    </p>
+
+    <div class="demo-section__example demo-flash">
+      <div class="demo-flash__panes">
+        <div class="demo-flash__pane">
+          <h3 class="demo-flash__pane-title">Version A — CSS + setTimeout</h3>
+          <div class="demo-flash__scroll">
+            <table class="demo-flash__table" data-test-id="demo-flash-table-css">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th *ngFor="let col of flashCols; trackBy: trackByFlashCol">{{ col }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let row of flashRows; trackBy: trackByFlashRowId">
+                  <th scope="row">#{{ row.id }}</th>
+                  <td
+                    *ngFor="let col of flashCols; trackBy: trackByFlashCol"
+                    [appFlashOnChangeCss]="row.values[col]"
+                    [flashDurationMs]="flashDuration">
+                    {{ row.values[col] }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="demo-flash__pane">
+          <h3 class="demo-flash__pane-title">Version B — Web Animations API</h3>
+          <div class="demo-flash__scroll">
+            <table class="demo-flash__table" data-test-id="demo-flash-table-waapi">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th *ngFor="let col of flashCols; trackBy: trackByFlashCol">{{ col }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let row of flashRows; trackBy: trackByFlashRowId">
+                  <th scope="row">#{{ row.id }}</th>
+                  <td
+                    *ngFor="let col of flashCols; trackBy: trackByFlashCol"
+                    [appFlashOnChangeWaapi]="row.values[col]"
+                    [flashDurationMs]="flashDuration">
+                    {{ row.values[col] }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <label class="demo-flash__control">
+        Flash duration (ms):
+        <input
+          type="number"
+          min="100"
+          step="100"
+          name="flashDuration"
+          [(ngModel)]="flashDuration">
+      </label>
+    </div>
+
+    <div class="demo-section__actions">
+      <button type="button" (click)="mutateOneCell()">Mutate one cell</button>
+      <button type="button" (click)="mutateAllCells()">Mutate all cells</button>
+      <button type="button" (click)="rebroadcastSameValues()">Re-broadcast same values (no flash)</button>
+      <button type="button" (click)="resetFlashTable()">Reset table</button>
+      <button type="button" (click)="spawnThousandCells()">Spawn 1000 cells (stress)</button>
+    </div>
+
+    <pre class="demo-section__state">cells: {{ flashRows.length * flashCols.length }} ({{ flashRows.length }} rows × {{ flashCols.length }} cols)
+flashDuration: {{ flashDuration }} ms</pre>
+  </section>
+
+  <section class="demo-section" id="cell-flash-usage">
+    <h2>Cell flash on change — Usage guide</h2>
+    <p class="demo-section__desc">
+      Storybook-style notes: how to use the directives correctly, what to
+      avoid, and a live demo of the most common silent failure (missing
+      <code>trackBy</code>).
+    </p>
+
+    <article class="demo-usage">
+      <h3 class="demo-usage__title">Usage</h3>
+      <pre class="demo-usage__code"><code>{{ usageSnippet }}</code></pre>
+      <p class="demo-usage__note">
+        <code>flashDurationMs</code> is optional — defaults to 10 000 ms.
+        Swap <code>appFlashOnChangeCss</code> for
+        <code>appFlashOnChangeWaapi</code> to use the Web Animations API
+        variant; the public API is identical.
+      </p>
+    </article>
+
+    <article class="demo-usage">
+      <h3 class="demo-usage__title">The <code>trackBy</code> gotcha — see it live</h3>
+      <p class="demo-usage__note">
+        Both tables below render the SAME <code>usageRows</code> array. Click
+        "Mutate one cell" — only the table with <code>trackBy</code> flashes.
+        The other rebuilds every <code>&lt;tr&gt;</code> on each emission, so
+        every cell directive sees its value as a "first emission" (no flash).
+        This is the silent failure you'll hit on real websocket-driven tables.
+      </p>
+
+      <div class="demo-flash__panes">
+        <div class="demo-flash__pane">
+          <h4 class="demo-flash__pane-title">With trackBy — flashes correctly</h4>
+          <div class="demo-flash__scroll">
+            <table class="demo-flash__table" data-test-id="usage-with-trackby">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th *ngFor="let col of usageCols; trackBy: trackByUsageCol">{{ col }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let row of usageRows; trackBy: trackByUsageRowId">
+                  <th scope="row">#{{ row.id }}</th>
+                  <td
+                    *ngFor="let col of usageCols; trackBy: trackByUsageCol"
+                    [appFlashOnChangeCss]="row.values[col]"
+                    [flashDurationMs]="flashDuration">
+                    {{ row.values[col] }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="demo-flash__pane">
+          <h4 class="demo-flash__pane-title">Without trackBy — never flashes</h4>
+          <div class="demo-flash__scroll">
+            <table class="demo-flash__table" data-test-id="usage-without-trackby">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th *ngFor="let col of usageCols">{{ col }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let row of usageRows">
+                  <th scope="row">#{{ row.id }}</th>
+                  <td
+                    *ngFor="let col of usageCols"
+                    [appFlashOnChangeCss]="row.values[col]"
+                    [flashDurationMs]="flashDuration">
+                    {{ row.values[col] }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="demo-section__actions">
+        <button type="button" (click)="mutateOneUsageCell()">Mutate one cell</button>
+        <button type="button" (click)="resetUsageTable()">Reset</button>
+      </div>
+    </article>
+
+    <div class="demo-usage__row">
+      <article class="demo-usage demo-usage--do">
+        <h3 class="demo-usage__title">Do</h3>
+        <ul>
+          <li>Bind a primitive: <code>string</code>, <code>number</code>, <code>boolean</code>, or <code>null</code>.</li>
+          <li>Set <code>trackBy</code> on every enclosing <code>*ngFor</code> / <code>mat-table</code> / virtual scroll.</li>
+          <li>Put the directive on the cell itself (e.g. <code>&lt;td&gt;</code>) — not on a wrapper.</li>
+          <li>Trust the default 10 s duration; only override for short-lived UIs.</li>
+          <li>Use <code>[appFlashOnChangeCss]</code> as the safe default. Reach for <code>[appFlashOnChangeWaapi]</code> only if you measure a perf win in your specific table.</li>
+        </ul>
+      </article>
+
+      <article class="demo-usage demo-usage--dont">
+        <h3 class="demo-usage__title">Don't</h3>
+        <ul>
+          <li>Pass an object/array — different references always trigger a flash, so every emission would flash.</li>
+          <li>Skip <code>trackBy</code> in <code>*ngFor</code> — every immutable update destroys the directive, suppressing every flash.</li>
+          <li>Put both <code>[appFlashOnChangeCss]</code> AND <code>[appFlashOnChangeWaapi]</code> on the same element — they'd double-animate.</li>
+          <li>Add it to <code>&lt;input&gt;</code> / form controls — animating their background fights browser-native styling. Wrap in a <code>&lt;div&gt;</code>.</li>
+          <li>Add it to a cell whose natural background is already amber — the flash will be invisible.</li>
+          <li>Rely on it for accessibility — the directive does NOT announce changes to screen readers.</li>
+        </ul>
+      </article>
+    </div>
+
+    <article class="demo-usage">
+      <h3 class="demo-usage__title">Pre-flight checklist</h3>
+      <ul>
+        <li>Bound value is a primitive (string / number / boolean / null).</li>
+        <li><code>trackBy</code> set on every enclosing list iterator.</li>
+        <li>Host element accepts <code>background-color</code> cleanly (not a form input, not already amber).</li>
+        <li>Parent component's change detection fires when the value changes (<code>OnPush</code> + new input ref / event / async pipe / <code>markForCheck</code>).</li>
+        <li>Only one of the two directives per element.</li>
+      </ul>
+    </article>
+  </section>
+
+  <section class="demo-section" id="engine-cmd">
+    <h2>SystemExperiments — CmdSectionComponent</h2>
+    <p class="demo-section__desc">
+      Sticky CMD header used at the top of each board. Two multi-select
+      dropdowns (Side, Wheel) emitting a fresh <code>CmdSelection</code>
+      whenever either changes. Stateless — the shell owns the selection.
+    </p>
+
+    <div class="demo-section__example demo-section__example--system-experiments">
+      <system-experiments-cmd-section
+        [selection]="cmdSelection"
+        [disabled]="cmdDisabled"
+        (selectionChange)="onCmdSelectionChange($event)">
+      </system-experiments-cmd-section>
+    </div>
+
+    <div class="demo-section__actions">
+      <button type="button" (click)="cmdDisabled = !cmdDisabled">
+        Toggle disabled (currently {{ cmdDisabled ? 'true' : 'false' }})
+      </button>
+    </div>
+
+    <pre class="demo-section__state">selection = {{ cmdSelection | json }}</pre>
+  </section>
+
+  <section class="demo-section" id="engine-footer">
+    <h2>SystemExperiments — BoardFooterComponent</h2>
+    <p class="demo-section__desc">
+      Singleton action bar with Defaults / Cancel / Apply. The shell mounts
+      ONE instance outside the tab-group and routes the three events to the
+      active board (test ids: <code>footer-defaults</code>,
+      <code>footer-cancel</code>, <code>footer-apply</code>) — there is no
+      per-board footer.
+    </p>
+
+    <div class="demo-section__example demo-section__example--system-experiments">
+      <system-experiments-board-footer
+        [disabled]="footerDisabled"
+        (defaults)="onFooterEvent('defaults')"
+        (cancel)="onFooterEvent('cancel')"
+        (apply)="onFooterEvent('apply')">
+      </system-experiments-board-footer>
+    </div>
+
+    <div class="demo-section__actions">
+      <button type="button" (click)="footerDisabled = !footerDisabled">
+        Toggle disabled (currently {{ footerDisabled ? 'true' : 'false' }})
+      </button>
+      <button type="button" (click)="footerEvents = []">Clear log</button>
+    </div>
+
+    <pre class="demo-section__state">recent events:
+{{ footerEvents.length ? (footerEvents | json) : '(none yet — click a button above)' }}</pre>
+  </section>
+
+  <section class="demo-section" id="engine-rows-primary">
+    <h2>SystemExperiments — BoardRowsComponent (Primary)</h2>
+    <p class="demo-section__desc">
+      Primary board's unified rows: 11 main fields rendered as
+      <code>[label] [control] [data-cells × 8]</code> in one CSS Grid,
+      followed by the divider and 3 form-only "Cmd to GS" rows that
+      occupy only the label + control half. Hover a data cell for column
+      highlight; click to select.
+    </p>
+
+    <div class="demo-section__example demo-section__example--system-experiments demo-section__example--grid">
+      <system-experiments-board-rows
+        [boardId]="boardIds.primary"
+        [formGroup]="primaryFormGroup"
+        [gridFields]="primaryGridFields"
+        [formOnlyFields]="primaryFormOnlyFields"
+        [columns]="primaryGridColumns"
+        [rows]="primaryGridRows">
+      </system-experiments-board-rows>
+    </div>
+
+    <div class="demo-section__actions">
+      <button type="button" (click)="togglePrimaryFormDisabled()">
+        Toggle disabled (currently {{ primaryFormGroup.disabled ? 'true' : 'false' }})
+      </button>
+    </div>
+
+    <pre class="demo-section__state">primaryFormGroup.value = {{ primaryFormGroup.value | json }}</pre>
+  </section>
+
+  <section class="demo-section" id="engine-rows-secondary">
+    <h2>SystemExperiments — BoardRowsComponent (Secondary)</h2>
+    <p class="demo-section__desc">
+      Secondary board: 14 fields, 11 data columns, no form-only subset
+      (so no divider). Same component, just different inputs.
+    </p>
+
+    <div class="demo-section__example demo-section__example--system-experiments demo-section__example--grid">
+      <system-experiments-board-rows
+        [boardId]="boardIds.secondary"
+        [formGroup]="secondaryFormGroup"
+        [gridFields]="secondaryGridFields"
+        [formOnlyFields]="secondaryFormOnlyFields"
+        [columns]="secondaryGridColumns"
+        [rows]="secondaryGridRows">
+      </system-experiments-board-rows>
+    </div>
+
+    <div class="demo-section__actions">
+      <button type="button" (click)="toggleSecondaryFormDisabled()">
+        Toggle disabled (currently {{ secondaryFormGroup.disabled ? 'true' : 'false' }})
+      </button>
+    </div>
+
+    <pre class="demo-section__state">secondaryFormGroup.value = {{ secondaryFormGroup.value | json }}</pre>
+  </section>
+
+  <section class="demo-section" id="engine-board">
+    <h2>SystemExperiments — BoardComponent (full layout)</h2>
+    <p class="demo-section__desc">
+      The Phase 4 layout primitive, wired with the Phase 3 CMD section
+      and the unified BoardRowsComponent projected into its two slots:
+      <code>[boardCmd]</code> and <code>[boardRows]</code>. The action
+      bar is the shell-level singleton rendered below — not part of the
+      board.
+    </p>
+
+    <div class="demo-section__example demo-section__example--system-experiments demo-section__example--board">
+      <system-experiments-board>
+        <system-experiments-cmd-section
+          boardCmd
+          [selection]="cmdSelection"
+          [disabled]="cmdDisabled"
+          (selectionChange)="onCmdSelectionChange($event)">
+        </system-experiments-cmd-section>
+
+        <system-experiments-board-rows
+          boardRows
+          [boardId]="boardIds.primary"
+          [formGroup]="primaryFormGroup"
+          [gridFields]="primaryGridFields"
+          [formOnlyFields]="primaryFormOnlyFields"
+          [columns]="primaryGridColumns"
+          [rows]="primaryGridRows">
+        </system-experiments-board-rows>
+      </system-experiments-board>
+
+      <system-experiments-board-footer
+        [disabled]="footerDisabled"
+        (defaults)="onFooterEvent('defaults')"
+        (cancel)="onFooterEvent('cancel')"
+        (apply)="onFooterEvent('apply')">
+      </system-experiments-board-footer>
+    </div>
+  </section>
+</main>

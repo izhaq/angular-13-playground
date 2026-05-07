@@ -1,0 +1,88 @@
+<div class="system-experiments-shell">
+
+  <header class="system-experiments-shell__chrome">
+    <span class="system-experiments-shell__test-mode-label">{{ labels.testMode }}</span>
+    <!--
+      `ng-container` object-wrapper coerces (testModeLoading$ | async) — which
+      is `boolean | null` — into a non-null `boolean`. Using `*ngIf` directly
+      on the dropdown would unmount it on every loading flip, dropping focus
+      and animation state.
+    -->
+    <ng-container *ngIf="{ loading: (testModeLoading$ | async) ?? false } as testMode">
+      <app-loading-overlay
+        class="system-experiments-shell__test-mode-control"
+        [loading]="testMode.loading"
+        spinnerTestId="shell-test-mode-spinner">
+        <app-dropdown
+          class="system-experiments-shell__test-mode"
+          testId="shell-test-mode-select"
+          [options]="testModeOptions"
+          [value]="testModeValue"
+          [disabled]="testMode.loading"
+          (changed)="onTestModeChange($event)">
+        </app-dropdown>
+      </app-loading-overlay>
+    </ng-container>
+  </header>
+
+  <mat-tab-group
+    class="system-experiments-shell__tabs app-dashboard-tabs"
+    [selectedIndex]="selectedTabIndex"
+    (selectedIndexChange)="onTabChange($event)"
+    [animationDuration]="'0ms'">
+
+    <mat-tab [label]="labels.tabPrimaryCommands">
+      <system-experiments-board>
+        <system-experiments-cmd-section
+          boardCmd
+          [selection]="cmdDraft"
+          [disabled]="cmdDisabled"
+          (selectionChange)="onCmdSelectionChange($event)">
+        </system-experiments-cmd-section>
+
+        <system-experiments-board-rows
+          boardRows
+          [boardId]="boardIds.primary"
+          [formGroup]="primary.formGroup"
+          [gridFields]="primaryGridFields"
+          [formOnlyFields]="primaryFormOnlyFields"
+          [columns]="primaryColumns"
+          [rows]="(primaryRows$ | async) ?? []">
+        </system-experiments-board-rows>
+      </system-experiments-board>
+    </mat-tab>
+
+    <mat-tab [label]="labels.tabSecondaryCommands">
+      <system-experiments-board>
+        <system-experiments-cmd-section
+          boardCmd
+          [selection]="cmdDraft"
+          [disabled]="cmdDisabled"
+          (selectionChange)="onCmdSelectionChange($event)">
+        </system-experiments-cmd-section>
+
+        <system-experiments-board-rows
+          boardRows
+          [boardId]="boardIds.secondary"
+          [formGroup]="secondary.formGroup"
+          [gridFields]="secondaryGridFields"
+          [formOnlyFields]="secondaryFormOnlyFields"
+          [columns]="secondaryColumns"
+          [rows]="(secondaryRows$ | async) ?? []">
+        </system-experiments-board-rows>
+      </system-experiments-board>
+    </mat-tab>
+
+  </mat-tab-group>
+
+  <system-experiments-board-footer
+    class="system-experiments-shell__footer"
+    [disabled]="!testMode"
+    [applyDisabled]="applyDisabled"
+    [loading]="footerLoading$ | async"
+    (defaults)="onDefaults()"
+    (cancel)="onActiveCancel()"
+    (apply)="onActiveApply()">
+  </system-experiments-board-footer>
+
+</div>

@@ -1,6 +1,0 @@
-<footer class="panel-footer">
-  <button [appTestId]="'default'" mat-stroked-button type="button" [disabled]="readOnly" (click)="defaultClicked.emit()">Default</button>
-  <span class="panel-footer__spacer"></span>
-  <button [appTestId]="'cancel'" mat-stroked-button type="button" [disabled]="readOnly" (click)="cancelled.emit()">Cancel</button>
-  <button [appTestId]="'save'" mat-flat-button color="primary" type="button" [disabled]="readOnly || saveBlocked" (click)="saved.emit()">Save</button>
-</footer>

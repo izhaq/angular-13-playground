@@ -1,9 +1,22 @@
 <div class="board">
-  <div class="board__cmd">
-    <ng-content select="[boardCmd]"></ng-content>
-  </div>
+  <!--
+    One scroll container holds both the sticky top band (CMD + column header)
+    and the scrolling rows. Because they share the same scroll container (and
+    its reserved scrollbar gutter), the header columns and the body's data
+    columns stay aligned automatically.
+  -->
+  <div class="board__scroll">
+    <div class="board__top">
+      <div class="board__cmd">
+        <ng-content select="[boardCmd]"></ng-content>
+      </div>
+      <div class="board__header">
+        <ng-content select="[boardHeader]"></ng-content>
+      </div>
+    </div>
 
-  <div class="board__rows">
-    <ng-content select="[boardRows]"></ng-content>
+    <div class="board__rows">
+      <ng-content select="[boardRows]"></ng-content>
+    </div>
   </div>
 </div>

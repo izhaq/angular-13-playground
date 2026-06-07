@@ -1,0 +1,8 @@
+<div class="grid-header" [style.--data-col-count]="columns.length">
+  <div *ngFor="let col of columns; let i = index; trackBy: trackByColId"
+       class="grid-header__cell"
+       [class.grid-header__cell--first]="i === 0"
+       [attr.data-test-id]="'grid-header-' + boardId + '-' + col.id">
+    {{ col.label }}
+  </div>
+</div>

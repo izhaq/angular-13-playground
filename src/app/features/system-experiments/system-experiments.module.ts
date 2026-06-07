@@ -17,6 +17,7 @@ import { BoardFooterComponent } from './components/board-footer/board-footer.com
 import { BoardRowsComponent } from './components/board-rows/board-rows.component';
 import { CmdSectionComponent } from './components/cmd-section/cmd-section.component';
 import { BoardComponent } from './components/board/board.component';
+import { GridHeaderComponent } from './components/grid-header/grid-header.component';
 import { SystemExperimentsShellComponent } from './system-experiments-shell/system-experiments-shell.component';
 import { SystemExperimentsResponse } from './api/api-contract';
 import { SYSTEM_EXPERIMENTS_WS_FACTORY, SystemExperimentsWebSocketFactory } from './api/api-tokens';
@@ -40,6 +41,7 @@ const defaultWebSocketFactory: SystemExperimentsWebSocketFactory =
     BoardFooterComponent,
     BoardRowsComponent,
     CmdSectionComponent,
+    GridHeaderComponent,
     SystemExperimentsShellComponent,
   ],
   imports: [
@@ -59,6 +61,7 @@ const defaultWebSocketFactory: SystemExperimentsWebSocketFactory =
     BoardFooterComponent,
     BoardRowsComponent,
     CmdSectionComponent,
+    GridHeaderComponent,
     SystemExperimentsShellComponent,
   ],
   providers: [

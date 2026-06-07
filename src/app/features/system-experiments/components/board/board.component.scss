@@ -1,17 +1,36 @@
-// Sized for the 1120 × 500 shell envelope (canonical breakdown lives in
-// `system-experiments-shell.component.scss`). The CMD section sits on
-// top; the unified rows component (form + grid in one CSS grid) takes
-// the remainder.
-$body-pad-x:        16px;
-$body-pad-y:        8px;
-$divider:           #4a4a4a;
-$divider-inset-x:   8px;
-$rows-gap-top:      8px;
+// Sized for the 1120 × 500 shell envelope. The board is one scroll container
+// with a sticky top band (CMD on the form side + the column header on the
+// data side) above the scrolling form/data rows.
+//
+// FORM/GRID SPACE SPLIT — SINGLE SOURCE OF TRUTH
+// The three `--se-*` widths below are the ONE place to tune how much room the
+// grid gets vs the label/control side. The body grid consumes the three
+// widths as its first tracks; the CMD slot's width is their sum
+// (`--se-form-side-width`); the header fills the remaining width. Shrink any
+// of them to give the data grid more space — header and body stay aligned
+// because both divide the same leftover width into the same number of
+// columns.
+$body-pad-x:      16px;
+$body-pad-y:      8px;
+$grid-pad-x:      8px;      // breathing room left + right inside the scroll area
+$rows-gap-top:    8px;
+$divider:         #4a4a4a;
+$divider-inset-x: 8px;
+$band-bg:         #242424; // opaque so scrolled rows hide behind the sticky band
 
 :host {
   display: block;
   width: 100%;
   height: 100%;
+
+  --se-label-col-w: 140px;
+  --se-control-col-w: 100px;
+  --se-form-grid-gap: 24px;
+  // Derived: width reserved for the form side (label + control + gap). The CMD
+  // slot uses this so it lines up exactly with the body's first three tracks.
+  --se-form-side-width: calc(
+    var(--se-label-col-w) + var(--se-control-col-w) + var(--se-form-grid-gap)
+  );
 }
 
 .board {
@@ -21,22 +40,36 @@ $rows-gap-top:      8px;
   height: 100%;
   padding: $body-pad-y $body-pad-x;
   box-sizing: border-box;
-
-  // `min-height: 0` / `min-width: 0` so a flex child can shrink below
-  // its intrinsic content size; without these the rows area can't
-  // scroll vertically and a wide grid would push the shell into
-  // horizontal scroll.
   min-height: 0;
   min-width: 0;
 }
 
-.board__cmd {
-  position: relative;
-  flex: 0 0 auto;
+// The single scroll context. `scrollbar-gutter: stable` reserves the
+// scrollbar width whether or not a scrollbar is shown, so the sticky band and
+// the scrolling rows always have the same content width — keeping the header
+// aligned with the data columns. Horizontal padding lives here so both the
+// band and the rows share the same left/right inset.
+.board__scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+  padding: 0 $grid-pad-x;
+}
+
+.board__top {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  background: $band-bg;
   padding-bottom: $body-pad-y;
 
-  // Inset divider on `::after` (instead of `border-bottom`) so the line
-  // can be padded away from the shell edges.
+  // Inset divider on `::after` (instead of `border-bottom`) so the line can be
+  // padded away from the band edges.
   &::after {
     content: '';
     position: absolute;
@@ -48,12 +81,23 @@ $rows-gap-top:      8px;
   }
 }
 
-.board__rows {
-  flex: 1 1 auto;
-  min-height: 0;
+// Form side: fixed to the same width as the body's label + control + gap
+// tracks so the header begins exactly above the first data column.
+.board__cmd {
+  flex: 0 0 var(--se-form-side-width);
   min-width: 0;
-  // Breathing room below the CMD-panel divider so the column-header
-  // strip doesn't sit flush against it.
+}
+
+// Data side: takes the remaining width and is divided into the same number of
+// equal columns as the body's data area.
+.board__header {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.board__rows {
+  // Breathing room below the sticky band's divider so the first data row
+  // doesn't sit flush against it.
   padding-top: $rows-gap-top;
-  overflow: auto;
+  min-width: 0;
 }

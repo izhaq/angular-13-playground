@@ -1,0 +1,47 @@
+// Column-header strip. Mirrors the data-cell metrics in
+// `board-rows.component.scss` so the header cells sit directly above and
+// align with the scrolling data columns. The grid divides its width into
+// `--data-col-count` equal tracks — the same division the body's data
+// columns use over the same data-area width (see board.component.scss).
+$cell-pad-y:    3px;
+$cell-pad-x:    10px;
+$cell-min-h:    24px;
+$cell-border:   1px solid #cccccc;
+
+:host {
+  display: block;
+  width: 100%;
+  min-width: 0;
+}
+
+.grid-header {
+  display: grid;
+  grid-template-columns: repeat(var(--data-col-count), minmax(0, 1fr));
+  width: 100%;
+  min-width: 0;
+  font-size: 12px;
+  box-sizing: border-box;
+}
+
+.grid-header__cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: $cell-min-h;
+  padding: $cell-pad-y $cell-pad-x;
+  background: #ffffff;
+  color: #1f1f1f;
+  font-weight: 600;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-top: $cell-border;
+  border-right: $cell-border;
+  border-bottom: $cell-border;
+  box-sizing: border-box;
+}
+
+.grid-header__cell--first {
+  border-left: $cell-border;
+}

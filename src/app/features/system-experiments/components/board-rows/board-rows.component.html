@@ -2,9 +2,6 @@
      [formGroup]="formGroup"
      [style.--data-col-count]="columns.length">
 
-  <!-- Column headers -->
-  <ng-container *ngTemplateOutlet="headerRow"></ng-container>
-
   <!-- Grid rows: label + control + N data cells -->
   <ng-container *ngFor="let field of gridFields; trackBy: trackByFieldKey">
     <ng-container *ngTemplateOutlet="labelControl; context: { field: field }"></ng-container>
@@ -23,21 +20,6 @@
     <ng-container *ngTemplateOutlet="labelControl; context: { field: field }"></ng-container>
     <div class="board-rows__form-only-spacer" aria-hidden="true"></div>
   </ng-container>
-
-
-  <!-- Header row template -->
-  <ng-template #headerRow>
-    <div class="board-rows__header-empty board-rows__header-empty--label" aria-hidden="true"></div>
-    <div class="board-rows__header-empty board-rows__header-empty--control" aria-hidden="true"></div>
-
-    <div *ngFor="let col of columns; let i = index; trackBy: trackByColId"
-         class="board-rows__header-cell"
-         [class.board-rows__header-cell--first]="i === 0"
-         [class.board-rows__header-cell--hovered]="hoveredColId === col.id"
-         [attr.data-test-id]="'grid-header-' + boardId + '-' + col.id">
-      {{ col.label }}
-    </div>
-  </ng-template>
 
 
   <!-- Label + control template (shared by grid and form-only rows) -->

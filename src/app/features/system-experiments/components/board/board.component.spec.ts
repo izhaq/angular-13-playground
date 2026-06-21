@@ -7,10 +7,11 @@ import { BoardComponent } from './board.component';
 /**
  * Host that projects uniquely-identifiable nodes — one per slot — so the
  * spec can assert each lands in the structural container the board layout
- * dictates. The board is a 3-slot surface: a sticky top band carries the
+ * dictates. The board is a 3-slot surface: a fixed top band carries the
  * CMD section (form side) and the column header (data side) on one line,
- * with the unified form/data rows scrolling beneath. The action bar is
- * mounted by the SHELL outside the tab-group, so it is not a board concern.
+ * with the form/data rows scrolling beneath (only `.board__rows` scrolls).
+ * The action bar is mounted by the SHELL outside the tab-group, so it is
+ * not a board concern.
  */
 @Component({
   template: `
@@ -72,18 +73,20 @@ describe('BoardComponent', () => {
     expect(markerInside('board__rows', 'rows-marker')).toBe(true);
   });
 
-  it('places cmd + header together in the sticky top band, above the rows', () => {
-    // Shape contract: CMD and header share the sticky band (one line); rows
-    // scroll beneath. Asserting structural containment keeps the spec coupled
-    // to the layout contract, not to specific CSS values.
+  it('places cmd + header together in the fixed top band, above the scrolling rows', () => {
+    // Shape contract: CMD and header share the top band (one line); the rows
+    // region is a separate sibling that scrolls. Asserting structural
+    // containment keeps the spec coupled to the layout contract, not to
+    // specific CSS values.
     const top = fixture.debugElement.query(By.css('.board__top'));
     expect(top).toBeTruthy();
     expect(top.nativeElement.querySelector('.board__cmd')).toBeTruthy();
     expect(top.nativeElement.querySelector('.board__header')).toBeTruthy();
 
-    const scroll = fixture.debugElement.query(By.css('.board__scroll'));
-    expect(scroll).toBeTruthy();
-    expect(scroll.nativeElement.querySelector('.board__top')).toBeTruthy();
-    expect(scroll.nativeElement.querySelector('.board__rows')).toBeTruthy();
+    // Rows are a sibling of the band (not nested inside it), so only the rows
+    // scroll while the band stays put.
+    const board = fixture.debugElement.query(By.css('.board'));
+    expect(board.nativeElement.querySelector('.board__rows')).toBeTruthy();
+    expect(top.nativeElement.querySelector('.board__rows')).toBeNull();
   });
 });

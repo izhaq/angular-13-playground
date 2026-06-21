@@ -1,22 +1,27 @@
-// Sized for the 1120 × 500 shell envelope. The board is one scroll container
-// with a sticky top band (CMD on the form side + the column header on the
-// data side) above the scrolling form/data rows.
+// Sized for the 1120 × 500 shell envelope. The board is a fixed top band (CMD
+// on the form side + the column header on the data side) above a SCROLLING
+// rows region. Only the rows scroll — the band stays put — so the scrollbar
+// appears beside the form/data rows only, not alongside the header.
+//
+// COLUMN ALIGNMENT
+// The rows region reserves a scrollbar gutter (`scrollbar-gutter: stable`).
+// The band reserves the SAME gutter (it is a non-scrolling scroll container,
+// so it never shows a scrollbar but keeps an identical content width). Both
+// therefore divide the same leftover width into the same data columns and stay
+// aligned with or without an active scrollbar.
 //
 // FORM/GRID SPACE SPLIT — SINGLE SOURCE OF TRUTH
 // The three `--se-*` widths below are the ONE place to tune how much room the
 // grid gets vs the label/control side. The body grid consumes the three
 // widths as its first tracks; the CMD slot's width is their sum
-// (`--se-form-side-width`); the header fills the remaining width. Shrink any
-// of them to give the data grid more space — header and body stay aligned
-// because both divide the same leftover width into the same number of
-// columns.
+// (`--se-form-side-width`); the header fills the remaining width.
 $body-pad-x:      16px;
 $body-pad-y:      8px;
-$grid-pad-x:      8px;      // breathing room left + right inside the scroll area
+$grid-pad-x:      8px;      // breathing room left + right of band and rows
 $rows-gap-top:    8px;
 $divider:         #4a4a4a;
 $divider-inset-x: 8px;
-$band-bg:         #242424; // opaque so scrolled rows hide behind the sticky band
+$band-bg:         #242424;
 
 :host {
   display: block;
@@ -42,31 +47,23 @@ $band-bg:         #242424; // opaque so scrolled rows hide behind the sticky ban
   box-sizing: border-box;
   min-height: 0;
   min-width: 0;
+  overflow: hidden; // the board itself never scrolls — only `.board__rows` does
 }
 
-// The single scroll context. `scrollbar-gutter: stable` reserves the
-// scrollbar width whether or not a scrollbar is shown, so the sticky band and
-// the scrolling rows always have the same content width — keeping the header
-// aligned with the data columns. Horizontal padding lives here so both the
-// band and the rows share the same left/right inset.
-.board__scroll {
-  flex: 1 1 auto;
-  min-height: 0;
-  min-width: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  scrollbar-gutter: stable;
-  padding: 0 $grid-pad-x;
-}
-
+// Fixed top band — does not scroll. `overflow-y: auto` makes it a scroll
+// container purely so `scrollbar-gutter: stable` reserves the same right-edge
+// gutter as the rows region (its single row never overflows, so no scrollbar
+// is shown). Horizontal padding matches `.board__rows` so content boxes align.
 .board__top {
-  position: sticky;
-  top: 0;
-  z-index: 1;
+  position: relative;
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   background: $band-bg;
-  padding-bottom: $body-pad-y;
+  padding: 0 $grid-pad-x $body-pad-y;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
 
   // Inset divider on `::after` (instead of `border-bottom`) so the line can be
   // padded away from the band edges.
@@ -95,9 +92,15 @@ $band-bg:         #242424; // opaque so scrolled rows hide behind the sticky ban
   min-width: 0;
 }
 
+// The ONLY scrolling region. Reserves the scrollbar gutter so its content
+// width stays constant (and equal to the band's) whether or not a scrollbar is
+// active. Horizontal padding matches `.board__top`.
 .board__rows {
-  // Breathing room below the sticky band's divider so the first data row
-  // doesn't sit flush against it.
-  padding-top: $rows-gap-top;
+  flex: 1 1 auto;
+  min-height: 0;
   min-width: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  padding: $rows-gap-top $grid-pad-x 0;
 }

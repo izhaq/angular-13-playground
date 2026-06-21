@@ -43,7 +43,8 @@
         <system-experiments-grid-header
           boardHeader
           [boardId]="boardIds.primary"
-          [columns]="primaryColumns">
+          [columns]="primaryColumns"
+          [highlight]="primaryColHighlight">
         </system-experiments-grid-header>
 
         <system-experiments-board-rows
@@ -53,6 +54,7 @@
           [gridFields]="primaryGridFields"
           [formOnlyFields]="primaryFormOnlyFields"
           [columns]="primaryColumns"
+          [highlight]="primaryColHighlight"
           [rows]="(primaryRows$ | async) ?? []">
         </system-experiments-board-rows>
       </system-experiments-board>
@@ -70,7 +72,8 @@
         <system-experiments-grid-header
           boardHeader
           [boardId]="boardIds.secondary"
-          [columns]="secondaryColumns">
+          [columns]="secondaryColumns"
+          [highlight]="secondaryColHighlight">
         </system-experiments-grid-header>
 
         <system-experiments-board-rows
@@ -80,6 +83,7 @@
           [gridFields]="secondaryGridFields"
           [formOnlyFields]="secondaryFormOnlyFields"
           [columns]="secondaryColumns"
+          [highlight]="secondaryColHighlight"
           [rows]="(secondaryRows$ | async) ?? []">
         </system-experiments-board-rows>
       </system-experiments-board>

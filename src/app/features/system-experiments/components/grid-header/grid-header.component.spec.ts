@@ -13,6 +13,9 @@ import { GridColumn } from '../../shared/models';
  *   - legacy E2E test id preserved: `grid-header-{boardId}-{colId}`
  *   - `--data-col-count` exposed on the grid so its tracks match the body
  *   - the first cell is flagged so it can carry the left border
+ *   - column highlight via the shared `ColumnHighlightStore`: hover tints the
+ *     column, click pins it (toggle), and an externally-set pin is reflected
+ *     (the body sets the same store)
  */
 describe('GridHeaderComponent', () => {
   let fixture: ComponentFixture<GridHeaderComponent>;
@@ -59,5 +62,60 @@ describe('GridHeaderComponent', () => {
     const cells = fixture.debugElement.queryAll(By.css('.grid-header__cell'));
     expect(cells[0].nativeElement.classList).toContain('grid-header__cell--first');
     expect(cells[1].nativeElement.classList).not.toContain('grid-header__cell--first');
+  });
+
+  // ---------------------------------------------------------------------------
+  // Column highlight (shared ColumnHighlightStore)
+  // ---------------------------------------------------------------------------
+
+  function headerCell(colId: string) {
+    return fixture.debugElement.query(
+      By.css(`[data-test-id="grid-header-${component.boardId}-${colId}"]`),
+    );
+  }
+
+  it('hovering a header cell tints that column and clears on leave', () => {
+    const cell = headerCell(columns[1].id);
+
+    cell.triggerEventHandler('mouseenter', null);
+    fixture.detectChanges();
+    expect(cell.nativeElement.classList).toContain('grid-header__cell--col-hovered');
+
+    cell.triggerEventHandler('mouseleave', null);
+    fixture.detectChanges();
+    expect(cell.nativeElement.classList).not.toContain('grid-header__cell--col-hovered');
+  });
+
+  it('clicking a header cell pins the column; clicking again clears it', () => {
+    const cell = headerCell(columns[0].id);
+
+    cell.triggerEventHandler('click', null);
+    fixture.detectChanges();
+    expect(cell.nativeElement.classList).toContain('grid-header__cell--col-selected');
+    expect(component.highlight.selected).toBe(columns[0].id);
+
+    cell.triggerEventHandler('click', null);
+    fixture.detectChanges();
+    expect(cell.nativeElement.classList).not.toContain('grid-header__cell--col-selected');
+    expect(component.highlight.selected).toBeNull();
+  });
+
+  it('clicking a different header moves the pinned column', () => {
+    headerCell(columns[0].id).triggerEventHandler('click', null);
+    headerCell(columns[1].id).triggerEventHandler('click', null);
+    fixture.detectChanges();
+
+    expect(headerCell(columns[0].id).nativeElement.classList)
+      .not.toContain('grid-header__cell--col-selected');
+    expect(headerCell(columns[1].id).nativeElement.classList)
+      .toContain('grid-header__cell--col-selected');
+  });
+
+  it('reflects a pin set externally on the shared store (body ↔ header sync)', () => {
+    component.highlight.toggleSelect(columns[2].id);
+    fixture.detectChanges();
+
+    expect(headerCell(columns[2].id).nativeElement.classList)
+      .toContain('grid-header__cell--col-selected');
   });
 });

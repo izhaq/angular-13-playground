@@ -99,10 +99,20 @@ $cell-border:      1px solid #cccccc;
   border-left: $cell-border;
 }
 
+// Transient column hover (from a data cell here OR the detached header).
 .board-rows__data-cell--col-hovered {
   background: #eef4ff;
 }
 
+// Pinned column (header click). Stronger fill than hover; declared after the
+// hover rule so a pinned column keeps its fill while also hovered. Kept in sync
+// with `grid-header.component.scss` so the band reads as one continuous column.
+.board-rows__data-cell--col-selected {
+  background: #d8e6ff;
+}
+
+// Single-cell selection (clicking a data cell) — orthogonal to column
+// highlight: an outline, so it layers cleanly on top of any column fill.
 .board-rows__data-cell--selected {
   outline: 2px solid #1976d2;
   outline-offset: -2px;

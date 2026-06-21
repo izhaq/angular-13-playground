@@ -8,6 +8,12 @@ $cell-pad-x:    10px;
 $cell-min-h:    24px;
 $cell-border:   1px solid #cccccc;
 
+// Column highlight tints. Kept in sync with `board-rows.component.scss` so a
+// hovered / pinned column reads as one continuous band across header + body.
+$col-hovered-bg:      #eef4ff;
+$col-selected-bg:     #d8e6ff;
+$col-selected-accent: #1976d2;
+
 :host {
   display: block;
   width: 100%;
@@ -40,8 +46,27 @@ $cell-border:   1px solid #cccccc;
   border-right: $cell-border;
   border-bottom: $cell-border;
   box-sizing: border-box;
+  // Headers are interactive: click pins a column highlight.
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.08s ease;
 }
 
 .grid-header__cell--first {
   border-left: $cell-border;
+}
+
+// Transient hover highlight — must match the body's `--col-hovered` tint so a
+// hovered column reads as one continuous band from header through data.
+.grid-header__cell--col-hovered {
+  background: $col-hovered-bg;
+}
+
+// Pinned (clicked) column. Stronger fill than hover, plus a brand-blue accent
+// under the header cell to mark it as the active column. `box-shadow` (not a
+// border) avoids shifting the cell's box / breaking column alignment. Declared
+// after the hover rule so a pinned column keeps its fill while also hovered.
+.grid-header__cell--col-selected {
+  background: $col-selected-bg;
+  box-shadow: inset 0 -2px 0 $col-selected-accent;
 }

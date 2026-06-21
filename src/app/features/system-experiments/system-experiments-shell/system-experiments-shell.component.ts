@@ -23,6 +23,7 @@ import { SECONDARY_COMMANDS_ALL_FIELDS } from '../boards/secondary-commands/seco
 import { SECONDARY_COMMANDS_COLUMNS } from '../boards/secondary-commands/secondary-commands.columns';
 import { DropdownOption } from '../_external/ui-primitives';
 import { BOARD_IDS } from '../shared/ids';
+import { ColumnHighlightStore } from '../shared/column-highlight.store';
 import { SYSTEM_EXPERIMENTS_LABELS } from '../shared/labels';
 import { CmdSelection, FieldConfig, GridColumn, GridRow } from '../shared/models';
 
@@ -50,6 +51,13 @@ export class SystemExperimentsShellComponent implements OnDestroy {
 
   readonly primaryColumns: GridColumn[] = PRIMARY_COMMANDS_COLUMNS;
   readonly secondaryColumns: GridColumn[] = SECONDARY_COMMANDS_COLUMNS;
+
+  // One column-highlight store per board, shared between that board's detached
+  // header and its scrolling body so column hover/click highlight stays in
+  // sync across the two now-separate components. Per-board (not global) so the
+  // two tabs' highlights never leak into each other.
+  readonly primaryColHighlight = new ColumnHighlightStore();
+  readonly secondaryColHighlight = new ColumnHighlightStore();
 
   // Field lists handed to <system-experiments-board-rows>. `gridFields`
   // appear in the data area; `formOnlyFields` get a label + control but

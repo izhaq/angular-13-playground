@@ -6,6 +6,7 @@ import {
 import { FormGroup } from '@angular/forms';
 
 import { BoardId, GridColId } from '../../shared/ids';
+import { ColumnHighlightStore } from '../../shared/column-highlight.store';
 import { FieldConfig, GridColumn, GridRow } from '../../shared/models';
 
 /**
@@ -40,6 +41,14 @@ export class BoardRowsComponent {
   @Input() columns: GridColumn[] = [];
 
   /**
+   * Shared per-board hover/selection state. Hovering a data cell highlights its
+   * whole column (incl. the header), and the header can pin a column highlight
+   * that shows here too. Defaulted so the component renders standalone (tests);
+   * the shell supplies the instance shared with the matching `GridHeaderComponent`.
+   */
+  @Input() highlight: ColumnHighlightStore = new ColumnHighlightStore();
+
+  /**
    * Setter (rather than property) so we can pre-index by field key once
    * per emission instead of per template binding.
    */
@@ -48,7 +57,6 @@ export class BoardRowsComponent {
   }
   private rowByKey = new Map<string, GridRow>();
 
-  hoveredColId: GridColId | null = null;
   /** Composite "{fieldKey}|{colId}" — null when nothing is selected. */
   selectedCellId: string | null = null;
 
@@ -57,11 +65,11 @@ export class BoardRowsComponent {
   }
 
   onEnterColumn(colId: GridColId): void {
-    this.hoveredColId = colId;
+    this.highlight.hover(colId);
   }
 
   onLeaveColumn(): void {
-    this.hoveredColId = null;
+    this.highlight.hover(null);
   }
 
   onCellClick(fieldKey: string, colId: GridColId): void {

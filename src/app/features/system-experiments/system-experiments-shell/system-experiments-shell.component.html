@@ -40,6 +40,12 @@
           (selectionChange)="onCmdSelectionChange($event)">
         </system-experiments-cmd-section>
 
+        <system-experiments-grid-header
+          boardHeader
+          [boardId]="boardIds.primary"
+          [columns]="primaryColumns">
+        </system-experiments-grid-header>
+
         <system-experiments-board-rows
           boardRows
           [boardId]="boardIds.primary"
@@ -60,6 +66,12 @@
           [disabled]="cmdDisabled"
           (selectionChange)="onCmdSelectionChange($event)">
         </system-experiments-cmd-section>
+
+        <system-experiments-grid-header
+          boardHeader
+          [boardId]="boardIds.secondary"
+          [columns]="secondaryColumns">
+        </system-experiments-grid-header>
 
         <system-experiments-board-rows
           boardRows

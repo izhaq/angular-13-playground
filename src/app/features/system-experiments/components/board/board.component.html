@@ -1,6 +1,17 @@
 <div class="board">
-  <div class="board__cmd">
-    <ng-content select="[boardCmd]"></ng-content>
+  <!--
+    Fixed top band (CMD + column header) sits above a scrolling rows region.
+    Only `.board__rows` scrolls; the band stays put. Both reserve the same
+    scrollbar gutter so the header columns and the body's data columns stay
+    aligned with or without an active scrollbar.
+  -->
+  <div class="board__top">
+    <div class="board__cmd">
+      <ng-content select="[boardCmd]"></ng-content>
+    </div>
+    <div class="board__header">
+      <ng-content select="[boardHeader]"></ng-content>
+    </div>
   </div>
 
   <div class="board__rows">

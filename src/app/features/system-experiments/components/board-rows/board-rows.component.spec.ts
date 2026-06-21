@@ -14,10 +14,12 @@ import { BOARD_IDS, COL_IDS } from '../../shared/ids';
 import { FieldConfig, GridColumn, GridRow } from '../../shared/models';
 
 /**
- * BoardRowsComponent owns the unified form + grid layout (Option B).
+ * BoardRowsComponent owns the unified form + data-grid body. The column
+ * header was extracted into `GridHeaderComponent` (it lives on the sticky
+ * CMD band, not in this scrolling body), so this spec no longer asserts a
+ * header strip — see `grid-header.component.spec.ts` for that.
  * The contract this spec pins:
  *   - one CSS Grid container with `--data-col-count` set to columns.length
- *   - column-header strip (corner cells + one header per column)
  *   - per `gridFields[i]`: label, control bound by `formControlName`,
  *     and one data cell per column; cell text comes from `rows` keyed
  *     by `fieldKey`
@@ -25,9 +27,8 @@ import { FieldConfig, GridColumn, GridRow } from '../../shared/models';
  *   - per `formOnlyFields[i]`: label + control + a row-end spacer (no
  *     data cells) so auto-flow snaps to a new row
  *   - test ids match the legacy contract so existing E2E selectors keep
- *     working: `grid-header-{boardId}-{colId}`, `grid-label-{boardId}-{key}`,
- *     `form-{boardId}-{key}`, `grid-{boardId}-{key}-{colId}`,
- *     `section-{boardId}-cmd-to-gs`
+ *     working: `grid-label-{boardId}-{key}`, `form-{boardId}-{key}`,
+ *     `grid-{boardId}-{key}-{colId}`, `section-{boardId}-cmd-to-gs`
  */
 describe('BoardRowsComponent', () => {
   let fixture: ComponentFixture<BoardRowsComponent>;
@@ -109,17 +110,12 @@ describe('BoardRowsComponent', () => {
       .toBe(String(columns.length));
   });
 
-  // ---------------------------------------------------------------------------
-  // Column headers
-  // ---------------------------------------------------------------------------
-
-  it('renders one header cell per column, with the legacy test id', () => {
+  it('does NOT render the column header (extracted to GridHeaderComponent)', () => {
     columns.forEach((col) => {
       const header = fixture.debugElement.query(
         By.css(`[data-test-id="grid-header-${component.boardId}-${col.id}"]`),
       );
-      expect(header).withContext(`expected header for ${col.id}`).not.toBeNull();
-      expect(header.nativeElement.textContent.trim()).toBe(col.label);
+      expect(header).withContext(`header for ${col.id} should no longer live here`).toBeNull();
     });
   });
 

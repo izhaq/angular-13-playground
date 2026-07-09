@@ -24,45 +24,50 @@
 .app-dashboard-tabs {
 
   // -- Tab body (sizing) -----------------------------------------------------
-  .mat-tab-body-wrapper {
+  .mat-mdc-tab-body-wrapper {
     flex: 1;
     min-height: 0;
   }
-
-  .mat-tab-body,
-  .mat-tab-body-content {
+  .mat-mdc-tab-body,
+  .mat-mdc-tab-body-content {
     height: 100%;
   }
 
   // -- Tab header (look + height) -------------------------------------------
-  .mat-tab-header {
+  .mat-mdc-tab-header {
     border-bottom: 1px solid #2d2d2d;
     flex-shrink: 0;
   }
-
-  .mat-tab-labels {
+  .mat-mdc-tab-labels {
     padding: 0 12px;
   }
 
-  .mat-tab-label {
+  // MDC's tab button is `.mat-mdc-tab` (aka `.mdc-tab`); its label text lives
+  // in a dedicated `.mdc-tab__text-label` element themed via CSS vars, so the
+  // color is set there rather than on the button.
+  .mat-mdc-tab {
     height: 36px;
+    min-height: 36px;
     min-width: 0;
     padding: 0 16px;
-    font-size: 13px;
-    font-weight: 500;
-    color: rgba(230, 230, 230, 0.55);
     opacity: 1;
 
-    &.mat-tab-label-active {
+    .mdc-tab__text-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: rgba(230, 230, 230, 0.55);
+    }
+
+    &.mdc-tab--active .mdc-tab__text-label {
       color: #ffffff;
     }
   }
 
-  // Material draws an ink bar at the bottom of the header. Slightly
+  // MDC draws the ink bar as the underline element's top border. Slightly
   // thicker than default + tinted to the accent so it reads on the dark
   // background.
-  .mat-ink-bar {
-    height: 2px;
-    background-color: #1e88e5;
+  .mdc-tab-indicator__content--underline {
+    border-top-width: 2px;
+    border-color: #1e88e5;
   }
 }

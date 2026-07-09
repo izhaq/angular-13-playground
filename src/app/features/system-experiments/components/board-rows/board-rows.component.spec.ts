@@ -1,6 +1,6 @@
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { UntypedFormControl, UntypedFormGroup, ReactiveFormsModule } from '@angular/forms';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { By } from '@angular/platform-browser';
 
@@ -67,12 +67,12 @@ describe('BoardRowsComponent', () => {
     },
   ];
 
-  function buildFormGroup(allFields: FieldConfig[]): FormGroup {
-    const controls: { [key: string]: FormControl } = {};
+  function buildFormGroup(allFields: FieldConfig[]): UntypedFormGroup {
+    const controls: { [key: string]: UntypedFormControl } = {};
     allFields.forEach((f) => {
-      controls[f.key] = new FormControl(f.defaultValue);
+      controls[f.key] = new UntypedFormControl(f.defaultValue);
     });
-    return new FormGroup(controls);
+    return new UntypedFormGroup(controls);
   }
 
   beforeEach(async () => {

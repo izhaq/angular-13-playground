@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { FormGroup } from '@angular/forms';
+import { UntypedFormGroup } from '@angular/forms';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 
@@ -16,7 +16,7 @@ import {
 @Injectable()
 export class SecondaryCommandsBoardService {
 
-  readonly formGroup: FormGroup = buildFormGroup(SECONDARY_COMMANDS_ALL_FIELDS);
+  readonly formGroup: UntypedFormGroup = buildFormGroup(SECONDARY_COMMANDS_ALL_FIELDS);
 
   private snapshot: Record<string, unknown> = this.formGroup.getRawValue();
 

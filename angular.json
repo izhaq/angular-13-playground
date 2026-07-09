@@ -45,7 +45,7 @@
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "750kb",
+                  "maximumWarning": "850kb",
                   "maximumError": "1mb"
                 },
                 {
@@ -120,6 +120,5 @@
         }
       }
     }
-  },
-  "defaultProject": "angular-13-playground"
+  }
 }

@@ -7,6 +7,11 @@
 //
 // Migration: the host project will replace this with its own theme file.
 // System Experiments picks up whatever the host registers.
+//
+// `mat.all-component-typographies()` provides default (MDC) typography for all
+// components plus the typography hierarchy classes (e.g. .mat-headline-1);
+// `mat.core()` emits the shared MDC prerequisite styles.
+@include mat.all-component-typographies();
 @include mat.core();
 
 // Custom palette tuned to the system-experiments navy/accent so the Material
@@ -29,6 +34,8 @@ $system-experiments-theme: mat.define-light-theme((
 @include mat.tabs-theme($system-experiments-theme);
 @include mat.slide-toggle-theme($system-experiments-theme);
 @include mat.button-theme($system-experiments-theme);
+@include mat.fab-theme($system-experiments-theme);
+@include mat.icon-button-theme($system-experiments-theme);
 @include mat.tooltip-theme($system-experiments-theme);
 
 @import './styles/dropdowns';

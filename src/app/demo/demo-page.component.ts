@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { FormControl, FormGroup } from '@angular/forms';
+import { UntypedFormControl, UntypedFormGroup } from '@angular/forms';
 
 import { DropdownOption } from '../components/app-dropdown/app-dropdown.models';
 
@@ -62,9 +62,9 @@ export class DemoPageComponent {
   ngModelSingle = 'apple';
   standaloneMulti: string[] = ['red', 'blue'];
 
-  readonly form = new FormGroup({
-    fruit: new FormControl('cherry'),
-    tags: new FormControl(['green']),
+  readonly form = new UntypedFormGroup({
+    fruit: new UntypedFormControl('cherry'),
+    tags: new UntypedFormControl(['green']),
   });
 
   resetForm(): void {
@@ -138,8 +138,8 @@ export class DemoPageComponent {
   // `[disabled]` input, the FormGroup is the single source of truth
   // for that bit of state.
 
-  readonly primaryFormGroup: FormGroup = buildFormGroup(PRIMARY_COMMANDS_ALL_FIELDS);
-  readonly secondaryFormGroup: FormGroup = buildFormGroup(SECONDARY_COMMANDS_ALL_FIELDS);
+  readonly primaryFormGroup: UntypedFormGroup = buildFormGroup(PRIMARY_COMMANDS_ALL_FIELDS);
+  readonly secondaryFormGroup: UntypedFormGroup = buildFormGroup(SECONDARY_COMMANDS_ALL_FIELDS);
 
   readonly primaryGridFields: FieldConfig[]     = PRIMARY_COMMANDS_MAIN_FIELDS;
   readonly primaryFormOnlyFields: FieldConfig[] = PRIMARY_COMMANDS_CMD_TO_GS_FIELDS;

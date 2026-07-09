@@ -51,62 +51,67 @@ $row-selected: rgba(255, 255, 255, 0.14);
   width: auto;
   min-width: 5rem;
 
-  .mat-form-field-flex {
+  // MDC's filled text-field wrapper is the visible control surface.
+  .mat-mdc-text-field-wrapper {
     background: $bg;
     border: 1px solid $border;
     border-radius: $radius;
     padding: $pad-y $pad-x;
+  }
+
+  // Keep the control a flat solid box — drop MDC's hover/focus tint overlay.
+  .mat-mdc-form-field-focus-overlay {
+    opacity: 0;
+  }
+
+  .mat-mdc-form-field-flex {
     align-items: center;
     min-height: 0;
   }
 
-  &.mat-focused .mat-form-field-flex {
+  &.mat-focused .mat-mdc-text-field-wrapper {
     border-color: $border-focused;
   }
 
-  &.mat-form-field-disabled .mat-form-field-flex {
+  &.mat-form-field-disabled .mat-mdc-text-field-wrapper {
     opacity: 0.55;
     cursor: not-allowed;
   }
 
-  .mat-form-field-infix {
+  // Collapse MDC's tall infix (default 56px min-height + label padding).
+  .mat-mdc-form-field-infix {
     padding: 0;
-    border-top: 0;
+    min-height: 0;
     width: auto;
   }
 
-  .mat-form-field-wrapper {
-    padding: 0;
-    margin: 0;
-  }
-
-  .mat-form-field-subscript-wrapper,
-  .mat-form-field-underline,
-  .mat-form-field-ripple {
+  // MDC's fill underline + subscript row aren't part of our flat control.
+  .mdc-line-ripple,
+  .mat-mdc-form-field-subscript-wrapper {
     display: none;
   }
 
-  .mat-select,
-  .mat-select-value,
-  .mat-select-value-text {
+  .mat-mdc-select,
+  .mat-mdc-select-value,
+  .mat-mdc-select-value-text,
+  .mat-mdc-select-min-line {
     color: $text;
     font-size: $font-size;
     line-height: $line-height;
   }
 
-  .mat-select-value,
-  .mat-select-value-text {
+  .mat-mdc-select-value {
     max-width: 100%;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
-  .mat-select-placeholder {
+  .mat-mdc-select-placeholder {
     color: $text-muted;
   }
 
-  .mat-select-trigger {
+  .mat-mdc-select-trigger {
     display: flex;
     align-items: center;
     gap: $spacing-sm;
@@ -114,20 +119,25 @@ $row-selected: rgba(255, 255, 255, 0.14);
 
   // Cancel Material's vertical translate (it shifts the arrow up to make
   // room for the floating-label area, which we don't render).
-  .mat-select-arrow-wrapper {
+  .mat-mdc-select-arrow-wrapper {
     transform: none;
     height: auto;
   }
 
-  // White chevron in a fixed-size box. The pseudo-element owns the rotation
-  // so it's never affected by anything Material does to the wrapper / arrow.
-  .mat-select-arrow {
+  // White chevron in a fixed-size box. MDC renders an <svg> caret, so hide it
+  // and draw our own; the pseudo-element owns the rotation so it's never
+  // affected by anything Material does to the wrapper / arrow.
+  .mat-mdc-select-arrow {
     position: relative;
     width: 10px;
     height: 10px;
     margin: 0;
     border: 0;
     color: $text;
+
+    svg {
+      display: none;
+    }
 
     &::before {
       content: '';
@@ -143,8 +153,8 @@ $row-selected: rgba(255, 255, 255, 0.14);
     }
   }
 
-  // Material sets aria-expanded on .mat-select while the panel is open.
-  .mat-select[aria-expanded='true'] .mat-select-arrow::before {
+  // Material sets aria-expanded on .mat-mdc-select while the panel is open.
+  .mat-mdc-select[aria-expanded='true'] .mat-mdc-select-arrow::before {
     transform: rotate(225deg);
   }
 }
@@ -164,33 +174,54 @@ $row-selected: rgba(255, 255, 255, 0.14);
 }
 
 // Open-state panel (rendered in a CDK overlay outside the component DOM)
-.app-dropdown-panel.mat-select-panel {
+.app-dropdown-panel.mat-mdc-select-panel {
   background: $bg;
   border: 1px solid $border;
   border-radius: $radius;
   padding: 4px 0;
 
-  .mat-option {
+  .mat-mdc-option {
     color: $text;
     font-size: $font-size;
     line-height: $line-height;
-    height: auto;
     min-height: 0;
     padding: 6px 10px;
 
-    &:hover:not(.mat-option-disabled),
-    &.mat-active:not(.mat-option-disabled) {
+    // MDC wraps the label text in its own element with theme-driven typography.
+    .mdc-list-item__primary-text {
+      color: $text;
+      font-size: $font-size;
+      line-height: $line-height;
+    }
+
+    &:hover:not(.mdc-list-item--disabled),
+    &.mat-mdc-option-active:not(.mdc-list-item--disabled) {
       background: $row-hover;
     }
 
-    &.mat-selected:not(.mat-option-multiple) {
+    &.mdc-list-item--selected:not(.mat-mdc-option-multiple) {
       color: $text;
       background: $row-selected;
+
+      .mdc-list-item__primary-text {
+        color: $text;
+      }
     }
 
-    &.mat-option-disabled {
+    &.mdc-list-item--disabled {
       color: rgba(255, 255, 255, 0.4);
+
+      .mdc-list-item__primary-text {
+        color: rgba(255, 255, 255, 0.4);
+      }
     }
+  }
+
+  // Single-select renders a "minimal" check on the selected row that the
+  // legacy look never showed — hide it. The multi-select checkbox
+  // (non-minimal) stays and is styled below.
+  .mat-pseudo-checkbox-minimal {
+    display: none;
   }
 
   .mat-pseudo-checkbox {

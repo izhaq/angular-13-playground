@@ -3,7 +3,7 @@ import {
   Component,
   Input,
 } from '@angular/core';
-import { FormGroup } from '@angular/forms';
+import { UntypedFormGroup } from '@angular/forms';
 
 import { BoardId, GridColId } from '../../shared/ids';
 import { FieldConfig, GridColumn, GridRow } from '../../shared/models';
@@ -34,7 +34,7 @@ import { FieldConfig, GridColumn, GridRow } from '../../shared/models';
 export class BoardRowsComponent {
 
   @Input() boardId!: BoardId;
-  @Input() formGroup!: FormGroup;
+  @Input() formGroup!: UntypedFormGroup;
   @Input() gridFields: FieldConfig[] = [];
   @Input() formOnlyFields: FieldConfig[] = [];
   @Input() columns: GridColumn[] = [];

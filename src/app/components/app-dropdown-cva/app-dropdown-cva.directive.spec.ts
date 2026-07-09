@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { UntypedFormControl, ReactiveFormsModule } from '@angular/forms';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
@@ -28,7 +28,7 @@ const TEST_OPTIONS: DropdownOption[] = [
   `,
 })
 class SingleHostComponent {
-  ctrl = new FormControl('');
+  ctrl = new UntypedFormControl('');
   options = TEST_OPTIONS;
 }
 
@@ -42,7 +42,7 @@ class SingleHostComponent {
   `,
 })
 class MultiHostComponent {
-  ctrl = new FormControl([]);
+  ctrl = new UntypedFormControl([]);
   options = TEST_OPTIONS;
 }
 

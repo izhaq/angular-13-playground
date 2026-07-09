@@ -1,11 +1,36 @@
+<!--
+  Object-literal `*ngIf` captures both column-highlight streams once so each
+  data cell can compare against the hovered / pinned column (set from here OR
+  from the detached header) without a per-cell async pipe. Always truthy — it's
+  a scoping wrapper, not a conditional.
+-->
+<ng-container *ngIf="{ hov: (highlight.hovered$ | async), sel: (highlight.selected$ | async) } as h">
 <div class="board-rows dropdown-stretch"
      [formGroup]="formGroup"
      [style.--data-col-count]="columns.length">
 
-  <!-- Grid rows: label + control + N data cells -->
+  <!-- Grid rows: label + control + N data cells (data cells inlined so the
+       highlight vars `h.hov` / `h.sel` stay in lexical scope). -->
   <ng-container *ngFor="let field of gridFields; trackBy: trackByFieldKey">
     <ng-container *ngTemplateOutlet="labelControl; context: { field: field }"></ng-container>
-    <ng-container *ngTemplateOutlet="dataCells;    context: { field: field }"></ng-container>
+
+    <div *ngFor="let col of columns; let i = index; trackBy: trackByColId"
+         class="board-rows__data-cell"
+         [class.board-rows__data-cell--first]="i === 0"
+         [class.board-rows__data-cell--col-hovered]="h.hov === col.id"
+         [class.board-rows__data-cell--col-selected]="h.sel === col.id"
+         [class.board-rows__data-cell--selected]="isSelected(field.key, col.id)"
+         [attr.data-test-id]="'grid-' + boardId + '-' + field.key + '-' + col.id"
+         (mouseenter)="onEnterColumn(col.id)"
+         (mouseleave)="onLeaveColumn()"
+         (click)="onCellClick(field.key, col.id)">
+      <span class="board-rows__data-cell-text"
+            [matTooltip]="cellValue(field.key, col.id)"
+            matTooltipPosition="after"
+            matTooltipClass="board-rows-tooltip">
+        {{ cellValue(field.key, col.id) }}
+      </span>
+    </div>
   </ng-container>
 
   <!-- Cmd-to-GS divider -->
@@ -48,25 +73,5 @@
     </div>
   </ng-template>
 
-
-  <!-- Data cells template (one cell per column) -->
-  <ng-template #dataCells let-field="field">
-    <div *ngFor="let col of columns; let i = index; trackBy: trackByColId"
-         class="board-rows__data-cell"
-         [class.board-rows__data-cell--first]="i === 0"
-         [class.board-rows__data-cell--col-hovered]="hoveredColId === col.id"
-         [class.board-rows__data-cell--selected]="isSelected(field.key, col.id)"
-         [attr.data-test-id]="'grid-' + boardId + '-' + field.key + '-' + col.id"
-         (mouseenter)="onEnterColumn(col.id)"
-         (mouseleave)="onLeaveColumn()"
-         (click)="onCellClick(field.key, col.id)">
-      <span class="board-rows__data-cell-text"
-            [matTooltip]="cellValue(field.key, col.id)"
-            matTooltipPosition="after"
-            matTooltipClass="board-rows-tooltip">
-        {{ cellValue(field.key, col.id) }}
-      </span>
-    </div>
-  </ng-template>
-
 </div>
+</ng-container>

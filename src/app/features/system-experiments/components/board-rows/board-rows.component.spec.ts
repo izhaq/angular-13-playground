@@ -29,6 +29,9 @@ import { FieldConfig, GridColumn, GridRow } from '../../shared/models';
  *   - test ids match the legacy contract so existing E2E selectors keep
  *     working: `grid-label-{boardId}-{key}`, `form-{boardId}-{key}`,
  *     `grid-{boardId}-{key}-{colId}`, `section-{boardId}-cmd-to-gs`
+ *   - column highlight via the shared `ColumnHighlightStore`: data-cell hover
+ *     publishes the column (so the header can sync) and a column pinned on the
+ *     store (header click) is reflected here as `--col-selected`
  */
 describe('BoardRowsComponent', () => {
   let fixture: ComponentFixture<BoardRowsComponent>;
@@ -176,6 +179,34 @@ describe('BoardRowsComponent', () => {
         By.css(`[data-test-id="grid-${component.boardId}-${field.key}-${colId}"]`),
       );
       expect(cell.nativeElement.classList).toContain('board-rows__data-cell--col-hovered');
+    });
+  });
+
+  it('publishes column hover to the shared store so the header can sync', () => {
+    const colId = columns[1].id;
+    const cell = fixture.debugElement.query(
+      By.css(`[data-test-id="grid-${component.boardId}-foo-${colId}"]`),
+    );
+    let hovered: string | null = 'unset' as unknown as string | null;
+    component.highlight.hovered$.subscribe((v) => (hovered = v));
+
+    cell.triggerEventHandler('mouseenter', null);
+    expect(hovered).toBe(colId);
+
+    cell.triggerEventHandler('mouseleave', null);
+    expect(hovered).toBeNull();
+  });
+
+  it('reflects a column pinned on the shared store (header click) as --col-selected', () => {
+    const colId = columns[2].id;
+    component.highlight.toggleSelect(colId);
+    fixture.detectChanges();
+
+    gridFields.forEach((field) => {
+      const cell = fixture.debugElement.query(
+        By.css(`[data-test-id="grid-${component.boardId}-${field.key}-${colId}"]`),
+      );
+      expect(cell.nativeElement.classList).toContain('board-rows__data-cell--col-selected');
     });
   });
 

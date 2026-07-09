@@ -1,8 +1,19 @@
-<div class="grid-header" [style.--data-col-count]="columns.length">
-  <div *ngFor="let col of columns; let i = index; trackBy: trackByColId"
-       class="grid-header__cell"
-       [class.grid-header__cell--first]="i === 0"
-       [attr.data-test-id]="'grid-header-' + boardId + '-' + col.id">
-    {{ col.label }}
+<!--
+  Object-literal `*ngIf` captures both highlight streams once so each cell can
+  compare against the hovered / pinned column without a per-cell async pipe.
+-->
+<ng-container *ngIf="{ hov: (highlight.hovered$ | async), sel: (highlight.selected$ | async) } as h">
+  <div class="grid-header" [style.--data-col-count]="columns.length">
+    <div *ngFor="let col of columns; let i = index; trackBy: trackByColId"
+         class="grid-header__cell"
+         [class.grid-header__cell--first]="i === 0"
+         [class.grid-header__cell--col-hovered]="h.hov === col.id"
+         [class.grid-header__cell--col-selected]="h.sel === col.id"
+         [attr.data-test-id]="'grid-header-' + boardId + '-' + col.id"
+         (mouseenter)="onEnterColumn(col.id)"
+         (mouseleave)="onLeaveColumn()"
+         (click)="onHeaderClick(col.id)">
+      {{ col.label }}
+    </div>
   </div>
-</div>
+</ng-container>

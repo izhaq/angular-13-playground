@@ -35,7 +35,7 @@ ADRs capture the reasoning behind significant technical decisions. They're the h
 
 ### ADR Template
 
-Store ADRs in `specs/decisions/` with sequential numbering:
+Store ADRs in `docs/decisions/` with sequential numbering:
 
 ```markdown
 # ADR-001: Use PostgreSQL for primary database
@@ -241,9 +241,9 @@ For shipped features:
 
 Special consideration for AI agent context:
 
-- **`.cursor/rules/`** — Document project conventions so agents follow them
-- **`specs/`** — Keep specs and planning artifacts updated so agents build the right thing
-- **ADRs in `specs/decisions/`** — Help agents understand why past decisions were made (prevents re-deciding)
+- **CLAUDE.md / rules files** — Document project conventions so agents follow them
+- **Spec files** — Keep specs updated so agents build the right thing
+- **ADRs** — Help agents understand why past decisions were made (prevents re-deciding)
 - **Inline gotchas** — Prevent agents from falling into known traps
 
 ## Common Rationalizations
@@ -275,4 +275,4 @@ After documenting:
 - [ ] API functions have parameter and return type documentation
 - [ ] Known gotchas are documented inline where they matter
 - [ ] No commented-out code remains
-- [ ] `.cursor/rules/` and `specs/` are current and accurate
+- [ ] Rules files (CLAUDE.md etc.) are current and accurate

@@ -413,9 +413,10 @@ returns 401. These tests double as the contract's executable documentation.
 ## Open Questions
 
 1. ~~Option A (session cookie)~~ — **approved 2026-07-12.**
-2. **Real project's Angular version.** The feature uses standalone components
-   (need ≥14) and signals (need ≥16). If the destination app is older, it
-   must upgrade before adopting this module — worth confirming now.
+2. ~~Real project's Angular version~~ — **answered 2026-07-12: Angular 16,
+   possibly 18 by adoption time.** Standalone + signals are exactly what
+   17/18 favor, so the upgrade path is smooth; any refactoring would be
+   optional modernization, not rework.
 3. **Real project's DB engine** (intent doc §3.11) — doesn't block the build,
    thanks to the EF Core seam.
 4. **Repo convention** (intent doc §3.12) — own repo per microservice? The

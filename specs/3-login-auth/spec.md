@@ -115,15 +115,36 @@ gives that for free; JWT cannot do either without rebuilding a session table.
 
 Both are later server-only changes. The client and contract stay untouched.
 
-### Note: cookies and addresses
+### Note: cookies and addresses (real deployment: same DNS, different ports)
 
-A cookie is only sent back to the address it came from. In development the
-proxy makes the app and the API share one address (`localhost:4200`), so the
-cookie flows with no work. If the real system ever serves the app and the
-API from **different** addresses, two switches are needed: the client adds
-`withCredentials: true` to HTTP calls, and the server allows it with a CORS
-header. One line each. Most likely irrelevant — the .NET server will
-probably serve both the app files and the API from one address.
+In the real environments the client and the server run as separate docker
+pods on the same physical machine — **same DNS name, different ports**
+(e.g. app at `station:8080`, API at `station:5000`).
+
+To the browser, a different port means a **different origin**, so our API
+calls count as cross-origin. Two facts follow:
+
+- The cookie itself is fine: cookies belong to the DNS name and ignore the
+  port, and the `SameSite` protection also ignores the port. Nothing to fix
+  there.
+- But the browser will not *attach* cookies to cross-origin calls unless
+  both sides opt in: the client sends HTTP calls with
+  `withCredentials: true`, and the server answers with
+  `Access-Control-Allow-Origin: <the app's exact address>` (not `*`) and
+  `Access-Control-Allow-Credentials: true`.
+
+Two clean ways to handle it — decide with the .NET/infra team:
+
+1. **Reverse proxy (recommended):** the web server that serves the Angular
+   files also forwards `/api/...` to the API pod. The browser sees one
+   origin; no CORS, no `withCredentials`. This is exactly what our dev proxy
+   does, so dev and production behave the same.
+2. **CORS:** the two switches above. Works, but the allowed origin must be
+   configured per environment, and every new consumer needs a CORS entry.
+
+The client code in this build supports both: `withCredentials: true` is
+harmless on same-origin calls, so we set it once and it works either way.
+The reference server enables the matching CORS headers.
 
 ### Note: why not client-only auth (no server)
 

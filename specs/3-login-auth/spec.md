@@ -31,8 +31,11 @@ Both pieces are designed for extraction into the real project.
 
 ## Tech Stack
 
-- **Client:** Angular 16.2 (NgModules, lazy-loaded pages), RxJS 7.5,
-  Angular Material, Reactive Forms.
+- **Client:** Angular 16.2 — the auth feature uses the modern APIs:
+  **standalone components** (no NgModules), **signals** for session state,
+  functional guard/interceptor, `inject()`. The rest of the app stays
+  NgModule-based; mixing is officially supported and standard. Angular
+  Material, Reactive Forms.
 - **Auth service:** .NET 8 / ASP.NET Core minimal API, EF Core with SQLite
   (single-file DB, nothing to install). Own port (5001), own config, own
   Dockerfile.
@@ -256,28 +259,29 @@ Two self-contained units, mirroring each other's extraction story: the
 feature folder on the client, the service folder on the backend.
 
 ```
-src/app/features/auth/            → extractable client unit. Imports only Angular/RxJS
-                                    and its own files — nothing else from app/.
-  auth.module.ts                  → declares/exports the login page component
-  api/
-    auth-contract.ts              → request/response types (mirror of the HTTP contract)
-    auth-tokens.ts                → AUTH_API_CONFIG injection token (endpoint URLs)
-    auth-api.service.ts           → HttpClient calls, no state
-    auth-api.mock.service.ts      → auth-free mode: instant fixed session, no HTTP
-  session/
-    session.store.ts              → session state (BehaviorSubject), login/logout/restore
-    session.models.ts             → UserSession, Mode, Position types
-  guards/
-    auth.guard.ts                 → functional guard: no session → go to /login
-  interceptors/
-    unauthorized.interceptor.ts   → any 401 → clear session store, go to /login
-  components/login-page/          → the form (username, password, 2 toggles)
-
-src/app/pages/login/              → host wiring (stays behind on extraction):
-  login-page.module.ts            → lazy route, provides AUTH_API_CONFIG
+src/app/features/auth/            → extractable client unit, flat — 8 files + the
+                                    component's template/styles. Imports only
+                                    Angular/RxJS and its own files.
+  auth-contract.ts                → ALL types in one place: HTTP request/response
+                                    shapes, UserSession, Mode, Position, and the
+                                    AUTH_API_CONFIG injection token
+  auth-api.service.ts             → real HTTP implementation (no state)
+  auth-api.mock.service.ts        → auth-free mode: instant fixed session, no HTTP
+  session.store.ts                → signal-based session state:
+                                    user = signal<UserSession | null>,
+                                    isLoggedIn = computed(...)
+  auth.guard.ts                   → functional guard: reads the store via inject()
+  unauthorized.interceptor.ts     → functional interceptor: 401 → clear store → /login
+  auth.providers.ts               → provideAuth(config): one call that wires the
+                                    api service (real vs mock), interceptor, and
+                                    config into the host app
+  login-page/
+    login-page.component.ts       → standalone component (the form + 2 toggles)
+    login-page.component.html
+    login-page.component.scss
 
 src/assets/app-config.json        → runtime config ({ "authEnabled": ... }, per environment)
-src/app/core/app-config.ts        → loads the config at startup, provides real vs mock
+src/app/app-config.ts             → startup loader (APP_INITIALIZER), feeds provideAuth
 
 auth-service/                     → extractable backend unit (.NET, port 5001).
                                     Nothing outside references anything inside.
@@ -293,10 +297,17 @@ auth-service/                     → extractable backend unit (.NET, port 5001)
 server/                           → Node experiments service — unchanged, port 3000
 ```
 
+What the modern APIs deleted: `auth.module.ts` and the whole
+`pages/login/` wrapper module are gone — a standalone component lazy-loads
+straight from the route (`loadComponent`), and `provideAuth(...)` replaces
+module wiring. Two modules fewer, five files fewer, same behavior.
+
 Shared touch points (the complete list):
 - `proxy.conf.json`: `/api/auth` → `:5001`; existing `/api` → `:3000` stays.
 - `package.json`: one convenience script to run the auth service.
-- `app-routing.module.ts`: lazy `/login` route + `auth.guard` on feature routes.
+- `app-routing.module.ts`: `{ path: 'login', loadComponent: ... }` +
+  `auth.guard` on feature routes.
+- `app.module.ts`: `provideAuth(...)` in the root providers.
 
 ## Commands
 
@@ -311,26 +322,27 @@ npm run build              → production build (same artifact for all environme
 
 ## Code Style
 
-Client — match the existing feature pattern: config through an injection
-token, `readonly` constructor injection, thin services:
+Client — modern Angular 16 style inside the feature: `inject()` instead of
+constructor injection, signals for state, config through an injection token:
 
 ```ts
-/** POST /api/auth endpoints. URLs come from `AUTH_API_CONFIG`. */
-@Injectable()
-export class AuthApiService {
-  constructor(
-    private readonly http: HttpClient,
-    @Inject(AUTH_API_CONFIG) private readonly config: AuthApiConfig,
-  ) {}
+/** Session state. The only thing the rest of the app reads. */
+@Injectable({ providedIn: 'root' })
+export class SessionStore {
+  private readonly api = inject(AUTH_API);
 
-  login(payload: LoginRequest): Observable<LoginResponse> {
-    return this.http.post<LoginResponse>(this.config.loginUrl, payload);
-  }
+  private readonly _user = signal<UserSession | null>(null);
+
+  readonly user = this._user.asReadonly();
+  readonly isLoggedIn = computed(() => this._user() !== null);
+  // components read: store.isLoggedIn(), store.user()?.mode ...
 }
 ```
 
 Conventions: single quotes, trailing commas, `*.spec.ts` next to the code,
-types in dedicated `*-contract.ts` / `*.models.ts` files, no `any`.
+all shared types in `auth-contract.ts`, no `any`. Templates read signals
+directly (`store.user()?.username`) — no `async` pipe needed for session
+state.
 
 Auth service — idiomatic modern .NET: minimal API, dependency injection,
 `record` types for request/response, async throughout, no static state.
@@ -400,10 +412,13 @@ returns 401. These tests double as the contract's executable documentation.
 
 ## Open Questions
 
-1. **Option A (session cookie) — approved?**
-2. **Real project's DB engine** (intent doc §3.11) — doesn't block the build,
+1. ~~Option A (session cookie)~~ — **approved 2026-07-12.**
+2. **Real project's Angular version.** The feature uses standalone components
+   (need ≥14) and signals (need ≥16). If the destination app is older, it
+   must upgrade before adopting this module — worth confirming now.
+3. **Real project's DB engine** (intent doc §3.11) — doesn't block the build,
    thanks to the EF Core seam.
-3. **Repo convention** (intent doc §3.12) — own repo per microservice? The
+4. **Repo convention** (intent doc §3.12) — own repo per microservice? The
    folder design keeps both options open.
-4. **Product questions** — intent doc §3 stays with the PM; none block this
+5. **Product questions** — intent doc §3 stays with the PM; none block this
    build.

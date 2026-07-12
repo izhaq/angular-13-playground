@@ -1,10 +1,11 @@
 # Login & Authentication — Intent and Open Questions
 
-**Status:** Confirmed by engineering (2026-07-11). Awaiting product review.
+**Status:** Confirmed by engineering (2026-07-11). Updated 2026-07-12: the .NET backend
+is now built by us too (see §2b). Awaiting product review.
 **For:** Product Manager — please review the decisions and answer the open questions.
-**Context:** First work on authentication. Prototyped in the Angular playground with a
-simple Node reference backend. The real backend will be C#/.NET and will implement the
-same API contract.
+**Context:** First work on authentication. Prototyped in the Angular playground. The
+backend is a C#/.NET auth microservice built alongside the client, against the same
+language-neutral API contract.
 
 ---
 
@@ -12,7 +13,8 @@ same API contract.
 
 - **Outcome:** A self-contained login module — login form (username/password + mode
   toggle + position toggle), session handling, route protection, logout — plus a
-  language-agnostic API contract and a Node reference backend.
+  language-neutral API contract and a **.NET auth microservice** implementing it
+  (added 2026-07-12; see §2b).
 - **Why now:** The real project needs auth, nothing exists yet, and these decisions set
   the path for both client and server.
 - **Success:** Works end-to-end in the playground and can be lifted into the real app
@@ -48,6 +50,32 @@ No. All of it is out of scope for now.
 
 ---
 
+## 2b. Backend Addition (2026-07-12)
+
+Scope grew: we now build the .NET side ourselves — an independent, easily pluggable
+auth microservice, with a simulated database.
+
+**Q6. Where does the .NET service live — this repo or its own repo?**
+In this repo for now, as a fully self-contained `auth-service/` folder: its own
+solution/config files, own port, own Dockerfile. Nothing outside the folder references
+anything inside it; the only shared touch points are one dev-proxy route and one npm
+convenience script. Moving it to its own repo later = moving the folder.
+*Own-repo-per-microservice is the org convention to be verified (§3, question 12).*
+
+**Q7. What happens to the Node server?**
+It stays, as the "experiments data" service. This gives the playground the same shape
+as production: two services in different languages on different ports, behind one
+reverse proxy — a realistic microservices simulation.
+
+**Q8. How do we simulate the database, and how hard is the later migration?**
+The service talks to the database only through EF Core (the standard .NET data layer).
+The simulated DB is a SQLite file — a real database in a single file, nothing to
+install. Migrating later to the real project's DB is a provider + connection-string
+change, not a redesign. The real project has a DB; which engine is unknown (§3,
+question 11). The schema is tiny: two seeded users and a session table.
+
+---
+
 ## 3. Open Questions for Product
 
 Deferred for now, but each gets more expensive to change later:
@@ -70,6 +98,17 @@ Deferred for now, but each gets more expensive to change later:
 9. **Password policy.** Any rules on strength, rotation, or who sets the seeded
    passwords?
 
+Added 2026-07-12 (mostly for the engineering/infra side rather than product):
+
+10. **How do other microservices check the session?** The experiments service doesn't
+    own the session table — the auth service does. Real systems solve this at the
+    gateway/reverse proxy or with service-to-service checks. Left open; the experiments
+    service stays unprotected in this build.
+11. **Which database does the real project use?** (SQL Server? Postgres?) And should
+    auth data eventually merge into it, or should the auth service keep its own DB?
+12. **Repo convention.** Does the org require each microservice in its own repo with
+    its own CI/CD? To be checked; the folder design keeps both options open.
+
 ---
 
 ## 4. Decisions Made (all open to product override)
@@ -80,5 +119,8 @@ Deferred for now, but each gets more expensive to change later:
 | 2 | Server stores mode + position, enforces nothing | Enforcement rules not decided yet (§3) |
 | 3 | Local user store, no external identity provider | Closed network |
 | 4 | Sessions up to 24h, lifetime configurable | Control stations stay logged in all shift |
-| 5 | Language-agnostic contract + Node reference backend | Real backend is C#/.NET |
+| 5 | Language-neutral contract; both sides implement it | Contract is the source of truth |
 | 6 | Account management out of scope | Accounts are seeded |
+| 7 | .NET auth microservice, self-contained `auth-service/` folder in this repo | Independent and pluggable; own-repo question deferred (§3.12) |
+| 8 | Node server stays as the experiments-data service | Realistic two-microservice simulation behind one proxy |
+| 9 | Simulated DB = SQLite via EF Core | Real DB later is a provider swap, not a redesign |

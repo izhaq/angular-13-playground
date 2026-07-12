@@ -128,6 +128,27 @@ no stealable token, less client code, and the .NET team gets ASP.NET's
 built-in cookie authentication. Easy call — but it needs your yes
 (see Open Questions #1).
 
+### Future enforcement (noted, not built now)
+
+Two likely future rules — both pending product decisions (intent doc §3.1,
+§3.2) — depend on the server knowing who is logged in right now. The session
+table from Option A gives us that for free; pure JWT cannot do either without
+rebuilding a session table on the side.
+
+- **Single login per user type.** At login, the server checks its session
+  table: "is there already a live session for this user type?" One lookup,
+  server-only change. The client and the contract stay as they are.
+- **Crash take-over.** A crashed station leaves a "ghost" session (nobody
+  called logout). When the next login of that user type arrives, the server
+  deletes the old session and creates a fresh one. The ghost id is now dead —
+  if the crashed station comes back, its cookie hits a deleted row, gets a
+  `401`, and lands back on the login page. Clean recovery, no lockout.
+  (The alternative — rejecting the new login — would lock the user out until
+  the old session expires, up to 24h. Unacceptable for a control station.)
+
+Neither rule is implemented in this build. The point recorded here: Option A
+makes both a small server-only change later; the other options don't.
+
 ## API Contract (language-agnostic)
 
 The contract is the main deliverable for the backend team. JSON over HTTP,

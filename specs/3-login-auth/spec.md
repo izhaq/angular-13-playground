@@ -417,9 +417,17 @@ returns 401. These tests double as the contract's executable documentation.
    possibly 18 by adoption time.** Standalone + signals are exactly what
    17/18 favor, so the upgrade path is smooth; any refactoring would be
    optional modernization, not rework.
-3. **Real project's DB engine** (intent doc §3.11) — doesn't block the build,
+3. **Org's .NET version** — unknown; we build on .NET 8 (current LTS, zero
+   cutting-edge features used). Low risk by design: the service never merges
+   into another codebase, and docker ships its own runtime. If a different
+   version is required, the change is the `TargetFramework` line, the EF Core
+   package version, and the Dockerfile base image — code unchanged. Only
+   red-flag scenario to check: org still on legacy .NET Framework 4.x
+   (service still fine in its own pod, but the org would be operating modern
+   .NET for the first time).
+4. **Real project's DB engine** (intent doc §3.11) — doesn't block the build,
    thanks to the EF Core seam.
-4. **Repo convention** (intent doc §3.12) — own repo per microservice? The
+5. **Repo convention** (intent doc §3.12) — own repo per microservice? The
    folder design keeps both options open.
-5. **Product questions** — intent doc §3 stays with the PM; none block this
+6. **Product questions** — intent doc §3 stays with the PM; none block this
    build.

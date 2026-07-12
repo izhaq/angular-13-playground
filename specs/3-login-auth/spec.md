@@ -7,15 +7,15 @@
 
 Build a self-contained login feature: a login page (username/password + Mode
 toggle + Position toggle), session handling, route protection, and logout.
-Along with it: a clear API contract and a simple reference backend on this
-project's Express server.
+With it: a language-neutral API contract and a simple reference backend on
+this project's Express server.
 
 This is the reference design for the real system. The real backend will be
-C#/.NET, so the contract must work for any language — nothing Node-specific.
+C#/.NET, so nothing in the contract may depend on Node.
 
 **Users:**
-- The two station users: Operation (Active station, in control) and Technician
-  (Passive station, read-only monitoring).
+- The two station users: Operation (Active station, in control) and
+  Technician (Passive station, read-only monitoring).
 - Downstream: the .NET team, who will implement the API contract.
 
 **Constraints (from the intent doc):**
@@ -23,136 +23,120 @@ C#/.NET, so the contract must work for any language — nothing Node-specific.
 - Two seeded accounts; no account management.
 - Sessions up to 24h; lifetime must be configurable.
 - Mode and Position are sent at login and saved in the session. The server
-  does not enforce any rules on them yet ("middle path").
+  does not enforce rules on them yet ("middle path").
 
 ## Tech Stack
 
 - **Client:** Angular 16.2 (NgModules, lazy-loaded pages), RxJS 7.5,
-  Angular Material 16, Reactive Forms.
+  Angular Material, Reactive Forms.
 - **Reference server:** Express 4 (TypeScript, in `server/`), in-memory data.
 - **Tests:** Karma + Jasmine (already set up), spec files next to the code.
 
 ## Auth Mechanism — Options and Decision
 
-First, the shared idea: after login, the server must recognize the user on
-every later request. HTTP itself has no memory — each request arrives alone.
-So the server gives the client some "proof of login" at login time, and the
-client shows that proof on every request. The options below differ only in
-**what the proof is** and **where the client keeps it**.
+The shared idea: HTTP has no memory — every request arrives alone. So at
+login the server hands the client a "proof of login", and the client shows
+it on every request. The options differ in **what the proof is** and **where
+it is kept**.
 
-### Option A — Session cookie (what we chose)
+### Option A — Session cookie (chosen)
 
-**The proof:** a random id (like `sid=a83kx92...`) that means nothing by
-itself. The server keeps a table in memory/DB: "session a83kx92 = user
-operation, mode operation, position active, expires at 08:00". The id is just
-a key into that table.
+- **The proof:** a random id (e.g. `sid=a83kx9...`). Meaningless by itself —
+  it is a key into a table the server keeps: *"session a83kx9 = user
+  operation, mode operation, position active, expires 08:00"*.
+- **Where kept:** in a cookie marked `HttpOnly`. The browser stores it and
+  attaches it to every request by itself. `HttpOnly` means JavaScript cannot
+  read it — an injected script (XSS) cannot steal the session.
+- **Id generation:** a cryptographic random generator — `crypto.randomBytes(32)`
+  in Node, `RandomNumberGenerator` in .NET. 256 random bits: collisions are
+  practically impossible, and an attacker cannot guess a valid id. Never
+  sequential ids like `session-1`.
+- **Flow:** login → server creates a table row, returns user info +
+  `Set-Cookie`. Later requests → browser attaches the cookie, server looks
+  the id up. Page reload → app state is wiped but the cookie survives; the
+  app calls `GET /api/auth/session` and is logged in again. Logout → server
+  deletes the row and clears the cookie; the old id is instantly worthless.
+  Expired → server returns `401`, client goes to the login page.
+- **Downside:** the server must remember sessions ("stateful"). Irrelevant
+  for us — one server, closed network.
 
-**Where it's kept:** in a cookie marked `HttpOnly`. The browser stores it and
-attaches it to every request automatically. `HttpOnly` means JavaScript cannot
-read it — so even if someone injects a script into the page (XSS attack), the
-script cannot steal the session.
+### Option B — JWT (signed token)
 
-**The full flow:**
-1. User submits the form → client sends `POST /api/auth/login` with username,
-   password, mode, position.
-2. Server checks the password, creates a session record in its table, and
-   answers with the user info + a `Set-Cookie: sid=...` header.
-3. The browser saves the cookie on its own. Our Angular code never sees or
-   touches it — it only saves the user info in the session store (app state).
-4. Every later API call: the browser attaches the cookie automatically. The
-   server looks the id up in its table → knows who you are.
-5. Page reload: app state is wiped, but the cookie survives. On startup the
-   app calls `GET /api/auth/session`; the server finds the session and returns
-   the user info; the app is logged in again without asking for a password.
-6. Logout: `POST /api/auth/logout` → server deletes the row from its table and
-   clears the cookie. The old id is now worthless — a real logout.
-7. Expiry: the server checks the timestamp in its table. Expired → `401` →
-   client redirects to the login page.
+- **The proof:** a token with the user info *inside it*, signed with a secret
+  only the server knows. The server stores nothing; it just checks the
+  signature on each request.
+- **Where kept:** client JavaScript stores it (memory or localStorage) and
+  attaches it by hand to every request (`Authorization: Bearer ...` header,
+  via an HTTP interceptor).
+- **Problems for us:** to survive a page reload the token must sit in
+  localStorage — which JavaScript *can* read, so an injected script can steal
+  it. And logout only deletes the client's copy; the token itself stays valid
+  until it expires. The server has no table to delete it from.
+- **Upside:** no server state — valuable when many services must check logins
+  independently. We have one server.
 
-**Downside:** the server must remember sessions (it is "stateful"). If you
-run many servers, they must share the session table. Not our problem — we
-have one server on a closed network.
+### Option C — JWT inside an HttpOnly cookie
 
-### Option B — JWT (a signed token)
+The mix: fixes the stealing problem (JS can't read the cookie), keeps the
+statelessness. But logout still cannot kill a token early, and with 24-hour
+sessions that is a long life for a token nobody can revoke. Fixing that
+needs a server-side block list — which is a session table again, so you've
+built both and gained nothing.
 
-**The proof:** a JWT is a string with the user info *inside it* (username,
-mode, expiry...), plus a signature made with a secret key only the server
-knows. The server doesn't store anything — when a token comes back, it checks
-the signature. Valid signature = "I wrote this, and nobody changed it."
-
-**Where it's kept:** the client's JavaScript stores the token (usually in
-memory or localStorage) and adds it by hand to every request as a header:
-`Authorization: Bearer <token>`.
-
-**The full flow:**
-1. Same login request as Option A.
-2. Server checks the password, builds the token, signs it, sends it in the
-   response body. It stores nothing.
-3. Our Angular code must keep the token and attach the header to every API
-   call (an HTTP interceptor does this).
-4. Every later call: server verifies the signature and reads the user info
-   straight from the token. No table lookup.
-5. Page reload: memory is wiped, so the token must be in localStorage to
-   survive — and localStorage **is** readable by JavaScript, so an injected
-   script can steal it. This is the classic JWT weakness.
-6. Logout: the client just deletes its copy. But the token itself is still
-   valid until it expires — the server has no table to delete it from. A
-   stolen token keeps working. (Fixing this needs a server-side "block list"
-   — which is a session table again, so you lose the whole benefit.)
-7. Expiry: the expiry time is written inside the token; the server rejects
-   old tokens.
-
-**Upside:** the server is "stateless" — great when many separate services
-must all check logins without sharing a database.
-
-### Option C — JWT inside an HttpOnly cookie (the mix)
-
-Put a JWT in an HttpOnly cookie instead of a session id. You get the cookie's
-safety (JS can't steal it) and the server stays stateless. But logout still
-can't kill a token before it expires, and with our 24-hour sessions that's a
-long life for a token nobody can revoke.
-
-### Why Option A wins for us
+### Why Option A wins
 
 | Question | A: Session cookie | B: JWT + header | C: JWT in cookie |
 |---|---|---|---|
-| Can injected JS steal the proof? | No (HttpOnly) | Yes (localStorage) | No (HttpOnly) |
-| Does logout really kill the session? | Yes — row deleted | No — valid until expiry | No — valid until expiry |
-| Angular code that touches the proof | None | Interceptor + storage | None |
+| Can injected JS steal the proof? | No | Yes | No |
+| Does logout really kill the session? | Yes | No | No |
+| Client code that touches the proof | None | Interceptor + storage | None |
 | Server must remember sessions | Yes | No | No |
-| Fits ASP.NET later | Yes — built-in cookie auth | Yes, more setup | Possible, unusual |
+| Fits ASP.NET later | Built-in cookie auth | More setup | Unusual |
 
-Statelessness is JWT's big prize, and it's worth nothing to us: one server,
-closed network, two users. Meanwhile session cookies give us real logout,
-no stealable token, less client code, and the .NET team gets ASP.NET's
-built-in cookie authentication. Easy call — but it needs your yes
-(see Open Questions #1).
+JWT's prize is statelessness, worth nothing here: one server, two users.
+Session cookies give real logout, nothing stealable, less client code, and
+ASP.NET cookie authentication is built in — likely *less* backend work, not
+more.
 
-### Future enforcement (noted, not built now)
+### Future enforcement (recorded, not built now)
 
-Two likely future rules — both pending product decisions (intent doc §3.1,
-§3.2) — depend on the server knowing who is logged in right now. The session
-table from Option A gives us that for free; pure JWT cannot do either without
-rebuilding a session table on the side.
+Two likely rules — pending product decisions (intent doc §3.1–3.2) — need
+the server to know who is logged in *right now*. Option A's session table
+gives that for free; JWT cannot do either without rebuilding a session table.
 
-- **Single login per user type.** At login, the server checks its session
-  table: "is there already a live session for this user type?" One lookup,
-  server-only change. The client and the contract stay as they are.
-- **Crash take-over.** A crashed station leaves a "ghost" session (nobody
-  called logout). When the next login of that user type arrives, the server
-  deletes the old session and creates a fresh one. The ghost id is now dead —
-  if the crashed station comes back, its cookie hits a deleted row, gets a
-  `401`, and lands back on the login page. Clean recovery, no lockout.
-  (The alternative — rejecting the new login — would lock the user out until
-  the old session expires, up to 24h. Unacceptable for a control station.)
+- **Single login per user type:** at login, check the table — "is a session
+  for this user type already live?" One lookup, server-only change.
+- **Crash take-over:** a crashed station leaves a "ghost" session (no logout
+  was called). The next login of that user type deletes the ghost and starts
+  fresh. If the crashed station comes back, its cookie points at a deleted
+  row → `401` → login page. Clean recovery. (Rejecting the new login instead
+  would lock the user out for up to 24h — unacceptable for a control
+  station.)
 
-Neither rule is implemented in this build. The point recorded here: Option A
-makes both a small server-only change later; the other options don't.
+Both are later server-only changes. The client and contract stay untouched.
 
-## API Contract (language-agnostic)
+### Note: cookies and addresses
 
-The contract is the main deliverable for the backend team. JSON over HTTP,
-under `/api/auth`.
+A cookie is only sent back to the address it came from. In development the
+proxy makes the app and the API share one address (`localhost:4200`), so the
+cookie flows with no work. If the real system ever serves the app and the
+API from **different** addresses, two switches are needed: the client adds
+`withCredentials: true` to HTTP calls, and the server allows it with a CORS
+header. One line each. Most likely irrelevant — the .NET server will
+probably serve both the app files and the API from one address.
+
+### Note: why not client-only auth (no server)
+
+Putting the credentials in a client env file and a "logged in" flag in
+localStorage is not security: everything in the client bundle is readable in
+DevTools (the password would be public), and anyone can set the flag by hand
+and walk past the guard. Client checks control what the UI *shows*; only a
+server controls what a user *may do*. For running without a backend, use
+the mock mode below instead.
+
+## API Contract (language-neutral)
+
+The main deliverable for the backend team. JSON over HTTP under `/api/auth`.
 
 **POST `/api/auth/login`**
 ```json
@@ -160,22 +144,48 @@ under `/api/auth`.
 ```
 - `200` → `{ "user": { "username": "...", "mode": "...", "position": "..." }, "expiresAt": "ISO-8601" }` + `Set-Cookie: sid=...; HttpOnly`
 - `401` → `{ "error": "invalid_credentials" }`
-- `423` → `{ "error": "locked" }` — **reserved**. Our reference server never
-  returns it, but the client already handles it, so the real backend can add
-  account lockout later without changing the contract.
+- `423` → `{ "error": "locked" }` — **reserved**. The reference server never
+  returns it, but the client handles it, so the real backend can add lockout
+  later without a contract change.
 - `400` → `{ "error": "invalid_request" }` — missing or malformed fields.
 
-**POST `/api/auth/logout`** → `204`, deletes the session. Idempotent: returns
-`204` even if there was no session.
+**POST `/api/auth/logout`** → `204`, deletes the session. Idempotent.
 
-**GET `/api/auth/session`** → `200` with the same body as login (used when the
-app starts or the page reloads), or `401` if there is no valid session.
+**GET `/api/auth/session`** → same `200` body as login (used on app startup /
+page reload), or `401` if no valid session.
 
 **Session rules:**
-- Lifetime set by server config (`SESSION_TTL_HOURS`, default 24).
-- Expiry is counted from login time; activity does not extend it.
-- Any `401` from any API call means "session gone" → client redirects to the
-  login page. No auto-refresh.
+- Lifetime from server config (`SESSION_TTL_HOURS`, default 24).
+- Expiry counts from login; activity does not extend it.
+- Any `401` from any API call means "session gone" → an HTTP interceptor
+  clears the session store and redirects to the login page. No auto-refresh.
+
+## Auth-Free Mode (dev/integration environments)
+
+Reality: ~10 dev environments + 2 integration environments, each on its own
+physical server, and **all get the same production build** (`ng build
+--configuration production`). So the on/off switch cannot live in the build —
+it must be read at **runtime**:
+
+- One small config file per server, e.g. `assets/app-config.json`:
+  `{ "authEnabled": true | false }`. Same build everywhere; each environment
+  just carries its own copy of this file.
+- The app loads it at startup (`APP_INITIALIZER`) before anything else runs.
+- **Auth on:** real `AuthApiService` (HTTP) is plugged in → login page,
+  cookie, server — the full flow.
+- **Auth off:** a mock service is plugged in instead. It instantly fills the
+  session store with a fixed user (`operation` / `active`). The guard finds
+  a session and lets everything through — the login page is never seen, no
+  server call, no cookie.
+
+This works because nothing in the app reads the cookie — the whole app reads
+only the **session store**. Swapping what fills the store swaps the world.
+
+Safety rules:
+- Config file missing or unreadable → behave as `authEnabled: true`. The
+  safe state is the default state.
+- Real/station environments must never receive a config with auth off — an
+  environment-provisioning concern, noted here so it isn't forgotten.
 
 ## Project Structure
 
@@ -187,18 +197,24 @@ src/app/features/auth/            → THE extractable unit. Imports only Angular
                                     and its own files — nothing else from app/.
   auth.module.ts                  → declares/exports the login page component
   api/
-    auth-contract.ts              → request/response types (mirrors the HTTP contract)
+    auth-contract.ts              → request/response types (mirror of the HTTP contract)
     auth-tokens.ts                → AUTH_API_CONFIG injection token (endpoint URLs)
     auth-api.service.ts           → HttpClient calls, no state
+    auth-api.mock.service.ts      → auth-free mode: instant fixed session, no HTTP
   session/
     session.store.ts              → session state (BehaviorSubject), login/logout/restore
     session.models.ts             → UserSession, Mode, Position types
   guards/
     auth.guard.ts                 → functional guard: no session → go to /login
+  interceptors/
+    unauthorized.interceptor.ts   → any 401 → clear session store, go to /login
   components/login-page/          → the form (username, password, 2 toggles)
 
 src/app/pages/login/              → host wiring (stays behind on extraction):
-  login-page.module.ts            → lazy route, provides AUTH_API_CONFIG + redirect target
+  login-page.module.ts            → lazy route, provides AUTH_API_CONFIG
+
+src/assets/app-config.json        → runtime config ({ "authEnabled": ... }, per environment)
+src/app/core/app-config.ts       → loads the config at startup, provides real vs mock
 
 server/src/auth/                  → reference backend
   routes.ts                       → the three endpoints
@@ -216,13 +232,13 @@ Routing changes in `app-routing.module.ts`: add a lazy `/login` route; put
 npm start              → ng serve (proxies /api → localhost:3000)
 npm run server:start   → reference backend on :3000
 npm test               → Karma/Jasmine unit tests
-npm run build          → production build
+npm run build          → production build (same artifact for all environments)
 ```
 
 ## Code Style
 
-Match the existing feature pattern — config comes in through an injection
-token, `readonly` constructor injection, thin services:
+Match the existing feature pattern — config through an injection token,
+`readonly` constructor injection, thin services:
 
 ```ts
 /** POST /api/auth endpoints. URLs come from `AUTH_API_CONFIG`. */
@@ -244,59 +260,65 @@ types in dedicated `*-contract.ts` / `*.models.ts` files, no `any`.
 
 ## Testing Strategy
 
-Karma/Jasmine, specs next to the code. What to test, in priority order:
+Karma/Jasmine, specs next to the code. Priorities:
 
 1. **`session.store`** — login success/failure, logout, restore on startup,
    expiry (`401` → logged-out state).
 2. **`auth.guard`** — blocks and redirects with no session; passes with one.
-3. **`login-page` component** — required-field validation, toggle defaults,
-   error messages for `invalid_credentials` / `locked` / network error.
+3. **`login-page` component** — required fields, toggle defaults, error
+   messages for `invalid_credentials` / `locked` / network error.
 4. **`auth-api.service`** — requests match the contract
    (HttpClientTestingModule).
+5. **Auth-free mode** — with the mock plugged in, the guard passes and no
+   HTTP is made; with config missing, auth stays ON.
 
-The server gets one cheap smoke test (login → session → logout round trip).
-It's a throwaway reference — the contract is what matters.
+The server gets one smoke test (login → session → logout round trip). It's a
+throwaway reference — the contract is what matters.
 
 ## Boundaries
 
 - **Always:**
-  - Keep `features/auth/` free of imports from outside itself — extraction is
-    a success criterion, not a style choice.
-  - Keep the HTTP contract language-neutral. Any contract change updates
+  - Keep `features/auth/` free of imports from outside itself — extraction
+    is a success criterion, not a style choice.
+  - Keep the HTTP contract language-neutral. A contract change updates
     `auth-contract.ts`, the server, and this spec together.
   - Hash the seeded passwords even here (this file will be copied as an
-    example — make it a correct example).
+    example — make it a correct one).
   - Run `npm test` before each commit.
 - **Ask first:**
   - Adding any dependency.
   - Changing the auth mechanism (cookie ↔ JWT).
-  - Touching shared app files beyond the routing wire-up.
+  - Touching shared app files beyond the routing wire-up and the startup
+    config loader.
   - Any server-side enforcement of mode/position rules (out of scope by
     decision).
 - **Never:**
   - Store credentials or session ids in localStorage/sessionStorage.
   - Commit real credentials; dev passwords must be obviously fake.
   - Build account management UI, password reset, or lockout behavior.
+  - Default to auth-off when the runtime config is missing or broken.
 
 ## Success Criteria
 
-1. `npm run server:start` + `npm start`: opening any guarded route while
-   logged out redirects to `/login`.
-2. Logging in with a seeded user + chosen toggles lands in the app; the
-   session (user, mode, position, expiry) is available via the session store.
-3. Page reload keeps the session (restored via `GET /api/auth/session`).
+1. Server + app running, logged out: any guarded route redirects to `/login`.
+2. Login with a seeded user + toggles lands in the app; user, mode, position,
+   expiry are available via the session store.
+3. Page reload keeps the session (via `GET /api/auth/session`).
 4. Logout returns to `/login`; guarded routes are blocked again.
 5. Wrong credentials show an inline error; the reserved `locked` error shows
-   its own distinct message.
-6. Session lifetime changes via config alone; an expired session bounces to
-   `/login` on the next API call.
-7. Extraction check: `features/auth/` compiles with zero imports from outside
+   its own message.
+6. Session lifetime changes via server config alone; an expired session
+   bounces to `/login` on the next API call.
+7. **Auth-free check:** the same production build, with `authEnabled: false`
+   in `app-config.json`, opens the app with no login page and no auth HTTP
+   calls. With the file missing, auth is ON.
+8. Extraction check: `features/auth/` compiles with zero imports from outside
    its own folder (Angular/RxJS packages excepted).
-8. All new unit tests pass via `npm test`.
+9. All new unit tests pass via `npm test`.
 
 ## Open Questions
 
-1. **Option A (session cookie) — yes or no?** The comparison above is the
-   case for it. Worth a quick sanity check with whoever owns the .NET side.
+1. **Option A (session cookie) — approved?** Worth a quick sanity check with
+   whoever owns the .NET side.
 2. **Product questions** — the 9 items in `docs/intent/login-authentication.md`
-   §3 stay with the PM; none of them block this build.
+   §3 stay with the PM; none block this build.

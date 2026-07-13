@@ -10,6 +10,7 @@
     "server:build": "npx tsc --project server/tsconfig.json",
     "server:start": "npx ts-node --project server/tsconfig.json server/src/index.ts",
     "server:prod": "node server/dist/index.js",
+    "auth-service": "dotnet run --project auth-service/src/AuthService",
     "swap-domain-terms": "node scripts/swap-domain-terms.js"
   },
   "private": true,

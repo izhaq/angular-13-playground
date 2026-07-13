@@ -1,0 +1,105 @@
+// Matches the playground's dark surface tones (see src/styles.scss and the
+// system-experiments shell): #1a1a1a page, #242424 card, #4a4a4a hairlines,
+// #e6e6e6 text, Material blue accents.
+
+:host {
+  display: block;
+  height: 100%;
+}
+
+.login-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  box-sizing: border-box;
+  padding: 32px 16px;
+  color: #e6e6e6;
+}
+
+.login-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 380px;
+  box-sizing: border-box;
+  padding: 32px;
+  background: #242424;
+  border: 1px solid #4a4a4a;
+  border-radius: 4px;
+}
+
+.login-card__title {
+  margin: 0 0 24px;
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.login-card__label {
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: #9e9e9e;
+}
+
+.login-card__input {
+  height: 38px;
+  box-sizing: border-box;
+  margin-bottom: 16px;
+  padding: 0 12px;
+  font: inherit;
+  color: #e6e6e6;
+  background: #1a1a1a;
+  border: 1px solid #4a4a4a;
+  border-radius: 4px;
+
+  &:focus {
+    outline: none;
+    border-color: #42a5f5;
+  }
+}
+
+.login-card__field-error {
+  margin: -12px 0 12px;
+  font-size: 12px;
+  color: #ef5350;
+}
+
+.login-card__toggle-row {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 16px;
+}
+
+.login-card__error {
+  margin: 4px 0 12px;
+  font-size: 13px;
+  color: #ef5350;
+}
+
+.login-card__submit {
+  margin-top: 8px;
+}
+
+// The global theme (src/styles.scss) only includes the Material component
+// themes the dashboard mounts — button-toggle is not among them, so it
+// arrives structurally styled but unthemed. Tint it here, scoped to this
+// page, without touching the shared theme file.
+:host ::ng-deep {
+  .mat-button-toggle-group {
+    width: 100%;
+    border: 1px solid #4a4a4a;
+  }
+
+  .mat-button-toggle {
+    flex: 1;
+    color: #e6e6e6;
+    background: #1a1a1a;
+    font-size: 13px;
+  }
+
+  .mat-button-toggle-checked {
+    color: #fff;
+    background: #1976d2;
+  }
+}

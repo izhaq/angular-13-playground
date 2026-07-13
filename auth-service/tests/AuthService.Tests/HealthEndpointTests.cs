@@ -1,13 +1,12 @@
 using System.Net;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace AuthService.Tests;
 
-public class HealthEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class HealthEndpointTests : IClassFixture<AuthServiceFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly AuthServiceFactory _factory;
 
-    public HealthEndpointTests(WebApplicationFactory<Program> factory)
+    public HealthEndpointTests(AuthServiceFactory factory)
     {
         _factory = factory;
     }

@@ -315,7 +315,7 @@ Shared touch points (the complete list):
 ```
 npm start                  → ng serve (proxy: /api/auth → :5001, /api → :3000)
 npm run server:start       → experiments service (Node) on :3000
-npm run auth-service       → auth service (.NET) on :5001  [requires .NET 8 SDK]
+npm run auth-service       → auth service (.NET) on :5001  [requires .NET 6 SDK]
 npm test                   → client unit tests (Karma/Jasmine)
 dotnet test auth-service   → auth service tests (xUnit)
 npm run build              → production build (same artifact for all environments)

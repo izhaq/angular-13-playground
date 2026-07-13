@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 
 namespace AuthService.Tests;
 
@@ -20,7 +21,7 @@ public class HealthEndpointTests : IClassFixture<AuthServiceFactory>
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
-        var body = await response.Content.ReadAsStringAsync();
-        Assert.Equal("{\"status\":\"ok\"}", body);
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("ok", body.RootElement.GetProperty("status").GetString());
     }
 }

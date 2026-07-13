@@ -10,7 +10,8 @@ namespace AuthService.Sessions;
 public static class Pbkdf2
 {
     private const string Prefix = "pbkdf2-sha256";
-    private const int Iterations = 100_000;
+    // OWASP-recommended minimum for PBKDF2-HMAC-SHA256.
+    private const int Iterations = 600_000;
     private const int SaltSize = 16;  // bytes
     private const int HashSize = 32;  // bytes
 

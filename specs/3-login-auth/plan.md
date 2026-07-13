@@ -15,18 +15,184 @@ services run, and there is something new to see.
 ## Architecture Decisions (from the approved spec)
 
 - Session cookie (Option A), HttpOnly, opaque id, server-side session table.
-- .NET 8 minimal API in self-contained `auth-service/` (port 5001);
-  EF Core + SQLite; Node server stays as the experiments service (port 3000).
+- **.NET 6** minimal API (org's version; 6→8 upgrade later is the safe
+  direction) in self-contained `auth-service/` (port 5001); EF Core 6 +
+  SQLite; Node server stays as the experiments service (port 3000).
 - Client: standalone components + signals, flat `features/auth/` (8 files),
   `provideAuth()` as the wiring seam.
 - Runtime `app-config.json` switches real/mock auth; missing file = auth ON.
+- Password hashing: PBKDF2 via `Rfc2898DeriveBytes` (built into .NET — no
+  extra dependency).
 
-## Environment (verified 2026-07-12)
+## Technical Architecture
 
-- .NET 8 SDK **installed and working** in this session (8.0.422 via
-  `apt-get install dotnet-sdk-8.0`; packages.microsoft.com is reachable).
-  ⚠ The remote container is ephemeral — a fresh session must reinstall.
-- NuGet (api.nuget.org) reachable through the proxy.
+```
+┌─────────────────────────── Browser ───────────────────────────┐
+│  Angular app (localhost:4200)                                  │
+│                                                                │
+│  login-page ──▶ SessionStore (signals) ◀── auth.guard          │
+│                   │        ▲                                   │
+│                   ▼        │ fills                             │
+│               AUTH_API token ── real: AuthApiService (HTTP)    │
+│               (picked by      └ mock: AuthApiMockService       │
+│                provideAuth from app-config.json)               │
+│                   │                                            │
+│  unauthorized.interceptor (watches every response for 401)     │
+└───────────────────┼────────────────────────────────────────────┘
+                    │ HTTP (cookie attached by the browser)
+        ┌───────────▼───────────┐  dev proxy = reverse proxy role
+        │  /api/auth/* → :5001  │──▶ auth-service (.NET 6)
+        │  /api/*      → :3000  │──▶ experiments service (Node)
+        └───────────────────────┘         │
+                              ┌───────────▼───────────┐
+                              │ auth-service           │
+                              │  minimal API endpoints │
+                              │  Sessions logic        │
+                              │  EF Core 6 ──▶ SQLite  │
+                              │  (Users, Sessions)     │
+                              └────────────────────────┘
+```
+
+The one rule that keeps it extractable: **everything left of the proxy reads
+only `SessionStore`; everything right of it reads only the `Sessions` table.
+The cookie travels between them, touched by neither side's app code.**
+
+### Data flow: login (happy path)
+
+```
+user submits form
+  → SessionStore.login({username, password, mode, position})
+    → POST /api/auth/login (withCredentials)
+      → endpoint: verify PBKDF2 hash → insert Sessions row
+      → 200 {user, expiresAt} + Set-Cookie: sid=…; HttpOnly; SameSite=Lax
+    → store._user.set(user)  →  isLoggedIn() flips true
+  → router.navigate(returnUrl ?? '/system-experiments')
+```
+
+### Data flow: page reload (session restore)
+
+```
+APP_INITIALIZER (provideAuth)
+  → GET /api/auth/session   (browser attaches sid cookie by itself)
+    → 200 → store filled before routing starts → user lands where they were
+    → 401 → store stays null → auth.guard redirects to /login
+```
+
+### Data flow: expiry / take-over (any time)
+
+```
+any API call → 401
+  → unauthorized.interceptor: store.clear() → router.navigate ['/login']
+```
+
+## Key Interfaces (the contract, in code)
+
+`features/auth/auth-contract.ts` — the whole shared vocabulary:
+
+```ts
+export type Mode = 'operation' | 'technician';
+export type Position = 'active' | 'passive';
+
+export interface LoginRequest {
+  username: string; password: string; mode: Mode; position: Position;
+}
+export interface UserSession {
+  user: { username: string; mode: Mode; position: Position };
+  expiresAt: string;                     // ISO-8601
+}
+export type AuthError = 'invalid_credentials' | 'locked' | 'invalid_request';
+
+export interface AuthApi {                // implemented by real + mock
+  login(req: LoginRequest): Observable<UserSession>;
+  logout(): Observable<void>;
+  session(): Observable<UserSession>;
+}
+export const AUTH_API = new InjectionToken<AuthApi>('AUTH_API');
+```
+
+`session.store.ts` — signals, the only state the app reads:
+
+```ts
+@Injectable({ providedIn: 'root' })
+export class SessionStore {
+  private readonly api = inject(AUTH_API);
+  private readonly _user = signal<UserSession | null>(null);
+
+  readonly session = this._user.asReadonly();
+  readonly isLoggedIn = computed(() => this._user() !== null);
+
+  login(req: LoginRequest) { /* api.login → tap(s => this._user.set(s)) */ }
+  clear() { this._user.set(null); }
+}
+```
+
+`auth.guard.ts`:
+
+```ts
+export const authGuard: CanActivateFn = (_, state) => {
+  const store = inject(SessionStore);
+  return store.isLoggedIn()
+    ? true
+    : inject(Router).createUrlTree(['/login'], { queryParams: { returnUrl: state.url } });
+};
+```
+
+`auth-service` login endpoint (.NET 6 minimal API, shape only):
+
+```csharp
+app.MapPost("/api/auth/login", async (LoginRequest req, AuthDb db, Sessions sessions) =>
+{
+    var user = await db.Users.SingleOrDefaultAsync(u => u.Username == req.Username);
+    if (user is null || !Pbkdf2.Verify(req.Password, user.PasswordHash))
+        return Results.Json(new { error = "invalid_credentials" }, statusCode: 401);
+
+    var s = await sessions.Create(user.Username, req.Mode, req.Position); // crypto-random sid
+    // cookie: HttpOnly, SameSite=Lax, MaxAge = TTL  (no Secure in dev — plain HTTP)
+    return Results.Ok(new { user = new { user.Username, req.Mode, req.Position },
+                            expiresAt = s.ExpiresAt });
+});
+```
+
+EF Core 6 entities (SQLite):
+
+```csharp
+public record User    { public string Username; public string PasswordHash; }
+public record Session { public string Sid; public string Username;
+                        public string Mode; public string Position;
+                        public DateTimeOffset ExpiresAt; }
+// AuthDb : DbContext — DbSet<User>, DbSet<Session>; seeded with 2 users
+```
+
+`provideAuth` — the host wiring seam (also where real/mock is decided):
+
+```ts
+export function provideAuth(): (EnvironmentProviders | Provider)[] {
+  return [
+    { provide: AUTH_API, useFactory: () =>
+        inject(APP_CONFIG).authEnabled ? inject(AuthApiService) : inject(AuthApiMockService) },
+    provideHttpClient(withInterceptors([unauthorizedInterceptor])),
+    { provide: APP_INITIALIZER, useFactory: restoreSession, multi: true },
+  ];
+}
+```
+
+`proxy.conf.json` (order matters — specific route first):
+
+```json
+{
+  "/api/auth": { "target": "http://localhost:5001", "secure": false },
+  "/api":      { "target": "http://localhost:3000", "secure": false, "ws": true }
+}
+```
+
+## Environment (verified 2026-07-13)
+
+- **.NET 6 SDK installed and verified** (6.0.428; a net6.0 web project
+  builds clean). .NET 8 SDK also present (harmless).
+  ⚠ The remote container is ephemeral — a fresh session reinstalls with:
+  `apt-get install -y dotnet-sdk-6.0` (packages.microsoft.com feed, works
+  through the proxy; `dot.net` script is blocked).
+- NuGet (api.nuget.org) reachable.
 - `npm install` needed once before client work.
 - No docker daemon here — the Dockerfile ships review-only.
 
@@ -39,10 +205,10 @@ through the Angular dev proxy. Nothing about auth yet — this de-risks all
 tooling in one small step.
 
 ### Task 0.1: Scaffold auth-service (S)
-**Description:** `dotnet new` solution + minimal API project + xUnit test
-project, `appsettings.json` with port 5001, one endpoint:
-`GET /api/auth/health` → `{ "status": "ok" }`. One trivial xUnit test hits it
-via the in-memory test host.
+**Description:** `dotnet new` solution + minimal API project (net6.0) + xUnit
+test project, `appsettings.json` with port 5001, one endpoint:
+`GET /api/auth/health` → `{ "status": "ok" }`. One xUnit test hits it via
+`WebApplicationFactory` (in-memory test host).
 **Acceptance:**
 - [ ] `dotnet run` serves the health endpoint on :5001
 - [ ] `dotnet test auth-service` passes
@@ -50,11 +216,10 @@ via the in-memory test host.
 **Dependencies:** none
 
 ### Task 0.2: Wire the proxy and npm scripts (XS)
-**Description:** `proxy.conf.json`: `/api/auth` → `:5001` (before the
-existing `/api` → `:3000` rule); `package.json`: `auth-service` script.
-`npm install` for the client.
+**Description:** `proxy.conf.json` route as above; `package.json`:
+`auth-service` script. `npm install` for the client.
 **Acceptance:**
-- [ ] With all three running, browser `localhost:4200/api/auth/health` returns ok
+- [ ] Browser `localhost:4200/api/auth/health` returns ok through the proxy
 - [ ] Existing experiments page still loads its data (Node route untouched)
 **Files:** `proxy.conf.json`, `package.json`
 **Dependencies:** 0.1
@@ -68,11 +233,10 @@ existing `/api` → `:3000` rule); `package.json`: `auth-service` script.
 Goal: a seeded user logs in from a real login page and lands in the app.
 
 ### Task 1.1: Backend — users, sessions, login endpoint (M)
-**Description:** EF Core + SQLite: `Users` (2 seeded, hashed passwords) and
-`Sessions` tables. `POST /api/auth/login`: validate → create session row →
-`Set-Cookie: sid=...; HttpOnly` + contract body. `401 invalid_credentials`,
-`400 invalid_request`. CORS with credentials enabled. Session id via
-`RandomNumberGenerator`.
+**Description:** EF Core 6 + SQLite: `Users` (2 seeded, PBKDF2-hashed
+passwords) and `Sessions` tables. `POST /api/auth/login` as sketched above.
+`401 invalid_credentials`, `400 invalid_request`. CORS with credentials
+enabled. Sid via `RandomNumberGenerator.GetBytes(32)` → base64url.
 **Acceptance:**
 - [ ] xUnit: login ok / wrong password / malformed each return contract-exact responses
 - [ ] Cookie is HttpOnly; session row lands in SQLite
@@ -80,20 +244,20 @@ Goal: a seeded user logs in from a real login page and lands in the app.
 **Dependencies:** 0.1
 
 ### Task 1.2: Frontend — contract, api service, session store (S)
-**Description:** `auth-contract.ts` (all types + `AUTH_API` token),
-`auth-api.service.ts` (`withCredentials: true`), `session.store.ts`
-(signals: `user`, `isLoggedIn`, `login()` calling the api and setting state).
+**Description:** `auth-contract.ts`, `auth-api.service.ts`
+(`withCredentials: true` on every call), `session.store.ts` — all as
+sketched in Key Interfaces.
 **Acceptance:**
 - [ ] Jasmine: store sets user on login success, stays null on failure
 - [ ] Api service request shape matches the contract (HttpClientTestingModule)
 **Files:** `features/auth/auth-contract.ts`, `auth-api.service.ts`, `session.store.ts` + 2 specs
-**Dependencies:** none (contract is fixed by the spec — parallel with 1.1)
+**Dependencies:** none (contract fixed by the spec — parallel with 1.1)
 
 ### Task 1.3: Frontend — login page + route (M)
 **Description:** standalone `login-page.component` (reactive form: username,
-password, Mode toggle, Position toggle — Material), `provideAuth()` minimal
-(real service only for now), `/login` route via `loadComponent`, redirect to
-`/system-experiments` on success.
+password, Mode toggle, Position toggle — Material `mat-button-toggle-group`),
+`provideAuth()` minimal (real service only for now), `/login` via
+`loadComponent`, redirect to `returnUrl ?? /system-experiments` on success.
 **Acceptance:**
 - [ ] Jasmine: required-field validation; submit calls store.login with form values
 - [ ] Manual: real login from the browser lands in the app
@@ -109,17 +273,17 @@ password, Mode toggle, Position toggle — Material), `provideAuth()` minimal
 Goal: guarded routes bounce to `/login`; a page reload keeps the session.
 
 ### Task 2.1: Backend — GET /api/auth/session (S)
-**Description:** return the session's user + expiry from the cookie's sid, or
-`401`. Expiry checked against the row.
+**Description:** read `sid` cookie → look up row → not found/expired → `401`;
+else `200` with the contract body (same shape as login).
 **Acceptance:**
-- [ ] xUnit: with valid sid → 200 contract body; no/invalid sid → 401
+- [ ] xUnit: valid sid → 200 contract body; no/invalid sid → 401
 **Files:** `auth-service` (Program.cs, Sessions/), tests
 **Dependencies:** 1.1
 
 ### Task 2.2: Frontend — guard + session restore (S)
-**Description:** functional `auth.guard` on the feature routes; startup
+**Description:** `authGuard` (as sketched) on the feature routes; startup
 restore in `provideAuth` (APP_INITIALIZER → `GET /session` → fill store);
-guard redirects to `/login` with the attempted URL preserved.
+`returnUrl` preserved through the redirect.
 **Acceptance:**
 - [ ] Jasmine: guard blocks when store empty, passes when filled
 - [ ] Manual: deep-link logged out → login page; reload logged in → still in
@@ -136,7 +300,7 @@ Goal: the session ends properly — by choice, by time, or by the server.
 
 ### Task 3.1: Backend — logout + configurable TTL (S)
 **Description:** `POST /api/auth/logout` (delete row, clear cookie,
-idempotent 204). `SessionTtlHours` from appsettings/env drives `expiresAt`
+idempotent 204). `SessionTtlHours` from appsettings/env drives `ExpiresAt`
 and the expiry check.
 **Acceptance:**
 - [ ] xUnit: logout → next /session is 401; TTL config changes expiresAt; expired session → 401
@@ -144,9 +308,9 @@ and the expiry check.
 **Dependencies:** 2.1
 
 ### Task 3.2: Frontend — logout UI + 401 interceptor (S)
-**Description:** `unauthorized.interceptor` (401 → clear store → `/login`,
-registered in `provideAuth`); small logout affordance showing the logged-in
-user/mode (minimal placement in the shell — the one allowed shared-file touch).
+**Description:** `unauthorizedInterceptor` (as in the data flow; registered
+in `provideAuth`); small logout affordance showing the logged-in user/mode
+(minimal placement in the shell — the one allowed shared-file touch).
 **Acceptance:**
 - [ ] Jasmine: 401 from any call empties the store and navigates
 - [ ] Manual: logout → login page → guarded routes blocked again
@@ -190,8 +354,8 @@ Goal: same production build, config file flips auth off for dev environments.
 ### Task 5.1: Frontend — runtime config + mock (M)
 **Description:** `assets/app-config.json`; `app-config.ts` loader
 (APP_INITIALIZER before auth restore); `auth-api.mock.service.ts` (instant
-fixed session); `provideAuth` picks real vs mock from the loaded config;
-missing/broken file → auth ON.
+fixed `operation`/`active` session); `provideAuth` factory picks real vs
+mock (see Key Interfaces); missing/broken file → auth ON.
 **Acceptance:**
 - [ ] Jasmine: mock mode → guard passes, zero HTTP; config missing → real mode
 - [ ] Manual: `ng build` once; flip the json in `dist/` by hand → app opens with no login, auth service stopped
@@ -209,8 +373,8 @@ Goal: the two promises ("plug-out") are demonstrated, not claimed.
 ### Task 6.1: Extraction checks (S)
 **Description:** script/manual proof: `features/auth/` has zero imports from
 outside itself (grep-able check); `auth-service/` copied to a temp dir builds
-and its tests pass standalone. Write the Dockerfile (review-only here — no
-docker daemon in this environment).
+and its tests pass standalone. Write the Dockerfile (base image
+`mcr.microsoft.com/dotnet/aspnet:6.0`; review-only here — no docker daemon).
 **Acceptance:**
 - [ ] Both checks pass and are recorded in the spec folder
 **Files:** `auth-service/Dockerfile`, small check script
@@ -218,9 +382,9 @@ docker daemon in this environment).
 
 ### Task 6.2: Docs (S)
 **Description:** `auth-service/README.md` (run, config, contract pointer,
-migration note: SQLite → real DB = provider swap) and a short
-`features/auth/README.md` (how a host app adopts: `provideAuth`, routes,
-config). Update spec status to "implemented".
+migration notes: SQLite → real DB = EF provider swap; net6.0 → net8.0 =
+three lines) and a short `features/auth/README.md` (how a host app adopts:
+`provideAuth`, routes, config). Update spec status to "implemented".
 **Acceptance:**
 - [ ] A new reader can run both sides from the READMEs alone
 **Files:** 2 READMEs, spec.md status line
@@ -240,11 +404,12 @@ checkpoint. Slices themselves are sequential.
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| Ephemeral container loses the .NET SDK between sessions | Med | Install command documented above; consider a SessionStart hook later |
-| First `dotnet restore` slow/flaky through proxy | Low | NuGet verified reachable; few dependencies (EF Core, SQLite) |
-| Cookie flags on plain HTTP dev (`Secure` would break it) | Med | Dev: `HttpOnly; SameSite=Lax`, no `Secure`; note in README that production behind TLS adds `Secure` |
+| Ephemeral container loses the .NET SDK between sessions | Med | One-line reinstall documented above; consider a SessionStart hook later |
+| .NET 6 is EOL (no patches) | Accepted | Org-version decision, recorded in spec; upgrade path is three lines |
+| First `dotnet restore` slow/flaky through proxy | Low | NuGet verified reachable; few dependencies (EF Core 6, SQLite) |
+| Cookie flags on plain HTTP dev (`Secure` would break it) | Med | Dev: `HttpOnly; SameSite=Lax`, no `Secure`; README notes production behind TLS adds `Secure` |
 | Karma/Chromium in remote env | Low | Chromium pre-installed (`CHROME_BIN`); verify at checkpoint 1 |
-| Disk allowance (SDK + node_modules + NuGet) | Med | SDK already installed; clean `dist/`/temp copies after extraction check |
+| Disk allowance (SDKs + node_modules + NuGet) | Med | Clean `dist/`/temp copies after extraction check |
 | Dockerfile unverifiable here | Low | Ships review-only, stated in README |
 
 ## Open Questions

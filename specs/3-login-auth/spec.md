@@ -36,9 +36,10 @@ Both pieces are designed for extraction into the real project.
   functional guard/interceptor, `inject()`. The rest of the app stays
   NgModule-based; mixing is officially supported and standard. Angular
   Material, Reactive Forms.
-- **Auth service:** .NET 8 / ASP.NET Core minimal API, EF Core with SQLite
-  (single-file DB, nothing to install). Own port (5001), own config, own
-  Dockerfile.
+- **Auth service:** .NET 6 / ASP.NET Core minimal API (matches the org's
+  current version; upgrading later is the safe direction), EF Core 6 with
+  SQLite (single-file DB, nothing to install). Own port (5001), own config,
+  own Dockerfile.
 - **Experiments service:** the existing Node/Express server (`server/`,
   port 3000) stays as-is — it plays the "other microservice" in the
   simulation.
@@ -417,17 +418,14 @@ returns 401. These tests double as the contract's executable documentation.
    possibly 18 by adoption time.** Standalone + signals are exactly what
    17/18 favor, so the upgrade path is smooth; any refactoring would be
    optional modernization, not rework.
-3. **Org's .NET version — answered: org is on .NET 6.** Decision: build on
-   **.NET 8**, written 6-compatible by discipline (no 7/8-only features).
-   Reasoning: (a) compatibility flows our way — a net8.0 *app* can reference
-   the org's net6.0 common library and Rabbit wrapper; the forbidden
-   direction (net8 library inside net6 app) doesn't apply to a standalone
-   service nobody references; (b) .NET 6 is end-of-life since Nov 2024 — a
-   brand-new auth service shouldn't start life on an unpatched runtime;
-   (c) if org policy still forces 6 at adoption, the retarget is three
-   lines (`TargetFramework`, EF Core package major, Docker base image).
-   One infra check remains: org build servers must have a .NET 8 SDK (or
-   build via docker).
+3. **Org's .NET version — answered and decided: build on .NET 6**, matching
+   the org (common library, Rabbit wrapper, build servers all at 6 today).
+   Upgrading later (6 → 8/10) is the guaranteed-safe direction — three lines
+   (`TargetFramework`, EF Core package major, Docker base image) and .NET's
+   backward compatibility does the rest. Accepted trade-off, recorded
+   honestly: .NET 6 is end-of-life since Nov 2024 (no security patches);
+   softened by the air-gapped network and by docker shipping the runtime
+   inside the image. Revisit when the org plans its upgrade.
 4. **Real project's DB engine** (intent doc §3.11) — doesn't block the build,
    thanks to the EF Core seam.
 5. **Repo convention** (intent doc §3.12) — own repo per microservice? The

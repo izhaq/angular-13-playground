@@ -417,14 +417,17 @@ returns 401. These tests double as the contract's executable documentation.
    possibly 18 by adoption time.** Standalone + signals are exactly what
    17/18 favor, so the upgrade path is smooth; any refactoring would be
    optional modernization, not rework.
-3. **Org's .NET version** — unknown; we build on .NET 8 (current LTS, zero
-   cutting-edge features used). Low risk by design: the service never merges
-   into another codebase, and docker ships its own runtime. If a different
-   version is required, the change is the `TargetFramework` line, the EF Core
-   package version, and the Dockerfile base image — code unchanged. Only
-   red-flag scenario to check: org still on legacy .NET Framework 4.x
-   (service still fine in its own pod, but the org would be operating modern
-   .NET for the first time).
+3. **Org's .NET version — answered: org is on .NET 6.** Decision: build on
+   **.NET 8**, written 6-compatible by discipline (no 7/8-only features).
+   Reasoning: (a) compatibility flows our way — a net8.0 *app* can reference
+   the org's net6.0 common library and Rabbit wrapper; the forbidden
+   direction (net8 library inside net6 app) doesn't apply to a standalone
+   service nobody references; (b) .NET 6 is end-of-life since Nov 2024 — a
+   brand-new auth service shouldn't start life on an unpatched runtime;
+   (c) if org policy still forces 6 at adoption, the retarget is three
+   lines (`TargetFramework`, EF Core package major, Docker base image).
+   One infra check remains: org build servers must have a .NET 8 SDK (or
+   build via docker).
 4. **Real project's DB engine** (intent doc §3.11) — doesn't block the build,
    thanks to the EF Core seam.
 5. **Repo convention** (intent doc §3.12) — own repo per microservice? The

@@ -1,6 +1,48 @@
-// Matches the playground's dark surface tones (see src/styles.scss and the
-// system-experiments shell): #1a1a1a page, #242424 card, #4a4a4a hairlines,
-// #e6e6e6 text, Material blue accents.
+// ---------------------------------------------------------------------------
+// Theme knobs — the block a migrating team overrides.
+//
+// Values match the playground's dark surface tones (see src/styles.scss and
+// the system-experiments shell). When this feature moves into a host app,
+// repoint these variables at the host's design tokens; the rules below
+// should not need to change.
+// ---------------------------------------------------------------------------
+
+// Colors.
+$auth-color-text: #e6e6e6;
+$auth-color-text-muted: #9e9e9e; // labels
+$auth-color-error: #ef5350;
+$auth-color-surface: #1a1a1a; // page, inputs, unchecked toggles
+$auth-color-surface-raised: #242424; // card
+$auth-color-border: #4a4a4a; // hairlines
+$auth-color-focus: #42a5f5; // focused input border
+$auth-color-selected: #1976d2; // checked toggle background
+$auth-color-on-selected: #fff; // text on the checked toggle
+
+// Shape.
+$auth-radius: 4px;
+
+// Spacing scale (4px base).
+$auth-space-xs: 4px;
+$auth-space-sm: 8px;
+$auth-space-md: 12px;
+$auth-space-lg: 16px;
+$auth-space-xl: 24px;
+$auth-space-xxl: 32px;
+$auth-space-label-gap: 6px; // label-to-control gap, deliberately off-scale
+
+// Type scale.
+$auth-font-size-title: 20px;
+$auth-font-size-body: 13px;
+$auth-font-size-caption: 12px;
+
+// Fixed dimensions.
+$auth-input-height: 38px;
+$auth-card-max-width: 380px;
+
+// ---------------------------------------------------------------------------
+// Layout — nesting mirrors the template's DOM: .login-page > .login-card
+// (the form) > its BEM elements.
+// ---------------------------------------------------------------------------
 
 :host {
   display: block;
@@ -13,93 +55,101 @@
   justify-content: center;
   min-height: 100%;
   box-sizing: border-box;
-  padding: 32px 16px;
-  color: #e6e6e6;
-}
+  padding: $auth-space-xxl $auth-space-lg;
+  color: $auth-color-text;
 
-.login-card {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  max-width: 380px;
-  box-sizing: border-box;
-  padding: 32px;
-  background: #242424;
-  border: 1px solid #4a4a4a;
-  border-radius: 4px;
-}
-
-.login-card__title {
-  margin: 0 0 24px;
-  font-size: 20px;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-}
-
-.login-card__label {
-  margin-bottom: 6px;
-  font-size: 12px;
-  color: #9e9e9e;
-}
-
-.login-card__input {
-  height: 38px;
-  box-sizing: border-box;
-  margin-bottom: 16px;
-  padding: 0 12px;
-  font: inherit;
-  color: #e6e6e6;
-  background: #1a1a1a;
-  border: 1px solid #4a4a4a;
-  border-radius: 4px;
-
-  &:focus {
-    outline: none;
-    border-color: #42a5f5;
-  }
-}
-
-.login-card__field-error {
-  margin: -12px 0 12px;
-  font-size: 12px;
-  color: #ef5350;
-}
-
-.login-card__toggle-row {
-  display: flex;
-  flex-direction: column;
-  margin-bottom: 16px;
-}
-
-.login-card__error {
-  margin: 4px 0 12px;
-  font-size: 13px;
-  color: #ef5350;
-}
-
-.login-card__submit {
-  margin-top: 8px;
-}
-
-// The global theme (src/styles.scss) only includes the Material component
-// themes the dashboard mounts — button-toggle is not among them, so it
-// arrives structurally styled but unthemed. Tint it here, scoped to this
-// page, without touching the shared theme file.
-:host ::ng-deep {
-  .mat-button-toggle-group {
+  .login-card {
+    display: flex;
+    flex-direction: column;
     width: 100%;
-    border: 1px solid #4a4a4a;
-  }
+    max-width: $auth-card-max-width;
+    box-sizing: border-box;
+    padding: $auth-space-xxl;
+    background: $auth-color-surface-raised;
+    border: 1px solid $auth-color-border;
+    border-radius: $auth-radius;
 
-  .mat-button-toggle {
-    flex: 1;
-    color: #e6e6e6;
-    background: #1a1a1a;
-    font-size: 13px;
-  }
+    &__title {
+      margin: 0 0 $auth-space-xl;
+      font-size: $auth-font-size-title;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+    }
 
-  .mat-button-toggle-checked {
-    color: #fff;
-    background: #1976d2;
+    &__label {
+      margin-bottom: $auth-space-label-gap;
+      font-size: $auth-font-size-caption;
+      color: $auth-color-text-muted;
+    }
+
+    &__input {
+      height: $auth-input-height;
+      box-sizing: border-box;
+      margin-bottom: $auth-space-lg;
+      padding: 0 $auth-space-md;
+      font: inherit;
+      color: $auth-color-text;
+      background: $auth-color-surface;
+      border: 1px solid $auth-color-border;
+      border-radius: $auth-radius;
+
+      &:focus {
+        outline: none;
+        border-color: $auth-color-focus;
+      }
+    }
+
+    &__field-error {
+      margin: -$auth-space-md 0 $auth-space-md;
+      font-size: $auth-font-size-caption;
+      color: $auth-color-error;
+    }
+
+    &__toggle-row {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: $auth-space-lg;
+    }
+
+    &__error {
+      margin: $auth-space-xs 0 $auth-space-md;
+      font-size: $auth-font-size-body;
+      color: $auth-color-error;
+    }
+
+    &__submit {
+      margin-top: $auth-space-sm;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Material overrides, scoped under the custom .auth-toggle-theme class (set
+// on the toggle groups in the template). The global theme (src/styles.scss)
+// only includes the Material component themes the dashboard mounts —
+// button-toggle is not among them, so it arrives structurally styled but
+// unthemed. To migrate: lift the inner .auth-toggle-theme block verbatim
+// into a global stylesheet (dropping this :host ::ng-deep wrapper); the
+// class keeps it applying only where it is used today.
+// ---------------------------------------------------------------------------
+
+:host ::ng-deep {
+  .auth-toggle-theme {
+    &.mat-button-toggle-group {
+      width: 100%;
+      border: 1px solid $auth-color-border;
+    }
+
+    .mat-button-toggle {
+      flex: 1;
+      color: $auth-color-text;
+      background: $auth-color-surface;
+      font-size: $auth-font-size-body;
+    }
+
+    .mat-button-toggle-checked {
+      color: $auth-color-on-selected;
+      background: $auth-color-selected;
+    }
   }
 }

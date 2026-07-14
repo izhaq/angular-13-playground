@@ -28,7 +28,11 @@
 
     <div class="login-card__toggle-row">
       <span class="login-card__label" id="login-mode-label">Mode</span>
-      <mat-button-toggle-group formControlName="mode" aria-labelledby="login-mode-label">
+      <mat-button-toggle-group
+        class="auth-toggle-theme"
+        formControlName="mode"
+        aria-labelledby="login-mode-label"
+      >
         <mat-button-toggle value="operation">Operation</mat-button-toggle>
         <mat-button-toggle value="technician">Technician</mat-button-toggle>
       </mat-button-toggle-group>
@@ -36,7 +40,11 @@
 
     <div class="login-card__toggle-row">
       <span class="login-card__label" id="login-position-label">Position</span>
-      <mat-button-toggle-group formControlName="position" aria-labelledby="login-position-label">
+      <mat-button-toggle-group
+        class="auth-toggle-theme"
+        formControlName="position"
+        aria-labelledby="login-position-label"
+      >
         <mat-button-toggle value="active">Active</mat-button-toggle>
         <mat-button-toggle value="passive">Passive</mat-button-toggle>
       </mat-button-toggle-group>

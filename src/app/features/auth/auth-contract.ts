@@ -33,3 +33,30 @@ export interface AuthApi {
 }
 
 export const AUTH_API = new InjectionToken<AuthApi>('AUTH_API');
+
+/**
+ * Endpoint URLs the HTTP implementation calls. A host app overrides them via
+ * `provideAuth({...})`; the runtime config file (slice 5) can feed this token
+ * later without touching the service.
+ */
+export interface AuthApiConfig {
+  loginUrl: string;
+  logoutUrl: string;
+  sessionUrl: string;
+}
+
+/**
+ * Defaults are relative — the contract fixes the paths, and the dev proxy or
+ * the production reverse proxy resolves the host.
+ */
+export const DEFAULT_AUTH_API_CONFIG: AuthApiConfig = {
+  loginUrl: '/api/auth/login',
+  logoutUrl: '/api/auth/logout',
+  sessionUrl: '/api/auth/session',
+};
+
+/** Self-defaulting: injectable without any provider, so forgetting the config is harmless. */
+export const AUTH_API_CONFIG = new InjectionToken<AuthApiConfig>('AUTH_API_CONFIG', {
+  providedIn: 'root',
+  factory: () => DEFAULT_AUTH_API_CONFIG,
+});

@@ -1,3 +1,4 @@
+import { Provider } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import {
   HttpClientTestingModule,
@@ -5,7 +6,8 @@ import {
 } from '@angular/common/http/testing';
 
 import { AuthApiService } from './auth-api.service';
-import { LoginRequest, UserSession } from './auth-contract';
+import { AUTH_API, AuthApi, LoginRequest, UserSession } from './auth-contract';
+import { provideAuth } from './auth.providers';
 
 describe('AuthApiService', () => {
   let service: AuthApiService;
@@ -65,5 +67,67 @@ describe('AuthApiService', () => {
     expect(http.request.withCredentials).toBeTrue();
     http.flush(session);
     expect(result).toEqual(session);
+  });
+});
+
+describe('AuthApiService endpoint configuration', () => {
+  const loginReq: LoginRequest = {
+    username: 'operation',
+    password: 'operation123!',
+    mode: 'operation',
+    position: 'active',
+  };
+
+  function setup(providers: Provider[]): { api: AuthApi; httpMock: HttpTestingController } {
+    TestBed.configureTestingModule({
+      imports: [HttpClientTestingModule],
+      providers,
+    });
+    return {
+      api: TestBed.inject(AUTH_API),
+      httpMock: TestBed.inject(HttpTestingController),
+    };
+  }
+
+  afterEach(() => TestBed.inject(HttpTestingController).verify());
+
+  it('uses the default /api/auth/* URLs with zero-arg provideAuth()', () => {
+    const { api, httpMock } = setup(provideAuth());
+
+    api.login(loginReq).subscribe();
+    api.logout().subscribe();
+    api.session().subscribe();
+
+    expect(httpMock.expectOne('/api/auth/login').request.method).toBe('POST');
+    expect(httpMock.expectOne('/api/auth/logout').request.method).toBe('POST');
+    expect(httpMock.expectOne('/api/auth/session').request.method).toBe('GET');
+  });
+
+  it('sends requests to the URLs given in provideAuth(config)', () => {
+    const { api, httpMock } = setup(
+      provideAuth({
+        loginUrl: '/host/auth/sign-in',
+        logoutUrl: '/host/auth/sign-out',
+        sessionUrl: '/host/auth/whoami',
+      }),
+    );
+
+    api.login(loginReq).subscribe();
+    api.logout().subscribe();
+    api.session().subscribe();
+
+    expect(httpMock.expectOne('/host/auth/sign-in').request.method).toBe('POST');
+    expect(httpMock.expectOne('/host/auth/sign-out').request.method).toBe('POST');
+    expect(httpMock.expectOne('/host/auth/whoami').request.method).toBe('GET');
+  });
+
+  it('keeps the remaining defaults when only some URLs are overridden', () => {
+    const { api, httpMock } = setup(provideAuth({ loginUrl: '/host/auth/sign-in' }));
+
+    api.login(loginReq).subscribe();
+    api.session().subscribe();
+
+    httpMock.expectOne('/host/auth/sign-in');
+    httpMock.expectOne('/api/auth/session');
   });
 });

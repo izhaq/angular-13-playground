@@ -45,8 +45,13 @@ export class LoginPageComponent {
     this.loginFailed.set(false);
     this.store.login(this.form.getRawValue()).subscribe({
       next: () => {
+        // Allowlist: only app-relative targets. Anything else (absolute
+        // URLs, garbage) falls back to the home screen — a crafted
+        // ?returnUrl= must never steer the user off the app.
         const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
-        this.router.navigateByUrl(returnUrl ?? '/system-experiments');
+        this.router.navigateByUrl(
+          returnUrl?.startsWith('/') ? returnUrl : '/system-experiments',
+        );
       },
       error: () => this.loginFailed.set(true),
     });

@@ -2,6 +2,7 @@ import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 
 import { DemoPageComponent } from './demo/demo-page.component';
+import { authGuard } from './features/auth/auth.guard';
 
 /**
  * Top-level routes for the playground.
@@ -27,6 +28,7 @@ const routes: Routes = [
   { path: 'demo', component: DemoPageComponent },
   {
     path: 'system-experiments',
+    canActivate: [authGuard],
     loadChildren: () =>
       import('./pages/system-experiments/system-experiments-page.module')
         .then((m) => m.SystemExperimentsPageModule),

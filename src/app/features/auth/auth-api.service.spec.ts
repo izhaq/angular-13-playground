@@ -78,21 +78,35 @@ describe('AuthApiService endpoint configuration', () => {
     position: 'active',
   };
 
-  function setup(providers: Provider[]): { api: AuthApi; httpMock: HttpTestingController } {
+  /**
+   * provideAuth() also wires the APP_INITIALIZER session restore, which
+   * TestBed runs at module init — so a startup GET to the *configured*
+   * session URL is already in flight before each test body. Draining it
+   * here (as the normal logged-out 401) both keeps the mock clean and
+   * proves the restore call honors the configured URL.
+   */
+  function setup(
+    providers: Provider[],
+    startupSessionUrl: string,
+  ): { api: AuthApi; httpMock: HttpTestingController } {
     TestBed.configureTestingModule({
       imports: [HttpClientTestingModule],
       providers,
     });
+    const httpMock = TestBed.inject(HttpTestingController);
+    httpMock
+      .expectOne(startupSessionUrl)
+      .flush(null, { status: 401, statusText: 'Unauthorized' });
     return {
       api: TestBed.inject(AUTH_API),
-      httpMock: TestBed.inject(HttpTestingController),
+      httpMock,
     };
   }
 
   afterEach(() => TestBed.inject(HttpTestingController).verify());
 
   it('uses the default /api/auth/* URLs with zero-arg provideAuth()', () => {
-    const { api, httpMock } = setup(provideAuth());
+    const { api, httpMock } = setup(provideAuth(), '/api/auth/session');
 
     api.login(loginReq).subscribe();
     api.logout().subscribe();
@@ -110,6 +124,7 @@ describe('AuthApiService endpoint configuration', () => {
         logoutUrl: '/host/auth/sign-out',
         sessionUrl: '/host/auth/whoami',
       }),
+      '/host/auth/whoami',
     );
 
     api.login(loginReq).subscribe();
@@ -122,7 +137,10 @@ describe('AuthApiService endpoint configuration', () => {
   });
 
   it('keeps the remaining defaults when only some URLs are overridden', () => {
-    const { api, httpMock } = setup(provideAuth({ loginUrl: '/host/auth/sign-in' }));
+    const { api, httpMock } = setup(
+      provideAuth({ loginUrl: '/host/auth/sign-in' }),
+      '/api/auth/session',
+    );
 
     api.login(loginReq).subscribe();
     api.session().subscribe();

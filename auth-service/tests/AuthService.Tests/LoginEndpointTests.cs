@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using AuthService.Data;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AuthService.Tests;
@@ -85,6 +86,38 @@ public class LoginEndpointTests : IClassFixture<AuthServiceFactory>
         Assert.Equal("technician", session.Mode);
         Assert.Equal("passive", session.Position);
         Assert.True(session.ExpiresAt > DateTimeOffset.UtcNow);
+    }
+
+    [Fact]
+    public async Task Two_logins_produce_different_sids()
+    {
+        var client = _factory.CreateClient();
+
+        var first = await client.PostAsJsonAsync("/api/auth/login", ValidLogin());
+        var second = await client.PostAsJsonAsync("/api/auth/login", ValidLogin());
+
+        Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, second.StatusCode);
+        Assert.NotEqual(ExtractSid(first), ExtractSid(second));
+    }
+
+    [Fact]
+    public async Task Cookie_max_age_value_equals_the_configured_ttl_in_seconds()
+    {
+        // A non-default TTL proves the value is driven by SessionTtlHours,
+        // not a hardcoded 24h.
+        using var factory = _factory.WithWebHostBuilder(builder =>
+            builder.UseSetting("SessionTtlHours", "2"));
+        var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/auth/login", ValidLogin());
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var cookie = response.Headers.GetValues("Set-Cookie").Single(c => c.StartsWith("sid="));
+        var maxAge = cookie.Split(';')
+            .Select(part => part.Trim())
+            .Single(part => part.StartsWith("max-age=", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(2 * 3600, int.Parse(maxAge["max-age=".Length..]));
     }
 
     [Fact]

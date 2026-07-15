@@ -1,9 +1,10 @@
 using System.Security.Cryptography;
 using AuthService.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace AuthService.Sessions;
 
-/// <summary>Creates session rows. Lookup/delete arrive in later slices.</summary>
+/// <summary>Creates and looks up session rows. Delete arrives in slice 3.</summary>
 public class SessionService
 {
     private readonly AuthDb _db;
@@ -31,6 +32,17 @@ public class SessionService
         _db.Sessions.Add(session);
         await _db.SaveChangesAsync();
         return session;
+    }
+
+    /// <summary>
+    /// The live session for a sid, or null when the sid is unknown or the
+    /// session has expired. Rows are never purged, so an expired row is
+    /// indistinguishable from a missing one — both mean "no session".
+    /// </summary>
+    public async Task<Session?> FindLive(string sid)
+    {
+        var session = await _db.Sessions.SingleOrDefaultAsync(s => s.Sid == sid);
+        return session is not null && session.ExpiresAt > DateTimeOffset.UtcNow ? session : null;
     }
 
     /// <summary>256 crypto-random bits, base64url so it is cookie-safe (no '=', '+', '/').</summary>

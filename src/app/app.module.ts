@@ -6,6 +6,7 @@ import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { AppComponent } from './app.component';
 import { AppRoutingModule } from './app-routing.module';
 import { DemoPageModule } from './demo/demo-page.module';
+import { provideAuth } from './features/auth/auth.providers';
 
 @NgModule({
   declarations: [AppComponent],
@@ -16,6 +17,7 @@ import { DemoPageModule } from './demo/demo-page.module';
     DemoPageModule,
     AppRoutingModule,
   ],
+  providers: [provideAuth()],
   bootstrap: [AppComponent],
 })
 export class AppModule {}

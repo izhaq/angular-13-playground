@@ -7,6 +7,7 @@ import { DemoPageComponent } from './demo/demo-page.component';
  * Top-level routes for the playground.
  *
  *   /              → redirects to /system-experiments (the headline screen)
+ *   /login         → login page (standalone component, lazy via loadComponent)
  *   /demo          → component playground (DemoPageComponent, eager)
  *   /system-experiments    → SYS Mode dashboard host page (lazy-loaded)
  *
@@ -17,6 +18,12 @@ import { DemoPageComponent } from './demo/demo-page.component';
  */
 const routes: Routes = [
   { path: '', redirectTo: '/system-experiments', pathMatch: 'full' },
+  {
+    path: 'login',
+    loadComponent: () =>
+      import('./features/auth/login-page/login-page.component')
+        .then((m) => m.LoginPageComponent),
+  },
   { path: 'demo', component: DemoPageComponent },
   {
     path: 'system-experiments',

@@ -1,13 +1,13 @@
 using System.Net;
-using Microsoft.AspNetCore.Mvc.Testing;
+using System.Text.Json;
 
 namespace AuthService.Tests;
 
-public class HealthEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class HealthEndpointTests : IClassFixture<AuthServiceFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly AuthServiceFactory _factory;
 
-    public HealthEndpointTests(WebApplicationFactory<Program> factory)
+    public HealthEndpointTests(AuthServiceFactory factory)
     {
         _factory = factory;
     }
@@ -21,7 +21,7 @@ public class HealthEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
-        var body = await response.Content.ReadAsStringAsync();
-        Assert.Equal("{\"status\":\"ok\"}", body);
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("ok", body.RootElement.GetProperty("status").GetString());
     }
 }

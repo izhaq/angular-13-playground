@@ -80,6 +80,7 @@ public class SessionEndpointTests : IClassFixture<AuthServiceFactory>
         var response = await client.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(string.Empty, await response.Content.ReadAsStringAsync());
     }
 
     [Fact]

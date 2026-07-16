@@ -79,7 +79,7 @@ app.MapGet("/api/auth/session", async (SessionService sessions, HttpContext http
 {
     // Spec: 200 with the same body shape as login, "or 401 if no valid
     // session" — the spec defines no 401 body for /session, so none is sent.
-    if (!http.Request.Cookies.TryGetValue("sid", out var sid))
+    if (!http.Request.Cookies.TryGetValue("sid", out var sid) || string.IsNullOrEmpty(sid))
     {
         return Results.Unauthorized();
     }

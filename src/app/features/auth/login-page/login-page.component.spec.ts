@@ -111,6 +111,20 @@ describe('LoginPageComponent', () => {
     expect(router.navigateByUrl).toHaveBeenCalledOnceWith('/system-experiments');
   });
 
+  it('ignores a protocol-relative returnUrl and falls back to the default route', () => {
+    store.login.and.returnValue(of(session));
+    routeStub.snapshot.queryParamMap = convertToParamMap({ returnUrl: '//evil.example/phish' });
+    const fixture = createComponent();
+
+    fixture.componentInstance.form.patchValue({
+      username: 'operation',
+      password: 'operation123!',
+    });
+    fixture.componentInstance.submit();
+
+    expect(router.navigateByUrl).toHaveBeenCalledOnceWith('/system-experiments');
+  });
+
   it('shows a generic failure message and stays put when login fails', () => {
     store.login.and.returnValue(
       throwError(() => ({ status: 401, error: { error: 'invalid_credentials' } })),

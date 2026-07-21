@@ -6,7 +6,7 @@ import {
 } from '@angular/common/http/testing';
 
 import { provideAuth } from './auth.providers';
-import { UserSession } from './auth-contract';
+import { AUTH_ROUTES_CONFIG, AuthConfig, UserSession } from './auth-contract';
 import { SessionStore } from './session.store';
 
 /**
@@ -21,18 +21,26 @@ describe('provideAuth', () => {
     expiresAt: '2026-07-14T12:00:00+00:00',
   };
 
-  beforeEach(() => {
+  function setup(config?: Partial<AuthConfig>): void {
     TestBed.configureTestingModule({
       imports: [HttpClientTestingModule],
-      providers: [provideAuth()],
+      providers: [provideAuth(config)],
     });
-  });
+  }
+
+  /** Answer the initializer's GET /session so verify() stays satisfied. */
+  function flushRestoreAs401(): void {
+    TestBed.inject(HttpTestingController)
+      .expectOne('/api/auth/session')
+      .flush(null, { status: 401, statusText: 'Unauthorized' });
+  }
 
   afterEach(() => {
     TestBed.inject(HttpTestingController).verify();
   });
 
   it('restores the session at startup and holds app init until the response', async () => {
+    setup();
     const httpMock = TestBed.inject(HttpTestingController);
     const store = TestBed.inject(SessionStore);
     const initStatus = TestBed.inject(ApplicationInitStatus);
@@ -56,6 +64,7 @@ describe('provideAuth', () => {
   });
 
   it('resolves silently and stays logged out when the restore gets a 401', async () => {
+    setup();
     const consoleError = spyOn(console, 'error');
     const httpMock = TestBed.inject(HttpTestingController);
     const store = TestBed.inject(SessionStore);
@@ -69,5 +78,19 @@ describe('provideAuth', () => {
     expect(store.session()).toBeNull();
     expect(store.isLoggedIn()).toBeFalse();
     expect(consoleError).not.toHaveBeenCalled();
+  });
+
+  it('wires a host-configured defaultPostLoginUrl into AUTH_ROUTES_CONFIG', () => {
+    setup({ defaultPostLoginUrl: '/ops-home' });
+
+    expect(TestBed.inject(AUTH_ROUTES_CONFIG).defaultPostLoginUrl).toBe('/ops-home');
+    flushRestoreAs401();
+  });
+
+  it('defaults the post-login url to the playground home when not configured', () => {
+    setup();
+
+    expect(TestBed.inject(AUTH_ROUTES_CONFIG).defaultPostLoginUrl).toBe('/system-experiments');
+    flushRestoreAs401();
   });
 });

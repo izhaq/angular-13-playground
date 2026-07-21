@@ -75,6 +75,28 @@ app.MapPost("/api/auth/login", async (LoginRequest request, AuthDb db, SessionSe
     });
 });
 
+app.MapPost("/api/auth/logout", async (SessionService sessions, HttpContext http) =>
+{
+    // Idempotent by design: no cookie, unknown sid, and already-deleted all
+    // end the same way — 204, nothing to reveal (spec: "deletes the session.
+    // Idempotent.").
+    if (http.Request.Cookies.TryGetValue("sid", out var sid) && !string.IsNullOrEmpty(sid))
+    {
+        await sessions.Delete(sid);
+    }
+
+    // Clear the cookie with the same attributes it was set with — a browser
+    // only drops a cookie when they match. (Delete emits an expired Set-Cookie.)
+    http.Response.Cookies.Delete("sid", new CookieOptions
+    {
+        HttpOnly = true,
+        SameSite = SameSiteMode.Lax,
+        Path = "/",
+    });
+
+    return Results.NoContent();
+});
+
 app.MapGet("/api/auth/session", async (SessionService sessions, HttpContext http) =>
 {
     // Spec: 200 with the same body shape as login, "or 401 if no valid

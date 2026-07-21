@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AuthService.Sessions;
 
-/// <summary>Creates and looks up session rows. Delete arrives in slice 3.</summary>
+/// <summary>Creates, looks up, and deletes session rows.</summary>
 public class SessionService
 {
     private readonly AuthDb _db;
@@ -43,6 +43,20 @@ public class SessionService
     {
         var session = await _db.Sessions.SingleOrDefaultAsync(s => s.Sid == sid);
         return session is not null && session.ExpiresAt > DateTimeOffset.UtcNow ? session : null;
+    }
+
+    /// <summary>
+    /// Deletes the session row for a sid. Idempotent: an unknown or already
+    /// deleted sid is a no-op — logout has nothing to reveal.
+    /// </summary>
+    public async Task Delete(string sid)
+    {
+        var session = await _db.Sessions.SingleOrDefaultAsync(s => s.Sid == sid);
+        if (session is not null)
+        {
+            _db.Sessions.Remove(session);
+            await _db.SaveChangesAsync();
+        }
     }
 
     /// <summary>256 crypto-random bits, base64url so it is cookie-safe (no '=', '+', '/').</summary>

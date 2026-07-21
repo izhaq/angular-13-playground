@@ -55,7 +55,15 @@ public class SessionService
         if (session is not null)
         {
             _db.Sessions.Remove(session);
-            await _db.SaveChangesAsync();
+            try
+            {
+                await _db.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                // A concurrent logout deleted the row between our fetch and
+                // save — already deleted, idempotent no-op.
+            }
         }
     }
 

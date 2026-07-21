@@ -79,9 +79,17 @@ public class LogoutEndpointTests : IClassFixture<AuthServiceFactory>
 
         var response = await Logout(client, sid);
 
-        // A browser only drops a cookie when the clearing Set-Cookie matches
-        // the attributes it was set with (HttpOnly, SameSite=Lax, Path=/) and
-        // carries an expiry in the past.
+        AssertClearsSidCookie(response);
+    }
+
+    /// <summary>
+    /// Asserts the response carries the clearing Set-Cookie: a browser only
+    /// drops a cookie when it matches the attributes the cookie was set with
+    /// (HttpOnly, SameSite=Lax, Path=/) and carries an expiry in the past.
+    /// Every logout path must emit it identically — nothing to reveal.
+    /// </summary>
+    private static void AssertClearsSidCookie(HttpResponseMessage response)
+    {
         Assert.True(response.Headers.TryGetValues("Set-Cookie", out var setCookies));
         var cookie = Assert.Single(setCookies!, c => c.StartsWith("sid="));
         var lower = cookie.ToLowerInvariant();
@@ -104,6 +112,10 @@ public class LogoutEndpointTests : IClassFixture<AuthServiceFactory>
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         Assert.Equal(string.Empty, await response.Content.ReadAsStringAsync());
+
+        // The clearing Set-Cookie is emitted even with no cookie on the
+        // request — all logout paths look identical (anti-leak).
+        AssertClearsSidCookie(response);
     }
 
     [Fact]
@@ -114,6 +126,10 @@ public class LogoutEndpointTests : IClassFixture<AuthServiceFactory>
         var response = await Logout(client, "not-a-real-session-id");
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+
+        // The clearing Set-Cookie is emitted for an unknown sid too — all
+        // logout paths look identical (anti-leak).
+        AssertClearsSidCookie(response);
     }
 
     [Fact]

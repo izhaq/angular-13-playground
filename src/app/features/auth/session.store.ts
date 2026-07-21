@@ -36,6 +36,20 @@ export class SessionStore {
     );
   }
 
+  /**
+   * Logs out server-side and clears the store — success or not. A dead
+   * server must never trap the user logged-in client-side, so the error is
+   * swallowed and the observable always emits once and completes; the
+   * caller only decides where to navigate afterwards.
+   */
+  logout(): Observable<void> {
+    return this.api.logout().pipe(
+      map(() => undefined),
+      catchError(() => of(undefined)),
+      tap(() => this.clear()),
+    );
+  }
+
   clear(): void {
     this._user.set(null);
   }

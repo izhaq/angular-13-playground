@@ -1,5 +1,4 @@
 import { NgModule } from '@angular/core';
-import { HttpClientModule } from '@angular/common/http';
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 
@@ -13,10 +12,12 @@ import { provideAuth } from './features/auth/auth.providers';
   imports: [
     BrowserModule,
     BrowserAnimationsModule,
-    HttpClientModule,
     DemoPageModule,
     AppRoutingModule,
   ],
+  // provideAuth() also provides the HttpClient (with the 401 interceptor
+  // attached) — HttpClientModule is gone on purpose; re-importing it would
+  // drop the interceptor.
   providers: [provideAuth()],
   bootstrap: [AppComponent],
 })

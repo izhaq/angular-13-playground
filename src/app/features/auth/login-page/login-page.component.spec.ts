@@ -4,7 +4,7 @@ import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
 import { of, throwError } from 'rxjs';
 
-import { UserSession } from '../auth-contract';
+import { AUTH_ROUTES_CONFIG, AuthRoutesConfig, UserSession } from '../auth-contract';
 import { SessionStore } from '../session.store';
 import { LoginPageComponent } from './login-page.component';
 
@@ -12,6 +12,7 @@ describe('LoginPageComponent', () => {
   let store: jasmine.SpyObj<Pick<SessionStore, 'login'>>;
   let router: Router;
   let routeStub: { snapshot: { queryParamMap: ReturnType<typeof convertToParamMap> } };
+  let routesConfig: AuthRoutesConfig;
 
   const session: UserSession = {
     user: { username: 'operation', mode: 'operation', position: 'active' },
@@ -21,12 +22,14 @@ describe('LoginPageComponent', () => {
   beforeEach(async () => {
     store = jasmine.createSpyObj('SessionStore', ['login']);
     routeStub = { snapshot: { queryParamMap: convertToParamMap({}) } };
+    routesConfig = { defaultPostLoginUrl: '/system-experiments' };
 
     await TestBed.configureTestingModule({
       imports: [LoginPageComponent, NoopAnimationsModule, RouterTestingModule],
       providers: [
         { provide: SessionStore, useValue: store },
         { provide: ActivatedRoute, useValue: routeStub },
+        { provide: AUTH_ROUTES_CONFIG, useValue: routesConfig },
       ],
     }).compileComponents();
 
@@ -81,6 +84,20 @@ describe('LoginPageComponent', () => {
     expect(router.navigateByUrl).toHaveBeenCalledOnceWith('/system-experiments');
   });
 
+  it('navigates to the host-configured default post-login url when no returnUrl exists', () => {
+    store.login.and.returnValue(of(session));
+    routesConfig.defaultPostLoginUrl = '/custom-home';
+    const fixture = createComponent();
+
+    fixture.componentInstance.form.patchValue({
+      username: 'operation',
+      password: 'operation123!',
+    });
+    fixture.componentInstance.submit();
+
+    expect(router.navigateByUrl).toHaveBeenCalledOnceWith('/custom-home');
+  });
+
   it('navigates to the returnUrl query param when present', () => {
     store.login.and.returnValue(of(session));
     routeStub.snapshot.queryParamMap = convertToParamMap({ returnUrl: '/demo' });
@@ -95,6 +112,34 @@ describe('LoginPageComponent', () => {
     fixture.componentInstance.submit();
 
     expect(router.navigateByUrl).toHaveBeenCalledOnceWith('/demo');
+  });
+
+  it('ignores a returnUrl that is not app-relative and falls back to the default route', () => {
+    store.login.and.returnValue(of(session));
+    routeStub.snapshot.queryParamMap = convertToParamMap({ returnUrl: 'https://evil.example/phish' });
+    const fixture = createComponent();
+
+    fixture.componentInstance.form.patchValue({
+      username: 'operation',
+      password: 'operation123!',
+    });
+    fixture.componentInstance.submit();
+
+    expect(router.navigateByUrl).toHaveBeenCalledOnceWith('/system-experiments');
+  });
+
+  it('ignores a protocol-relative returnUrl and falls back to the default route', () => {
+    store.login.and.returnValue(of(session));
+    routeStub.snapshot.queryParamMap = convertToParamMap({ returnUrl: '//evil.example/phish' });
+    const fixture = createComponent();
+
+    fixture.componentInstance.form.patchValue({
+      username: 'operation',
+      password: 'operation123!',
+    });
+    fixture.componentInstance.submit();
+
+    expect(router.navigateByUrl).toHaveBeenCalledOnceWith('/system-experiments');
   });
 
   it('shows a generic failure message and stays put when login fails', () => {

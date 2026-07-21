@@ -75,6 +75,28 @@ app.MapPost("/api/auth/login", async (LoginRequest request, AuthDb db, SessionSe
     });
 });
 
+app.MapGet("/api/auth/session", async (SessionService sessions, HttpContext http) =>
+{
+    // Spec: 200 with the same body shape as login, "or 401 if no valid
+    // session" — the spec defines no 401 body for /session, so none is sent.
+    if (!http.Request.Cookies.TryGetValue("sid", out var sid) || string.IsNullOrEmpty(sid))
+    {
+        return Results.Unauthorized();
+    }
+
+    var session = await sessions.FindLive(sid);
+    if (session is null)
+    {
+        return Results.Unauthorized();
+    }
+
+    return Results.Ok(new
+    {
+        user = new { username = session.Username, mode = session.Mode, position = session.Position },
+        expiresAt = session.ExpiresAt,
+    });
+});
+
 app.Run();
 
 // Exposes the implicit Program class to the test host (WebApplicationFactory<Program>).

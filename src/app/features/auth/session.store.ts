@@ -1,6 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { Observable } from 'rxjs';
-import { tap } from 'rxjs/operators';
+import { Observable, of } from 'rxjs';
+import { catchError, map, tap } from 'rxjs/operators';
 
 import { AUTH_API, LoginRequest, UserSession } from './auth-contract';
 
@@ -20,6 +20,20 @@ export class SessionStore {
    */
   login(req: LoginRequest): Observable<UserSession> {
     return this.api.login(req).pipe(tap((s) => this._user.set(s)));
+  }
+
+  /**
+   * Restores the session from the server cookie (app startup / page reload).
+   * Unlike login(), errors are swallowed — "no valid session" is a normal
+   * startup outcome, not something for a caller to handle. Always completes,
+   * so APP_INITIALIZER can safely wait on it.
+   */
+  restore(): Observable<void> {
+    return this.api.session().pipe(
+      tap((s) => this._user.set(s)),
+      map(() => undefined),
+      catchError(() => of(undefined)),
+    );
   }
 
   clear(): void {

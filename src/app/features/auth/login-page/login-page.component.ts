@@ -5,13 +5,14 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import { Mode, Position } from '../auth-contract';
+import { AUTH_ROUTES_CONFIG, Mode, Position } from '../auth-contract';
 import { SessionStore } from '../session.store';
 
 /**
  * Standalone login page. On success navigates to the returnUrl query param
- * (set by the guard in slice 2) or the app's home screen. Error UX beyond a
- * single generic message arrives in slice 4.
+ * (set by the guard in slice 2) or the host-configured default post-login
+ * route (see AUTH_ROUTES_CONFIG / auth-urls.ts). Error UX beyond a single
+ * generic message arrives in slice 4.
  */
 @Component({
   selector: 'app-login-page',
@@ -25,6 +26,7 @@ export class LoginPageComponent {
   private readonly store = inject(SessionStore);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly routeUrls = inject(AUTH_ROUTES_CONFIG);
   private readonly fb = inject(NonNullableFormBuilder);
 
   readonly form = this.fb.group({
@@ -45,8 +47,16 @@ export class LoginPageComponent {
     this.loginFailed.set(false);
     this.store.login(this.form.getRawValue()).subscribe({
       next: () => {
+        // Allowlist: only app-relative targets. Anything else (absolute
+        // URLs, protocol-relative '//host' URLs, garbage) falls back to the
+        // default post-login route — a crafted ?returnUrl= must never steer
+        // the user off the app.
         const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
-        this.router.navigateByUrl(returnUrl ?? '/system-experiments');
+        this.router.navigateByUrl(
+          returnUrl?.startsWith('/') && !returnUrl.startsWith('//')
+            ? returnUrl
+            : this.routeUrls.defaultPostLoginUrl,
+        );
       },
       error: () => this.loginFailed.set(true),
     });

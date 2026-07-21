@@ -1,6 +1,8 @@
 import { InjectionToken } from '@angular/core';
 import { Observable } from 'rxjs';
 
+import { DEFAULT_POST_LOGIN_URL } from './auth-urls';
+
 /**
  * The whole shared vocabulary of the auth feature — mirrors the
  * language-neutral API contract in specs/3-login-auth/spec.md, which is the
@@ -60,3 +62,27 @@ export const AUTH_API_CONFIG = new InjectionToken<AuthApiConfig>('AUTH_API_CONFI
   providedIn: 'root',
   factory: () => DEFAULT_AUTH_API_CONFIG,
 });
+
+/**
+ * Client-side route URLs the feature navigates to. A sibling of
+ * `AuthApiConfig`, not part of it: endpoint URLs mirror the backend contract,
+ * route URLs belong to the host app's route map. The constants behind the
+ * defaults live in auth-urls.ts.
+ */
+export interface AuthRoutesConfig {
+  /** Post-login landing route when no (valid) returnUrl exists. */
+  defaultPostLoginUrl: string;
+}
+
+export const DEFAULT_AUTH_ROUTES_CONFIG: AuthRoutesConfig = {
+  defaultPostLoginUrl: DEFAULT_POST_LOGIN_URL,
+};
+
+/** Self-defaulting, like AUTH_API_CONFIG. */
+export const AUTH_ROUTES_CONFIG = new InjectionToken<AuthRoutesConfig>('AUTH_ROUTES_CONFIG', {
+  providedIn: 'root',
+  factory: () => DEFAULT_AUTH_ROUTES_CONFIG,
+});
+
+/** Everything a host app can hand to `provideAuth()` — endpoint + route URLs. */
+export type AuthConfig = AuthApiConfig & AuthRoutesConfig;

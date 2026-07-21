@@ -2,6 +2,8 @@ import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 
 import { DemoPageComponent } from './demo/demo-page.component';
+import { authGuard } from './features/auth/auth.guard';
+import { LOGIN_PATH } from './features/auth/auth-urls';
 
 /**
  * Top-level routes for the playground.
@@ -19,7 +21,9 @@ import { DemoPageComponent } from './demo/demo-page.component';
 const routes: Routes = [
   { path: '', redirectTo: '/system-experiments', pathMatch: 'full' },
   {
-    path: 'login',
+    // The feature's own constant — keeps the registered route and the
+    // guard's redirect target (LOGIN_URL) from ever drifting apart.
+    path: LOGIN_PATH,
     loadComponent: () =>
       import('./features/auth/login-page/login-page.component')
         .then((m) => m.LoginPageComponent),
@@ -27,6 +31,7 @@ const routes: Routes = [
   { path: 'demo', component: DemoPageComponent },
   {
     path: 'system-experiments',
+    canActivate: [authGuard],
     loadChildren: () =>
       import('./pages/system-experiments/system-experiments-page.module')
         .then((m) => m.SystemExperimentsPageModule),

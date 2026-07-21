@@ -65,6 +65,38 @@ describe('SessionStore', () => {
     expect(store.isLoggedIn()).toBeFalse();
   });
 
+  it('restore() fills the session from the api and completes', () => {
+    const session$ = new Subject<UserSession>();
+    api.session.and.returnValue(session$.asObservable());
+    let completed = false;
+
+    store.restore().subscribe({ complete: () => (completed = true) });
+    session$.next(session);
+    session$.complete();
+
+    expect(store.session()).toEqual(session);
+    expect(store.isLoggedIn()).toBeTrue();
+    expect(completed).toBeTrue();
+  });
+
+  it('restore() swallows the error and stays logged out when there is no valid session', () => {
+    const session$ = new Subject<UserSession>();
+    api.session.and.returnValue(session$.asObservable());
+    let completed = false;
+    let errored = false;
+
+    store.restore().subscribe({
+      complete: () => (completed = true),
+      error: () => (errored = true),
+    });
+    session$.error({ status: 401 });
+
+    expect(errored).toBeFalse();
+    expect(completed).toBeTrue();
+    expect(store.session()).toBeNull();
+    expect(store.isLoggedIn()).toBeFalse();
+  });
+
   it('clear() empties the session', () => {
     store.login(request).subscribe();
     apiLogin$.next(session);

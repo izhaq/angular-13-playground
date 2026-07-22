@@ -1,0 +1,6 @@
+<div class="auth-session-indicator" *ngIf="store.isLoggedIn()">
+  <span class="auth-session-indicator__user">
+    {{ store.session()?.user?.username }} · {{ store.session()?.user?.mode }}
+  </span>
+  <button class="auth-session-indicator__logout" type="button" (click)="logout()">Log out</button>
+</div>

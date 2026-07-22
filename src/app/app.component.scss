@@ -23,34 +23,11 @@
     letter-spacing: 0.2px;
   }
 
-  // Logged-in session chrome (username · mode + logout), pushed to the far
-  // right of the nav. Only rendered while a session exists.
-  &__session {
+  // The auth feature owns the session chrome (<auth-session-indicator>:
+  // username · mode + logout, self-hiding while logged out). The nav only
+  // decides its placement: pushed to the far right.
+  auth-session-indicator {
     margin-left: auto;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    font-size: 13px;
-  }
-
-  &__user {
-    color: rgba(230, 230, 230, 0.78);
-  }
-
-  &__logout {
-    padding: 5px 12px;
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    border-radius: 4px;
-    background: transparent;
-    color: rgba(230, 230, 230, 0.78);
-    font: inherit;
-    font-size: 13px;
-    cursor: pointer;
-
-    &:hover {
-      background: rgba(255, 255, 255, 0.06);
-      color: #fff;
-    }
   }
 
   &__links {

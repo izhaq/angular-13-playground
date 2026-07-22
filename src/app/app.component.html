@@ -8,12 +8,7 @@
       <a routerLink="/demo" routerLinkActive="app-nav__link--active">Components</a>
     </li>
   </ul>
-  <div class="app-nav__session" *ngIf="store.isLoggedIn()">
-    <span class="app-nav__user">
-      {{ store.session()?.user?.username }} · {{ store.session()?.user?.mode }}
-    </span>
-    <button class="app-nav__logout" type="button" (click)="logout()">Log out</button>
-  </div>
+  <auth-session-indicator />
 </nav>
 
 <router-outlet></router-outlet>

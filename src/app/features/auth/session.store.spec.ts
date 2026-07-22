@@ -97,6 +97,46 @@ describe('SessionStore', () => {
     expect(store.isLoggedIn()).toBeFalse();
   });
 
+  it('logout() calls the api, clears the session, and completes', () => {
+    store.login(request).subscribe();
+    apiLogin$.next(session);
+    apiLogin$.complete();
+    const logout$ = new Subject<void>();
+    api.logout.and.returnValue(logout$.asObservable());
+    let completed = false;
+
+    store.logout().subscribe({ complete: () => (completed = true) });
+    expect(api.logout).toHaveBeenCalledTimes(1);
+    logout$.next(undefined);
+    logout$.complete();
+
+    expect(store.session()).toBeNull();
+    expect(store.isLoggedIn()).toBeFalse();
+    expect(completed).toBeTrue();
+  });
+
+  it('logout() clears the session even when the server call fails', () => {
+    // A dead server must not trap the user logged-in client-side.
+    store.login(request).subscribe();
+    apiLogin$.next(session);
+    apiLogin$.complete();
+    const logout$ = new Subject<void>();
+    api.logout.and.returnValue(logout$.asObservable());
+    let completed = false;
+    let errored = false;
+
+    store.logout().subscribe({
+      complete: () => (completed = true),
+      error: () => (errored = true),
+    });
+    logout$.error(new Error('server unreachable'));
+
+    expect(errored).toBeFalse();
+    expect(completed).toBeTrue();
+    expect(store.session()).toBeNull();
+    expect(store.isLoggedIn()).toBeFalse();
+  });
+
   it('clear() empties the session', () => {
     store.login(request).subscribe();
     apiLogin$.next(session);

@@ -23,6 +23,13 @@
     letter-spacing: 0.2px;
   }
 
+  // The auth feature owns the session chrome (<auth-session-indicator>:
+  // username · mode + logout, self-hiding while logged out). The nav only
+  // decides its placement: pushed to the far right.
+  auth-session-indicator {
+    margin-left: auto;
+  }
+
   &__links {
     list-style: none;
     margin: 0;

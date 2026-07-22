@@ -1,0 +1,55 @@
+// ---------------------------------------------------------------------------
+// Theme knobs — the block a migrating team overrides.
+//
+// Values match the playground's dark nav (src/app/app.component.scss), where
+// the host mounts this component today. When this feature moves into a host
+// app, repoint these variables at the host's design tokens; the rules below
+// should not need to change. Layout *placement* (e.g. pushing the indicator
+// to the far side of a toolbar) stays a host concern — the host styles the
+// <auth-session-indicator> element in its own stylesheet.
+// ---------------------------------------------------------------------------
+
+// Colors.
+$auth-indicator-color-text: rgba(230, 230, 230, 0.78);
+$auth-indicator-color-text-hover: #fff;
+$auth-indicator-color-border: rgba(255, 255, 255, 0.25);
+$auth-indicator-color-hover-surface: rgba(255, 255, 255, 0.06);
+
+// Shape.
+$auth-indicator-radius: 4px;
+
+// Spacing.
+$auth-indicator-gap: 12px;
+$auth-indicator-button-padding: 5px 12px;
+
+// Type scale.
+$auth-indicator-font-size: 13px;
+
+// ---------------------------------------------------------------------------
+// Layout — nesting mirrors the template's DOM: .auth-session-indicator (the
+// wrapping class, also the hosts' override hook) > its BEM elements.
+// ---------------------------------------------------------------------------
+
+.auth-session-indicator {
+  display: flex;
+  align-items: center;
+  gap: $auth-indicator-gap;
+  font-size: $auth-indicator-font-size;
+  color: $auth-indicator-color-text;
+
+  &__logout {
+    padding: $auth-indicator-button-padding;
+    border: 1px solid $auth-indicator-color-border;
+    border-radius: $auth-indicator-radius;
+    background: transparent;
+    color: $auth-indicator-color-text;
+    font: inherit;
+    font-size: $auth-indicator-font-size;
+    cursor: pointer;
+
+    &:hover {
+      background: $auth-indicator-color-hover-surface;
+      color: $auth-indicator-color-text-hover;
+    }
+  }
+}

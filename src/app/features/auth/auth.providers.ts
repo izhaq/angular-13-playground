@@ -1,4 +1,5 @@
-import { APP_INITIALIZER, Provider, inject } from '@angular/core';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { APP_INITIALIZER, EnvironmentProviders, Provider, inject } from '@angular/core';
 
 import { AuthApiService } from './auth-api.service';
 import {
@@ -10,6 +11,7 @@ import {
   DEFAULT_AUTH_ROUTES_CONFIG,
 } from './auth-contract';
 import { SessionStore } from './session.store';
+import { unauthorizedInterceptor } from './unauthorized.interceptor';
 
 /**
  * The host wiring seam — one call in the root providers plugs the auth
@@ -25,12 +27,18 @@ import { SessionStore } from './session.store';
  * A 401 is a normal "not logged in" outcome; restore() swallows it, so
  * startup stays silent.
  *
- * Later slices add the 401 interceptor and the real/mock switch driven by
- * runtime config.
+ * Also provides the app's HttpClient with the 401 interceptor attached
+ * (replacing HttpClientModule in the host) — the expiry / take-over flow:
+ * any 401 from any API call clears the store and redirects to login.
+ *
+ * A later slice adds the real/mock switch driven by runtime config.
  */
-export function provideAuth(config: Partial<AuthConfig> = {}): Provider[] {
+export function provideAuth(
+  config: Partial<AuthConfig> = {},
+): (Provider | EnvironmentProviders)[] {
   const { defaultPostLoginUrl, ...apiConfig } = config;
   return [
+    provideHttpClient(withInterceptors([unauthorizedInterceptor])),
     { provide: AUTH_API, useExisting: AuthApiService },
     { provide: AUTH_API_CONFIG, useValue: { ...DEFAULT_AUTH_API_CONFIG, ...apiConfig } },
     {

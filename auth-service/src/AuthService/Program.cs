@@ -38,6 +38,21 @@ using (var scope = app.Services.CreateScope())
 
 app.UseCors(CorsPolicy);
 
+// Single source of truth for the session cookie. Login's Append and logout's
+// Delete must agree on the name and attributes — a browser only drops a cookie
+// when the clearing Set-Cookie matches the one that set it — so both build
+// their options here and cannot drift.
+const string SessionCookieName = "sid";
+
+static CookieOptions SessionCookieOptions(TimeSpan? maxAge = null) => new()
+{
+    HttpOnly = true,
+    SameSite = SameSiteMode.Lax,
+    Path = "/",
+    MaxAge = maxAge,
+    // No Secure flag: dev runs on plain HTTP. Production behind TLS adds it.
+};
+
 app.MapGet("/api/auth/health", () => Results.Json(new { status = "ok" }));
 
 app.MapPost("/api/auth/login", async (LoginRequest request, AuthDb db, SessionService sessions, HttpContext http) =>
@@ -59,14 +74,7 @@ app.MapPost("/api/auth/login", async (LoginRequest request, AuthDb db, SessionSe
 
     var session = await sessions.Create(user.Username, request.Mode!, request.Position!);
 
-    http.Response.Cookies.Append("sid", session.Sid, new CookieOptions
-    {
-        HttpOnly = true,
-        SameSite = SameSiteMode.Lax,
-        Path = "/",
-        MaxAge = sessions.Ttl,
-        // No Secure flag: dev runs on plain HTTP. Production behind TLS adds it.
-    });
+    http.Response.Cookies.Append(SessionCookieName, session.Sid, SessionCookieOptions(sessions.Ttl));
 
     return Results.Ok(new
     {
@@ -75,11 +83,28 @@ app.MapPost("/api/auth/login", async (LoginRequest request, AuthDb db, SessionSe
     });
 });
 
+app.MapPost("/api/auth/logout", async (SessionService sessions, HttpContext http) =>
+{
+    // Idempotent by design: no cookie, unknown sid, and already-deleted all
+    // end the same way — 204, nothing to reveal (spec: "deletes the session.
+    // Idempotent.").
+    if (http.Request.Cookies.TryGetValue(SessionCookieName, out var sid) && !string.IsNullOrEmpty(sid))
+    {
+        await sessions.Delete(sid);
+    }
+
+    // Clear the cookie with the same attributes it was set with.
+    // (Delete emits an expired Set-Cookie.)
+    http.Response.Cookies.Delete(SessionCookieName, SessionCookieOptions());
+
+    return Results.NoContent();
+});
+
 app.MapGet("/api/auth/session", async (SessionService sessions, HttpContext http) =>
 {
     // Spec: 200 with the same body shape as login, "or 401 if no valid
     // session" — the spec defines no 401 body for /session, so none is sent.
-    if (!http.Request.Cookies.TryGetValue("sid", out var sid) || string.IsNullOrEmpty(sid))
+    if (!http.Request.Cookies.TryGetValue(SessionCookieName, out var sid) || string.IsNullOrEmpty(sid))
     {
         return Results.Unauthorized();
     }

@@ -1,9 +1,11 @@
-import { Provider } from '@angular/core';
+import { EnvironmentProviders, Provider } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import {
   HttpClientTestingModule,
   HttpTestingController,
+  provideHttpClientTesting,
 } from '@angular/common/http/testing';
+import { Router } from '@angular/router';
 
 import { AuthApiService } from './auth-api.service';
 import { AUTH_API, AuthApi, LoginRequest, UserSession } from './auth-contract';
@@ -86,12 +88,18 @@ describe('AuthApiService endpoint configuration', () => {
    * proves the restore call honors the configured URL.
    */
   function setup(
-    providers: Provider[],
+    providers: (Provider | EnvironmentProviders)[],
     startupSessionUrl: string,
   ): { api: AuthApi; httpMock: HttpTestingController } {
     TestBed.configureTestingModule({
-      imports: [HttpClientTestingModule],
-      providers,
+      providers: [
+        providers,
+        // provideAuth() brings the real HttpClient (with the 401
+        // interceptor); this overrides its backend with the testing one.
+        provideHttpClientTesting(),
+        // The interceptor injects the Router at request time.
+        { provide: Router, useValue: jasmine.createSpyObj<Router>('Router', ['navigateByUrl']) },
+      ],
     });
     const httpMock = TestBed.inject(HttpTestingController);
     httpMock

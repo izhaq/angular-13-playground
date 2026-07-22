@@ -1,30 +1,41 @@
+import { HttpClient } from '@angular/common/http';
 import { ApplicationInitStatus } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import {
-  HttpClientTestingModule,
   HttpTestingController,
+  provideHttpClientTesting,
 } from '@angular/common/http/testing';
+import { Router } from '@angular/router';
 
 import { provideAuth } from './auth.providers';
 import { AUTH_ROUTES_CONFIG, AuthConfig, UserSession } from './auth-contract';
+import { LOGIN_URL } from './auth-urls';
 import { SessionStore } from './session.store';
 
 /**
  * provideAuth() wires an APP_INITIALIZER that restores the session before
- * the app (and so the router) starts — the "page reload" data flow. TestBed
- * runs APP_INITIALIZERs when the testing module is created, so injecting
- * anything kicks the restore call off.
+ * the app (and so the router) starts — the "page reload" data flow — and,
+ * since slice 3, provides the HttpClient with the 401 interceptor attached.
+ * TestBed runs APP_INITIALIZERs when the testing module is created, so
+ * injecting anything kicks the restore call off.
  */
 describe('provideAuth', () => {
+  let router: jasmine.SpyObj<Router>;
+
   const session: UserSession = {
     user: { username: 'operation', mode: 'operation', position: 'active' },
     expiresAt: '2026-07-14T12:00:00+00:00',
   };
 
   function setup(config?: Partial<AuthConfig>): void {
+    router = jasmine.createSpyObj<Router>('Router', ['navigateByUrl']);
     TestBed.configureTestingModule({
-      imports: [HttpClientTestingModule],
-      providers: [provideAuth(config)],
+      providers: [
+        provideAuth(config),
+        // Overrides the backend of the HttpClient that provideAuth provides.
+        provideHttpClientTesting(),
+        { provide: Router, useValue: router },
+      ],
     });
   }
 
@@ -78,6 +89,26 @@ describe('provideAuth', () => {
     expect(store.session()).toBeNull();
     expect(store.isLoggedIn()).toBeFalse();
     expect(consoleError).not.toHaveBeenCalled();
+    // The interceptor must not treat the startup restore's own 401 as
+    // "session gone" — a normal logged-out startup stays on its route.
+    expect(router.navigateByUrl).not.toHaveBeenCalled();
+  });
+
+  it('registers the 401 interceptor on the http client it provides', () => {
+    setup();
+    const httpMock = TestBed.inject(HttpTestingController);
+    const store = TestBed.inject(SessionStore);
+
+    // Startup restore succeeds → logged in.
+    httpMock.expectOne('/api/auth/session').flush(session);
+    expect(store.isLoggedIn()).toBeTrue();
+
+    // A later 401 from any other endpoint = expiry / take-over.
+    TestBed.inject(HttpClient).get('/api/experiments').subscribe({ error: () => {} });
+    httpMock.expectOne('/api/experiments').flush(null, { status: 401, statusText: 'Unauthorized' });
+
+    expect(store.isLoggedIn()).toBeFalse();
+    expect(router.navigateByUrl).toHaveBeenCalledOnceWith(LOGIN_URL);
   });
 
   it('wires a host-configured defaultPostLoginUrl into AUTH_ROUTES_CONFIG', () => {

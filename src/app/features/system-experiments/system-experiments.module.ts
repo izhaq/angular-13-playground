@@ -1,5 +1,4 @@
 import { CommonModule } from '@angular/common';
-import { HttpClientModule } from '@angular/common/http';
 import { NgModule } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -44,9 +43,12 @@ const defaultWebSocketFactory: SystemExperimentsWebSocketFactory =
     GridHeaderComponent,
     SystemExperimentsShellComponent,
   ],
+  // No HttpClientModule here: the host app provides the (single) HttpClient
+  // at the root. Re-importing it inside this lazily-loaded module would
+  // create a second HttpClient in the lazy injector — one without the
+  // root-registered interceptors (e.g. the auth 401 handling).
   imports: [
     CommonModule,
-    HttpClientModule,
     ReactiveFormsModule,
     MatButtonModule,
     MatTabsModule,

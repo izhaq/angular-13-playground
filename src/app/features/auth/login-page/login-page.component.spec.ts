@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { TestBed } from '@angular/core/testing';
+import { TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
@@ -254,6 +254,23 @@ describe('LoginPageComponent', () => {
 
       expect(store.login).toHaveBeenCalledTimes(1);
     });
+
+    it('re-enables submit when the post-login navigation fails (stale returnUrl, no wildcard route)', fakeAsync(() => {
+      // A host app without a wildcard route can reject a stale returnUrl —
+      // navigateByUrl resolves false. pending must not stay stuck true, or
+      // the user is stranded on the login page with a dead submit button.
+      (router.navigateByUrl as jasmine.Spy).and.resolveTo(false);
+      store.login.and.returnValue(of(session));
+      const fixture = createComponent();
+      fixture.componentInstance.form.patchValue({ username: 'operation', password: 'operation123!' });
+
+      fixture.componentInstance.submit();
+      tick(); // let the navigation promise resolve (to false)
+      fixture.detectChanges();
+
+      expect(submitButton(fixture).disabled).toBeFalse();
+      expect(fixture.nativeElement.querySelector('.login-card__spinner')).toBeNull();
+    }));
 
     it('re-enables submit and removes the spinner when the request fails', () => {
       const { fixture, login$ } = submitPending();

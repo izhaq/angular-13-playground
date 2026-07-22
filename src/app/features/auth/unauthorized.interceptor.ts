@@ -40,12 +40,22 @@ export const unauthorizedInterceptor: HttpInterceptorFn = (req, next) => {
           req.url !== sessionUrl
         ) {
           store.clear();
-          // Carry the interrupted page as returnUrl — the same shape the
-          // guard produces — so logging back in after an expiry / take-over
-          // returns the user to where they were. router.url is always
-          // app-relative (leading '/'), so it passes the login page's
-          // '/'-not-'//' returnUrl allowlist.
-          router.navigate([LOGIN_URL], { queryParams: { returnUrl: router.url } });
+          if (router.url.startsWith(LOGIN_URL)) {
+            // Already on the login page (host apps may poll in the
+            // background): capturing router.url here would produce
+            // /login?returnUrl=/login — or nest an existing returnUrl —
+            // and send the user back to the login page after logging in.
+            // Navigate plain and let whatever returnUrl the page already
+            // shows (or the default post-login route) win.
+            router.navigate([LOGIN_URL]);
+          } else {
+            // Carry the interrupted page as returnUrl — the same shape the
+            // guard produces — so logging back in after an expiry / take-over
+            // returns the user to where they were. router.url is always
+            // app-relative (leading '/'), so it passes the login page's
+            // '/'-not-'//' returnUrl allowlist.
+            router.navigate([LOGIN_URL], { queryParams: { returnUrl: router.url } });
+          }
         }
       },
     }),

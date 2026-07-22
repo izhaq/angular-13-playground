@@ -109,13 +109,22 @@ export class LoginPageComponent {
         // default post-login route — a crafted ?returnUrl= must never steer
         // the user off the app.
         // pending stays true on purpose: the page is about to be left, and
-        // re-enabling would invite a double submit during navigation.
+        // re-enabling would invite a double submit during navigation. But if
+        // the navigation is REJECTED (a host without a wildcard route facing
+        // a stale returnUrl), the user stays here — re-enable submit instead
+        // of stranding them behind a forever-disabled button.
         const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
-        this.router.navigateByUrl(
-          returnUrl?.startsWith('/') && !returnUrl.startsWith('//')
-            ? returnUrl
-            : this.routeUrls.defaultPostLoginUrl,
-        );
+        this.router
+          .navigateByUrl(
+            returnUrl?.startsWith('/') && !returnUrl.startsWith('//')
+              ? returnUrl
+              : this.routeUrls.defaultPostLoginUrl,
+          )
+          .then((navigated) => {
+            if (!navigated) {
+              this.pending.set(false);
+            }
+          });
       },
       error: (error: unknown) => {
         this.pending.set(false);

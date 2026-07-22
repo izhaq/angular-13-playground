@@ -86,6 +86,31 @@ public class ContractHardeningTests : IClassFixture<AuthServiceFactory>
     }
 
     [Fact]
+    public async Task Reshaped_contract_400_still_carries_cors_headers()
+    {
+        // Regression pin for existing behavior: the reshaping middleware runs
+        // AFTER UseCors, and its Response.Clear() must not wipe the CORS
+        // headers CORS re-adds via OnStarting. A middleware reorder would
+        // silently break this — the browser would then see status 0 instead
+        // of the contract 400, and the client would render "unreachable"
+        // instead of the honest invalid_request path.
+        var client = _factory.CreateClient();
+
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/login")
+        {
+            Content = new StringContent(@"{""username"": <-- not json", Encoding.UTF8, "application/json"),
+        };
+        request.Headers.Add("Origin", "http://localhost:4200");
+
+        var response = await client.SendAsync(request);
+
+        await AssertContract400(response);
+        Assert.True(
+            response.Headers.Contains("Access-Control-Allow-Origin"),
+            "contract 400 lost its Access-Control-Allow-Origin header — cross-origin browsers would see status 0");
+    }
+
+    [Fact]
     public async Task Login_with_text_plain_content_type_returns_400_with_contract_body()
     {
         var client = _factory.CreateClient();

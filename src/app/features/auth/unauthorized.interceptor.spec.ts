@@ -46,9 +46,9 @@ describe('unauthorizedInterceptor', () => {
   /** The page the user is on when the session dies mid-work. */
   const currentUrl = '/system-experiments/deep-page';
 
-  function setup(config: AuthApiConfig = DEFAULT_AUTH_API_CONFIG): void {
+  function setup(config: AuthApiConfig = DEFAULT_AUTH_API_CONFIG, url: string = currentUrl): void {
     api = jasmine.createSpyObj<AuthApi>('AuthApi', ['login', 'logout', 'session']);
-    router = jasmine.createSpyObj<Router>('Router', ['navigate'], { url: currentUrl });
+    router = jasmine.createSpyObj<Router>('Router', ['navigate'], { url });
 
     TestBed.configureTestingModule({
       providers: [
@@ -103,6 +103,21 @@ describe('unauthorizedInterceptor', () => {
     expect(router.navigate).toHaveBeenCalledOnceWith([LOGIN_URL], {
       queryParams: { returnUrl: currentUrl },
     });
+  });
+
+  it('navigates to login WITHOUT a returnUrl when the 401 arrives while already on the login page', () => {
+    // Host apps may poll in the background; a 401 landing while the user is
+    // already on /login must not produce /login?returnUrl=/login (or nest an
+    // existing returnUrl) — after login the user would land back on the
+    // login page instead of anywhere useful.
+    setup(DEFAULT_AUTH_API_CONFIG, '/login?returnUrl=/somewhere');
+    logIn();
+
+    http.get('/api/experiments').subscribe({ error: () => {} });
+    httpMock.expectOne('/api/experiments').flush(null, { status: 401, statusText: 'Unauthorized' });
+
+    expect(store.isLoggedIn()).toBeFalse();
+    expect(router.navigate).toHaveBeenCalledOnceWith([LOGIN_URL]);
   });
 
   it('still lets the 401 propagate to the caller', () => {

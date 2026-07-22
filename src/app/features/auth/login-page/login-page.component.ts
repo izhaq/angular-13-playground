@@ -1,5 +1,4 @@
 import { NgIf } from '@angular/common';
-import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -9,42 +8,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import { AUTH_ROUTES_CONFIG, Mode, Position } from '../auth-contract';
 import { SessionStore } from '../session.store';
-
-/**
- * Every failure the contract defines has a face — one honest, human message
- * per cause, wording free of blame and jargon.
- */
-type LoginErrorKind = 'invalid-credentials' | 'locked' | 'unreachable' | 'unknown';
-
-const LOGIN_ERROR_MESSAGES: Record<LoginErrorKind, string> = {
-  'invalid-credentials': 'Wrong username or password. Please check and try again.',
-  locked: 'This account is locked right now. Please try again later.',
-  unreachable: 'Cannot reach the server right now. Please try again in a moment.',
-  unknown: 'Something went wrong while signing in. Please try again.',
-};
-
-/**
- * Maps a login failure to its message key:
- * - 401 → the contract's invalid_credentials.
- * - 423 → the contract's reserved locked state (never sent by the reference
- *   server yet, but the client must already render it distinctly).
- * - status 0 (no connection) or 5xx (server broken) → unreachable.
- * - anything else → an honest generic fallback.
- */
-function classifyLoginError(error: unknown): LoginErrorKind {
-  if (error instanceof HttpErrorResponse) {
-    if (error.status === 401) {
-      return 'invalid-credentials';
-    }
-    if (error.status === 423) {
-      return 'locked';
-    }
-    if (error.status === 0 || error.status >= 500) {
-      return 'unreachable';
-    }
-  }
-  return 'unknown';
-}
+import { classifyLoginError, LOGIN_ERROR_MESSAGES, LoginErrorKind } from './login-errors';
 
 /**
  * Standalone login page. On success navigates to the returnUrl query param

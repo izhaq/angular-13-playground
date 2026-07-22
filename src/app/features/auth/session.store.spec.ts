@@ -1,8 +1,9 @@
-import { TestBed } from '@angular/core/testing';
-import { Subject } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
+import { TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { NEVER, Subject } from 'rxjs';
 
 import { AUTH_API, AuthApi, LoginRequest, UserSession } from './auth-contract';
-import { SessionStore } from './session.store';
+import { SESSION_RESTORE_TIMEOUT_MS, SessionStore } from './session.store';
 
 describe('SessionStore', () => {
   let api: jasmine.SpyObj<AuthApi>;
@@ -96,6 +97,56 @@ describe('SessionStore', () => {
     expect(store.session()).toBeNull();
     expect(store.isLoggedIn()).toBeFalse();
   });
+
+  it('restore() warns on a non-401 failure so a dead server at startup is not invisible', () => {
+    const warn = spyOn(console, 'warn');
+    const session$ = new Subject<UserSession>();
+    api.session.and.returnValue(session$.asObservable());
+    let completed = false;
+
+    store.restore().subscribe({ complete: () => (completed = true) });
+    session$.error(new HttpErrorResponse({ status: 500, statusText: 'Internal Server Error' }));
+
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(completed).toBeTrue();
+    expect(store.isLoggedIn()).toBeFalse();
+  });
+
+  it('restore() does not warn on a 401 — a logged-out startup is a normal outcome', () => {
+    const warn = spyOn(console, 'warn');
+    const session$ = new Subject<UserSession>();
+    api.session.and.returnValue(session$.asObservable());
+
+    store.restore().subscribe();
+    session$.error(new HttpErrorResponse({ status: 401, statusText: 'Unauthorized' }));
+
+    expect(warn).not.toHaveBeenCalled();
+    expect(store.isLoggedIn()).toBeFalse();
+  });
+
+  it('restore() gives up after the timeout, warns, and resolves logged out', fakeAsync(() => {
+    // An unreachable auth service must not white-screen the app forever:
+    // APP_INITIALIZER waits on restore(), so a hanging request would hang
+    // the whole app.
+    const warn = spyOn(console, 'warn');
+    api.session.and.returnValue(NEVER);
+    let completed = false;
+    let errored = false;
+
+    store.restore().subscribe({
+      complete: () => (completed = true),
+      error: () => (errored = true),
+    });
+
+    tick(SESSION_RESTORE_TIMEOUT_MS - 1);
+    expect(completed).toBeFalse();
+
+    tick(1);
+    expect(completed).toBeTrue();
+    expect(errored).toBeFalse();
+    expect(store.isLoggedIn()).toBeFalse();
+    expect(warn).toHaveBeenCalledTimes(1);
+  }));
 
   it('logout() calls the api, clears the session, and completes', () => {
     store.login(request).subscribe();

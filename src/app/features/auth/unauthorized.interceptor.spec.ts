@@ -43,9 +43,12 @@ describe('unauthorizedInterceptor', () => {
     expiresAt: '2026-07-22T12:00:00+00:00',
   };
 
+  /** The page the user is on when the session dies mid-work. */
+  const currentUrl = '/system-experiments/deep-page';
+
   function setup(config: AuthApiConfig = DEFAULT_AUTH_API_CONFIG): void {
     api = jasmine.createSpyObj<AuthApi>('AuthApi', ['login', 'logout', 'session']);
-    router = jasmine.createSpyObj<Router>('Router', ['navigateByUrl']);
+    router = jasmine.createSpyObj<Router>('Router', ['navigate'], { url: currentUrl });
 
     TestBed.configureTestingModule({
       providers: [
@@ -83,7 +86,23 @@ describe('unauthorizedInterceptor', () => {
     httpMock.expectOne('/api/experiments').flush(null, { status: 401, statusText: 'Unauthorized' });
 
     expect(store.isLoggedIn()).toBeFalse();
-    expect(router.navigateByUrl).toHaveBeenCalledOnceWith(LOGIN_URL);
+    expect(router.navigate).toHaveBeenCalledTimes(1);
+  });
+
+  it('carries the interrupted page as returnUrl, in the same shape the guard produces', () => {
+    // Expiry / take-over mid-work: after logging back in the user must land
+    // where they were, so the redirect mirrors authGuard's
+    // createUrlTree([LOGIN_URL], { queryParams: { returnUrl } }) shape —
+    // the login page's '/'-not-'//' allowlist consumes both the same way.
+    setup();
+    logIn();
+
+    http.get('/api/experiments').subscribe({ error: () => {} });
+    httpMock.expectOne('/api/experiments').flush(null, { status: 401, statusText: 'Unauthorized' });
+
+    expect(router.navigate).toHaveBeenCalledOnceWith([LOGIN_URL], {
+      queryParams: { returnUrl: currentUrl },
+    });
   });
 
   it('still lets the 401 propagate to the caller', () => {
@@ -106,7 +125,7 @@ describe('unauthorizedInterceptor', () => {
       .flush(null, { status: 401, statusText: 'Unauthorized' });
 
     expect(store.isLoggedIn()).toBeTrue();
-    expect(router.navigateByUrl).not.toHaveBeenCalled();
+    expect(router.navigate).not.toHaveBeenCalled();
   });
 
   it('does not navigate on a 401 from the login endpoint (invalid credentials belong to the login page)', () => {
@@ -117,7 +136,7 @@ describe('unauthorizedInterceptor', () => {
       .expectOne(DEFAULT_AUTH_API_CONFIG.loginUrl)
       .flush({ error: 'invalid_credentials' }, { status: 401, statusText: 'Unauthorized' });
 
-    expect(router.navigateByUrl).not.toHaveBeenCalled();
+    expect(router.navigate).not.toHaveBeenCalled();
   });
 
   it('passes non-401 errors through untouched', () => {
@@ -132,7 +151,7 @@ describe('unauthorizedInterceptor', () => {
 
     expect(received?.status).toBe(500);
     expect(store.isLoggedIn()).toBeTrue();
-    expect(router.navigateByUrl).not.toHaveBeenCalled();
+    expect(router.navigate).not.toHaveBeenCalled();
   });
 
   it('leaves successful responses alone', () => {
@@ -145,7 +164,7 @@ describe('unauthorizedInterceptor', () => {
 
     expect(received).toEqual({ ok: true });
     expect(store.isLoggedIn()).toBeTrue();
-    expect(router.navigateByUrl).not.toHaveBeenCalled();
+    expect(router.navigate).not.toHaveBeenCalled();
   });
 
   it('follows host-overridden endpoint urls from AUTH_API_CONFIG', () => {
@@ -156,7 +175,7 @@ describe('unauthorizedInterceptor', () => {
     http.get('/auth2/session').subscribe({ error: () => {} });
     httpMock.expectOne('/auth2/session').flush(null, { status: 401, statusText: 'Unauthorized' });
     expect(store.isLoggedIn()).toBeTrue();
-    expect(router.navigateByUrl).not.toHaveBeenCalled();
+    expect(router.navigate).not.toHaveBeenCalled();
 
     // …while the default path — no longer the configured one — is not.
     http.get(DEFAULT_AUTH_API_CONFIG.sessionUrl).subscribe({ error: () => {} });
@@ -164,6 +183,8 @@ describe('unauthorizedInterceptor', () => {
       .expectOne(DEFAULT_AUTH_API_CONFIG.sessionUrl)
       .flush(null, { status: 401, statusText: 'Unauthorized' });
     expect(store.isLoggedIn()).toBeFalse();
-    expect(router.navigateByUrl).toHaveBeenCalledOnceWith(LOGIN_URL);
+    expect(router.navigate).toHaveBeenCalledOnceWith([LOGIN_URL], {
+      queryParams: { returnUrl: currentUrl },
+    });
   });
 });

@@ -50,12 +50,19 @@
       </mat-button-toggle-group>
     </div>
 
-    <p class="login-card__error" *ngIf="loginFailed()">
-      Login failed. Check your details and try again.
+    <p class="login-card__error" role="alert" *ngIf="errorMessage()">
+      {{ errorMessage() }}
     </p>
 
-    <button class="login-card__submit" mat-flat-button color="primary" type="submit">
-      Sign in
+    <button
+      class="login-card__submit"
+      mat-flat-button
+      color="primary"
+      type="submit"
+      [disabled]="pending()"
+    >
+      <span class="login-card__spinner" *ngIf="pending()" aria-hidden="true"></span>
+      {{ pending() ? 'Signing in…' : 'Sign in' }}
     </button>
   </form>
 </div>

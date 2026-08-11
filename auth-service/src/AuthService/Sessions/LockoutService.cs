@@ -37,11 +37,19 @@ public class LockoutService
 
     private readonly AuthDb _db;
     private readonly LockoutOptions _options;
+    private readonly TimeProvider _clock;
 
-    public LockoutService(AuthDb db, LockoutOptions options)
+    /// <summary>
+    /// The clock arrives as a dependency (R1.6a). Everything time-dependent
+    /// here — is the window still open, when does this lock lift — reads it,
+    /// so a test reaches an auto-unlock by moving the clock instead of
+    /// back-dating LockedUntil in the database.
+    /// </summary>
+    public LockoutService(AuthDb db, LockoutOptions options, TimeProvider clock)
     {
         _db = db;
         _options = options;
+        _clock = clock;
     }
 
     /// <summary>
@@ -67,7 +75,7 @@ public class LockoutService
             return false;
         }
 
-        if (attempt.LockedUntil > DateTimeOffset.UtcNow)
+        if (attempt.LockedUntil > _clock.GetUtcNow())
         {
             return true;
         }
@@ -113,7 +121,7 @@ public class LockoutService
             }
             else if (attempt.LockedUntil is not null)
             {
-                if (attempt.LockedUntil > DateTimeOffset.UtcNow)
+                if (attempt.LockedUntil > _clock.GetUtcNow())
                 {
                     // Locked and still inside the window: counting this would
                     // push the window forward, so a bot hammering the endpoint
@@ -132,7 +140,7 @@ public class LockoutService
             attempt.Version++;
             if (attempt.FailedCount >= _options.MaxAttempts)
             {
-                attempt.LockedUntil = DateTimeOffset.UtcNow.Add(_options.Window);
+                attempt.LockedUntil = _clock.GetUtcNow().Add(_options.Window);
             }
 
             try

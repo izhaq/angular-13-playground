@@ -110,27 +110,21 @@ public class SessionExpiryTests : IClassFixture<AuthServiceFactory>
     }
 
     [Fact]
-    public async Task A_stored_session_with_no_expiry_is_live_whatever_the_clock_says()
+    public async Task A_real_session_with_no_expiry_is_live_whatever_the_clock_says()
     {
-        // The row is written straight to the table (as SessionEndpointTests
-        // ages a session) so this asserts the lookup rule itself: a null
-        // ExpiresAt is never in the past, so no passage of time can kill it.
-        const string sid = "never-expiring-session-for-test";
-        using (var scope = _factory.Services.CreateScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<AuthDb>();
-            db.Sessions.Add(new Session
-            {
-                Sid = sid,
-                Username = "operation",
-                Mode = "operation",
-                Position = "active",
-                ExpiresAt = null,
-            });
-            db.SaveChanges();
-        }
+        // A session created by LOGGING IN, then a century of clock (R1.6a).
+        // This used to write the row by hand, which could only ever prove the
+        // lookup rule about a null ExpiresAt; driving the clock proves the
+        // thing the requirement is actually about — that time cannot end a
+        // session the operator never logged out of.
+        var clock = new TestTimeProvider();
+        using var host = _factory.WithClock(clock);
+        var client = host.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = false });
+        var sid = await Login(client);
 
-        var response = await GetSession(CreateClient(), sid);
+        clock.Advance(TimeSpan.FromDays(365 * 100));
+
+        var response = await GetSession(client, sid);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());

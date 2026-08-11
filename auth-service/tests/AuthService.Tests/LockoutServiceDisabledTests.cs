@@ -17,6 +17,7 @@ public class LockoutServiceDisabledTests : IDisposable
 {
     private readonly SqliteConnection _connection = new("DataSource=:memory:");
     private readonly AuthDb _db;
+    private readonly TestTimeProvider _clock = new();
     private readonly LockoutService _lockout;
 
     public LockoutServiceDisabledTests()
@@ -24,7 +25,7 @@ public class LockoutServiceDisabledTests : IDisposable
         _connection.Open();
         _db = new AuthDb(new DbContextOptionsBuilder<AuthDb>().UseSqlite(_connection).Options);
         _db.Database.EnsureCreated();
-        _lockout = new LockoutService(_db, LockoutOptions.Off);
+        _lockout = new LockoutService(_db, LockoutOptions.Off, _clock);
     }
 
     public void Dispose()
@@ -63,7 +64,7 @@ public class LockoutServiceDisabledTests : IDisposable
     {
         // Turning the mechanism off is also the documented escape hatch for a
         // locked-out station, so an old lock must not keep biting.
-        Store("operation", 5, DateTimeOffset.UtcNow.AddMinutes(30));
+        Store("operation", 5, _clock.GetUtcNow().AddMinutes(30));
 
         Assert.False(await _lockout.IsLocked("operation"));
     }
@@ -73,7 +74,7 @@ public class LockoutServiceDisabledTests : IDisposable
     {
         // Every successful login calls Reset. With lockout off there is nothing
         // to reset, so it must not turn into a DELETE per login.
-        Store("operation", 5, DateTimeOffset.UtcNow.AddMinutes(30));
+        Store("operation", 5, _clock.GetUtcNow().AddMinutes(30));
 
         await _lockout.Reset("operation");
 
@@ -87,7 +88,7 @@ public class LockoutServiceDisabledTests : IDisposable
         // an operator reaches for to clean up, and the leftover rows from when
         // lockout was on are exactly what there is to clean up. Refusing here
         // would mean "the config says off, so I cannot help you".
-        Store("operation", 5, DateTimeOffset.UtcNow.AddMinutes(30));
+        Store("operation", 5, _clock.GetUtcNow().AddMinutes(30));
 
         await _lockout.Unlock("operation");
 

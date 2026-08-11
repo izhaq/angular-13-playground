@@ -24,6 +24,7 @@ public class AdminUnlockEndpointTests : IDisposable
 
     private readonly SqliteConnection _connection = new("DataSource=:memory:");
     private readonly AuthDb _db;
+    private readonly TestTimeProvider _clock = new();
     private readonly LockoutService _lockout;
 
     public AdminUnlockEndpointTests()
@@ -31,7 +32,7 @@ public class AdminUnlockEndpointTests : IDisposable
         _connection.Open();
         _db = new AuthDb(new DbContextOptionsBuilder<AuthDb>().UseSqlite(_connection).Options);
         _db.Database.EnsureCreated();
-        _lockout = new LockoutService(_db, LockoutOptions.On(MaxAttempts, TimeSpan.FromMinutes(15)));
+        _lockout = new LockoutService(_db, LockoutOptions.On(MaxAttempts, TimeSpan.FromMinutes(15)), _clock);
     }
 
     public void Dispose()

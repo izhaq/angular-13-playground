@@ -31,6 +31,9 @@ public class LoginLockoutTests : IDisposable
     private const string BadPassword = "wrong-password";
     private const int DefaultMaxAttempts = 5;
 
+    /// <summary>appsettings.json's LockoutMinutes — how long a lock holds.</summary>
+    private static readonly TimeSpan DefaultWindow = TimeSpan.FromMinutes(15);
+
     private readonly AuthServiceFactory _factory = new();
 
     public void Dispose() => _factory.Dispose();
@@ -112,18 +115,16 @@ public class LoginLockoutTests : IDisposable
     [Fact]
     public async Task The_lock_expires_by_itself_and_the_counter_starts_again()
     {
-        var client = _factory.CreateClient();
+        // The window passes because the CLOCK moves (R1.6a). Before, this test
+        // reached into the LoginAttempts table and back-dated LockedUntil —
+        // which proved the row could be edited, not that the service honours
+        // the window it wrote.
+        var clock = new TestTimeProvider();
+        using var host = _factory.WithClock(clock);
+        var client = host.CreateClient();
         await LockOut(client, "operation");
 
-        // Age the lock past its window instead of waiting out the real 15
-        // minutes — the same trick SessionEndpointTests uses to age a session.
-        using (var scope = _factory.Services.CreateScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<AuthDb>();
-            var attempt = db.LoginAttempts.Single(a => a.Username == "operation");
-            attempt.LockedUntil = DateTimeOffset.UtcNow.AddMinutes(-1);
-            db.SaveChanges();
-        }
+        clock.Advance(DefaultWindow + TimeSpan.FromMinutes(1));
 
         Assert.Equal(HttpStatusCode.OK, (await Attempt(client, "operation", GoodPassword)).StatusCode);
 

@@ -15,9 +15,11 @@ namespace AuthService.Tests;
 public class LockoutServiceTests : IDisposable
 {
     private const int MaxAttempts = 3;
+    private static readonly TimeSpan Window = TimeSpan.FromMinutes(15);
 
     private readonly SqliteConnection _connection = new("DataSource=:memory:");
     private readonly AuthDb _db;
+    private readonly TestTimeProvider _clock = new();
     private readonly LockoutService _lockout;
 
     public LockoutServiceTests()
@@ -25,7 +27,7 @@ public class LockoutServiceTests : IDisposable
         _connection.Open();
         _db = new AuthDb(new DbContextOptionsBuilder<AuthDb>().UseSqlite(_connection).Options);
         _db.Database.EnsureCreated();
-        _lockout = new LockoutService(_db, LockoutOptions.On(MaxAttempts, TimeSpan.FromMinutes(15)));
+        _lockout = new LockoutService(_db, LockoutOptions.On(MaxAttempts, Window), _clock);
     }
 
     public void Dispose()
@@ -37,16 +39,17 @@ public class LockoutServiceTests : IDisposable
     private LoginAttempt Row(string username) =>
         _db.LoginAttempts.AsNoTracking().Single(a => a.Username == username);
 
-    private void Store(string username, int failedCount, DateTimeOffset? lockedUntil)
+    /// <summary>
+    /// Reaches the locked state the way a real caller does — by failing
+    /// MaxAttempts times. Nothing here writes a lock into the table by hand,
+    /// so the tests below pin the SERVICE's rules rather than a row shape.
+    /// </summary>
+    private async Task Lock(string username)
     {
-        _db.LoginAttempts.Add(new LoginAttempt
+        for (var i = 0; i < MaxAttempts; i++)
         {
-            Username = username,
-            FailedCount = failedCount,
-            LockedUntil = lockedUntil,
-        });
-        _db.SaveChanges();
-        _db.ChangeTracker.Clear();
+            await _lockout.RecordFailure(username);
+        }
     }
 
     [Fact]
@@ -58,7 +61,9 @@ public class LockoutServiceTests : IDisposable
     [Fact]
     public async Task IsLocked_is_true_while_the_window_is_open()
     {
-        Store("operation", MaxAttempts, DateTimeOffset.UtcNow.AddMinutes(5));
+        await Lock("operation");
+
+        _clock.Advance(Window - TimeSpan.FromMinutes(1));
 
         Assert.True(await _lockout.IsLocked("operation"));
     }
@@ -66,7 +71,11 @@ public class LockoutServiceTests : IDisposable
     [Fact]
     public async Task IsLocked_clears_an_expired_lock_and_its_count()
     {
-        Store("operation", MaxAttempts, DateTimeOffset.UtcNow.AddMinutes(-1));
+        await Lock("operation");
+
+        // The auto-unlock, reached by MOVING THE CLOCK past the window — the
+        // row is never touched from the outside.
+        _clock.Advance(Window + TimeSpan.FromMinutes(1));
 
         Assert.False(await _lockout.IsLocked("operation"));
 
@@ -95,7 +104,8 @@ public class LockoutServiceTests : IDisposable
         // Order-coupling guard: called on its own against a lock whose window
         // has passed, RecordFailure used to see the stale LockedUntil, add one
         // to an old count, and report "locked" after a SINGLE failure.
-        Store("operation", MaxAttempts, DateTimeOffset.UtcNow.AddMinutes(-1));
+        await Lock("operation");
+        _clock.Advance(Window + TimeSpan.FromMinutes(1));
 
         var locked = await _lockout.RecordFailure("operation");
 
@@ -110,13 +120,16 @@ public class LockoutServiceTests : IDisposable
         // Otherwise a bot hammering the endpoint would keep the real operator
         // locked out forever. The endpoint checks IsLocked first today, but
         // the rule must not depend on that.
-        var lockedUntil = DateTimeOffset.UtcNow.AddMinutes(5);
-        Store("operation", MaxAttempts, lockedUntil);
+        await Lock("operation");
+        var lockedUntil = Row("operation").LockedUntil;
+        _clock.Advance(TimeSpan.FromMinutes(5));
 
         Assert.True(await _lockout.RecordFailure("operation"));
 
         Assert.Equal(MaxAttempts, Row("operation").FailedCount);
-        Assert.Equal(lockedUntil.ToUnixTimeMilliseconds(), Row("operation").LockedUntil!.Value.ToUnixTimeMilliseconds());
+        // A fake clock makes this exact: with the wall clock the assertion had
+        // to be rounded to the millisecond to stay stable.
+        Assert.Equal(lockedUntil, Row("operation").LockedUntil);
     }
 
     [Fact]
@@ -148,7 +161,7 @@ public class LockoutServiceTests : IDisposable
     {
         // The manual release (R1.5b), shared by the CLI and the admin
         // endpoint. Unlike the auto-unlock it does not wait for the window.
-        Store("operation", MaxAttempts, DateTimeOffset.UtcNow.AddMinutes(15));
+        await Lock("operation");
 
         await _lockout.Unlock("operation");
 
@@ -160,7 +173,7 @@ public class LockoutServiceTests : IDisposable
     {
         // Releasing only the lock would leave the user one failure away from
         // being locked straight back out.
-        Store("operation", MaxAttempts, DateTimeOffset.UtcNow.AddMinutes(15));
+        await Lock("operation");
 
         await _lockout.Unlock("operation");
 
@@ -174,6 +187,17 @@ public class LockoutServiceTests : IDisposable
         // Idempotent by design: the operator running it should not have to
         // know the account's state, and the endpoint answers 204 either way.
         Assert.Null(await Record.ExceptionAsync(() => _lockout.Unlock("nobody")));
+    }
+
+    [Fact]
+    public async Task The_lock_window_is_measured_from_the_injected_clock()
+    {
+        // Not "about 15 minutes from roughly now": the service must stamp the
+        // window off the clock it was handed, or a test could never move time
+        // and a deployment could never be sure which clock decided the window.
+        await Lock("operation");
+
+        Assert.Equal(_clock.GetUtcNow().Add(Window), Row("operation").LockedUntil);
     }
 
     [Fact]

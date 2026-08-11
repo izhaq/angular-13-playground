@@ -26,9 +26,16 @@ namespace AuthService.Tests;
 public class LockoutServiceRaceTests : IDisposable
 {
     private const int MaxAttempts = 5;
+    private static readonly TimeSpan Window = TimeSpan.FromMinutes(15);
 
     private readonly SqliteConnection _connection = new("DataSource=:memory:");
     private readonly List<AuthDb> _contexts = new();
+
+    /// <summary>
+    /// One clock shared by every "request" here, exactly as one machine's
+    /// clock is shared by every request it serves (R1.6a).
+    /// </summary>
+    private readonly TestTimeProvider _clock = new();
 
     public LockoutServiceRaceTests()
     {
@@ -84,14 +91,14 @@ public class LockoutServiceRaceTests : IDisposable
         return builder.Options;
     }
 
-    private static LockoutOptions Policy => LockoutOptions.On(MaxAttempts, TimeSpan.FromMinutes(15));
+    private static LockoutOptions Policy => LockoutOptions.On(MaxAttempts, Window);
 
     /// <summary>A lockout service on its own context — one "request".</summary>
     private LockoutService Request(IInterceptor? interceptor = null)
     {
         var db = new AuthDb(Options(interceptor));
         _contexts.Add(db);
-        return new LockoutService(db, Policy);
+        return new LockoutService(db, Policy, _clock);
     }
 
     private int FailedCount(string username)
@@ -212,12 +219,9 @@ public class LockoutServiceRaceTests : IDisposable
             await seeded.RecordFailure("operation");
         }
 
-        using (var db = new AuthDb(Options()))
-        {
-            var attempt = db.LoginAttempts.Single(a => a.Username == "operation");
-            attempt.LockedUntil = DateTimeOffset.UtcNow.AddMinutes(-1);
-            db.SaveChanges();
-        }
+        // The window closes because time passes, not because a test rewrote
+        // the row underneath the service (R1.6a).
+        _clock.Advance(Window + TimeSpan.FromMinutes(1));
 
         var interceptor = new ConcurrentRequestInterceptor();
         var lockout = Request(interceptor);

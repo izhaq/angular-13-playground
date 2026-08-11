@@ -72,7 +72,7 @@ public class SessionServiceDeleteRaceTests
             .UseSqlite(connection)
             .AddInterceptors(interceptor)
             .Options);
-        var sessions = new SessionService(db, new ConfigurationBuilder().Build());
+        var sessions = new SessionService(db, new ConfigurationBuilder().Build(), TimeProvider.System);
 
         var session = await sessions.Create("operation", "operation", "active");
 

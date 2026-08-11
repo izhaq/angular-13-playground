@@ -68,7 +68,9 @@ public static class UnlockCommand
         db.Database.EnsureCreated();
         SchemaGuard.VerifyOrThrow(db);
 
-        var lockout = new LockoutService(db, LockoutOptions.FromConfiguration(configuration));
+        // The CLI is a one-shot process with nothing to fake: the real clock,
+        // same as the service (R1.6a).
+        var lockout = new LockoutService(db, LockoutOptions.FromConfiguration(configuration), TimeProvider.System);
         return await Run(args, lockout, output, error);
     }
 

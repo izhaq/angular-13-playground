@@ -31,6 +31,12 @@ builder.Services.AddDbContext<AuthDb>(options => options.UseSqlite(
     AuthDbConnection.Resolve(builder.Configuration, builder.Environment.ContentRootPath)));
 builder.Services.AddScoped<SessionService>();
 
+// Every time-dependent rule in the service (session expiry, the lockout
+// window) reads this clock rather than DateTimeOffset.UtcNow (R1.6a).
+// Production is the real one; tests substitute a clock they can move, which is
+// what let the suites stop ageing rows in the database to reach an expiry.
+builder.Services.AddSingleton(TimeProvider.System);
+
 // The lockout policy is parsed ONCE, here, and shared as a singleton — not
 // re-read from IConfiguration on every login. Invalid values throw before the
 // host starts, so a config the service cannot honour as written is a startup

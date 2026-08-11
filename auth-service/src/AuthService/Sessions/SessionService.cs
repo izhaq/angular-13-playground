@@ -16,11 +16,19 @@ public class SessionService
     private static readonly TimeSpan ForeverishCookieAge = TimeSpan.FromDays(3650);
 
     private readonly AuthDb _db;
+    private readonly TimeProvider _clock;
     private readonly TimeSpan? _ttl;
 
-    public SessionService(AuthDb db, IConfiguration configuration)
+    /// <summary>
+    /// The clock arrives as a dependency (R1.6a) rather than being read from
+    /// <c>DateTimeOffset.UtcNow</c>: expiry is this class's whole time-
+    /// dependent rule, and a test that wants to reach an expiry should move
+    /// the clock, not rewrite the row it is testing.
+    /// </summary>
+    public SessionService(AuthDb db, IConfiguration configuration, TimeProvider clock)
     {
         _db = db;
+        _clock = clock;
 
         // Unset (the default since R1.2) means sessions never expire.
         // A number restores the pre-R1.2 timed behavior, unchanged.
@@ -43,7 +51,7 @@ public class SessionService
             Username = username,
             Mode = mode,
             Position = position,
-            ExpiresAt = _ttl is null ? null : DateTimeOffset.UtcNow.Add(_ttl.Value),
+            ExpiresAt = _ttl is null ? null : _clock.GetUtcNow().Add(_ttl.Value),
         };
 
         _db.Sessions.Add(session);
@@ -66,7 +74,7 @@ public class SessionService
             return null;
         }
 
-        return session.ExpiresAt is null || session.ExpiresAt > DateTimeOffset.UtcNow ? session : null;
+        return session.ExpiresAt is null || session.ExpiresAt > _clock.GetUtcNow() ? session : null;
     }
 
     /// <summary>

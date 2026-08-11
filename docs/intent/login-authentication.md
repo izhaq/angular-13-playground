@@ -76,6 +76,34 @@ question 11). The schema is tiny: two seeded users and a session table.
 
 ---
 
+## 2c. Requirement Changes (2026-07-22)
+
+Five changes arrived after the login flow was built (slices 0–4 merged).
+
+**Accepted and in progress (R1):**
+1. **.NET 10** — the org moved; the service retargets (three-line change, as
+   designed). The old ".NET 6 is end-of-life" concern is gone.
+2. **Sessions never expire** — only explicit logout ends a session. Decision:
+   the login also survives a browser restart (a station reboot must not log
+   the station out). This change validates the session-cookie choice — with
+   JWT, a forever-valid token that logout can't kill would be unacceptable.
+3. **Login retry limit** — the reserved "locked" answer becomes real.
+   Working defaults, product may tune: 5 consecutive failures locks the
+   username for 15 minutes, then auto-unlocks; success resets the counter.
+
+**Deferred pending clarification (R2):**
+4. **"ubkey" station identification** — identify operator/technician from a
+   hardware key and adjust the login options. Blocked on: what device is it
+   exactly, and does it identify (pre-select) or authenticate (replace the
+   password)?
+5. **Login as the access point of two systems** (this system + the WIP
+   maintenance system) — architecture-shaping; will get its own interview
+   and spec. Leading candidate: a small standalone login app both systems
+   share (the session cookie + independent auth service already support
+   this).
+
+---
+
 ## 3. Open Questions for Product
 
 Deferred for now, but each gets more expensive to change later:

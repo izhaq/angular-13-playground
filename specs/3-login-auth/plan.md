@@ -347,6 +347,58 @@ pending; loading state.
 
 ---
 
+## Slice R1 — Requirement changes (2026-07-22): .NET 10, forever sessions, real lockout
+
+Inserted after slice 4 (all of 0–4 merged); runs BEFORE the original slices
+5–6. Spec source: "Requirement Changes — R1" section in spec.md. R2 items
+(ubkey, two-system access point) are NOT here — they await their interview.
+
+### Task R1.1: Retarget the service to .NET 10 (S)
+**Description:** `net10.0` in both csproj files, EF Core packages to the
+10.x line, test packages bumped only if the retarget forces it. No code
+changes expected (the code deliberately used nothing version-specific).
+Delete the local `auth.db` so it reseeds. (.NET 10 SDK 10.0.110 is
+installed and verified in this environment; NETSDK1138 warnings disappear.)
+**Acceptance:**
+- [ ] `dotnet build` clean on net10.0, no EOL warnings
+- [ ] All existing xUnit tests green unchanged (29)
+**Files:** `auth-service/src/AuthService/AuthService.csproj`, `tests/.../AuthService.Tests.csproj`
+**Dependencies:** none
+
+### Task R1.2: Sessions never expire until explicit logout (M)
+**Description:** `SessionTtlHours` becomes optional — unset/null (new
+default) = no expiry: `Session.ExpiresAt` nullable, `FindLive` treats null
+as live, cookie gets a long fixed Max-Age (~10 years) so it survives
+browser restarts; a configured number restores today's timed behavior.
+Contract change (spec already updated): `expiresAt` nullable in login and
+session responses. Client: `UserSession.expiresAt: string | null` in
+auth-contract.ts; store/specs adjusted (nothing renders it today).
+**Acceptance:**
+- [ ] xUnit: default config → expiresAt null, long-Max-Age cookie, /session lives past any old TTL boundary (clock-manipulated row)
+- [ ] xUnit: `SessionTtlHours: 2` → exactly today's timed behavior (existing tests keep passing under this config)
+- [ ] Jasmine: contract type updated; suite green
+**Files:** `auth-service` (Session.cs, SessionService.cs, Program.cs, appsettings.json), tests; `auth-contract.ts` + affected specs
+**Dependencies:** R1.1
+
+### Task R1.3: Login retry limit — 423 becomes real (M)
+**Description:** consecutive-failure tracking per submitted username (real
+or not — so 423-vs-401 can't probe which usernames exist), stored in the
+DB (survives service restart): after `MaxLoginAttempts` (default 5)
+consecutive failures → `423 {"error":"locked"}` for `LockoutMinutes`
+(default 15) → auto-unlock; a successful login resets the counter; locked
+answers don't extend the lock. Both knobs in appsettings.json. The login
+page already renders the locked message (slice 4) — verify live, no client
+code expected.
+**Acceptance:**
+- [ ] xUnit: 5 fails → 423; 4 fails + success → counter reset; locked + correct password → still 423 during the window; unlock after window; unknown username follows the same 423 path; per-username isolation
+- [ ] Manual: 5 wrong passwords in the browser → locked message appears
+**Files:** `auth-service` (Data/, Sessions/, Program.cs, appsettings.json), tests
+**Dependencies:** R1.1 (parallel with R1.2)
+
+### ✅ Checkpoint R1 (review): net10 build; login → close browser → reopen → still in; 5 wrong passwords → locked → wait/shorten window → unlocked; logout still ends everything.
+
+---
+
 ## Slice 5 — Auth-free mode (runtime switch)
 
 Goal: same production build, config file flips auth off for dev environments.

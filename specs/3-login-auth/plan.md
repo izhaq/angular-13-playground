@@ -15,9 +15,10 @@ services run, and there is something new to see.
 ## Architecture Decisions (from the approved spec)
 
 - Session cookie (Option A), HttpOnly, opaque id, server-side session table.
-- **.NET 6** minimal API (org's version; 6→8 upgrade later is the safe
-  direction) in self-contained `auth-service/` (port 5001); EF Core 6 +
-  SQLite; Node server stays as the experiments service (port 3000).
+- **.NET 10** minimal API (org's version, current LTS — retargeted from
+  .NET 6 in R1.1, so the EOL trade-off is gone) in self-contained
+  `auth-service/` (port 5001); EF Core 10 + SQLite; Node server stays as the
+  experiments service (port 3000).
 - Client: standalone components + signals, flat `features/auth/` (8 files),
   `provideAuth()` as the wiring seam.
 - Runtime `app-config.json` switches real/mock auth; missing file = auth ON.
@@ -41,14 +42,14 @@ services run, and there is something new to see.
 └───────────────────┼────────────────────────────────────────────┘
                     │ HTTP (cookie attached by the browser)
         ┌───────────▼───────────┐  dev proxy = reverse proxy role
-        │  /api/auth/* → :5001  │──▶ auth-service (.NET 6)
+        │  /api/auth/* → :5001  │──▶ auth-service (.NET 10)
         │  /api/*      → :3000  │──▶ experiments service (Node)
         └───────────────────────┘         │
                               ┌───────────▼───────────┐
                               │ auth-service           │
                               │  minimal API endpoints │
                               │  Sessions logic        │
-                              │  EF Core 6 ──▶ SQLite  │
+                              │  EF Core 10 ──▶ SQLite │
                               │  (Users, Sessions)     │
                               └────────────────────────┘
 ```
@@ -137,7 +138,7 @@ export const authGuard: CanActivateFn = (_, state) => {
 };
 ```
 
-`auth-service` login endpoint (.NET 6 minimal API, shape only):
+`auth-service` login endpoint (.NET 10 minimal API, shape only):
 
 ```csharp
 app.MapPost("/api/auth/login", async (LoginRequest req, AuthDb db, Sessions sessions) =>
@@ -153,7 +154,7 @@ app.MapPost("/api/auth/login", async (LoginRequest req, AuthDb db, Sessions sess
 });
 ```
 
-EF Core 6 entities (SQLite):
+EF Core 10 entities (SQLite):
 
 ```csharp
 public record User    { public string Username; public string PasswordHash; }
@@ -185,13 +186,13 @@ export function provideAuth(): (EnvironmentProviders | Provider)[] {
 }
 ```
 
-## Environment (verified 2026-07-13)
+## Environment (verified 2026-07-22)
 
-- **.NET 6 SDK installed and verified** (6.0.428; a net6.0 web project
-  builds clean). .NET 8 SDK also present (harmless).
+- **.NET 10 SDK installed and verified** (10.0.110; the net10.0 service and
+  its test project build clean).
   ⚠ The remote container is ephemeral — a fresh session reinstalls with:
-  `apt-get install -y dotnet-sdk-6.0` (packages.microsoft.com feed, works
-  through the proxy; `dot.net` script is blocked).
+  `apt-get install -y dotnet-sdk-10.0` (packages.microsoft.com feed for
+  Ubuntu 24.04, works through the proxy; `dot.net` script is blocked).
 - NuGet (api.nuget.org) reachable.
 - `npm install` needed once before client work.
 - No docker daemon here — the Dockerfile ships review-only.
@@ -205,7 +206,8 @@ through the Angular dev proxy. Nothing about auth yet — this de-risks all
 tooling in one small step.
 
 ### Task 0.1: Scaffold auth-service (S)
-**Description:** `dotnet new` solution + minimal API project (net6.0) + xUnit
+**Description:** `dotnet new` solution + minimal API project (net6.0 —
+retargeted to net10.0 later, in R1.1) + xUnit
 test project, `appsettings.json` with port 5001, one endpoint:
 `GET /api/auth/health` → `{ "status": "ok" }`. One xUnit test hits it via
 `WebApplicationFactory` (in-memory test host).
@@ -233,7 +235,7 @@ test project, `appsettings.json` with port 5001, one endpoint:
 Goal: a seeded user logs in from a real login page and lands in the app.
 
 ### Task 1.1: Backend — users, sessions, login endpoint (M)
-**Description:** EF Core 6 + SQLite: `Users` (2 seeded, PBKDF2-hashed
+**Description:** EF Core 6 (bumped to 10 later, in R1.1) + SQLite: `Users` (2 seeded, PBKDF2-hashed
 passwords) and `Sessions` tables. `POST /api/auth/login` as sketched above.
 `401 invalid_credentials`, `400 invalid_request`. CORS with credentials
 enabled. Sid via `RandomNumberGenerator.GetBytes(32)` → base64url.
@@ -426,7 +428,7 @@ Goal: the two promises ("plug-out") are demonstrated, not claimed.
 **Description:** script/manual proof: `features/auth/` has zero imports from
 outside itself (grep-able check); `auth-service/` copied to a temp dir builds
 and its tests pass standalone. Write the Dockerfile (base image
-`mcr.microsoft.com/dotnet/aspnet:6.0`; review-only here — no docker daemon).
+`mcr.microsoft.com/dotnet/aspnet:10.0`; review-only here — no docker daemon).
 **Acceptance:**
 - [ ] Both checks pass and are recorded in the spec folder
 **Files:** `auth-service/Dockerfile`, small check script
@@ -434,8 +436,9 @@ and its tests pass standalone. Write the Dockerfile (base image
 
 ### Task 6.2: Docs (S)
 **Description:** `auth-service/README.md` (run, config, contract pointer,
-migration notes: SQLite → real DB = EF provider swap; net6.0 → net8.0 =
-three lines) and a short `features/auth/README.md` (how a host app adopts:
+migration notes: SQLite → real DB = EF provider swap; framework retarget =
+three lines, as demonstrated by the net6.0 → net10.0 move in R1.1) and a
+short `features/auth/README.md` (how a host app adopts:
 `provideAuth`, routes, config). Update spec status to "implemented".
 **Acceptance:**
 - [ ] A new reader can run both sides from the READMEs alone
@@ -457,8 +460,8 @@ checkpoint. Slices themselves are sequential.
 | Risk | Impact | Mitigation |
 |------|--------|------------|
 | Ephemeral container loses the .NET SDK between sessions | Med | One-line reinstall documented above; consider a SessionStart hook later |
-| .NET 6 is EOL (no patches) | Accepted | Org-version decision, recorded in spec; upgrade path is three lines |
-| First `dotnet restore` slow/flaky through proxy | Low | NuGet verified reachable; few dependencies (EF Core 6, SQLite) |
+| ~~.NET 6 is EOL (no patches)~~ | Resolved | R1.1 retargeted the service to .NET 10 (current LTS) — the upgrade path was indeed three lines |
+| First `dotnet restore` slow/flaky through proxy | Low | NuGet verified reachable; few dependencies (EF Core 10, SQLite) |
 | Cookie flags on plain HTTP dev (`Secure` would break it) | Med | Dev: `HttpOnly; SameSite=Lax`, no `Secure`; README notes production behind TLS adds `Secure` |
 | Karma/Chromium in remote env | Low | Chromium pre-installed (`CHROME_BIN`); verify at checkpoint 1 |
 | Disk allowance (SDKs + node_modules + NuGet) | Med | Clean `dist/`/temp copies after extraction check |

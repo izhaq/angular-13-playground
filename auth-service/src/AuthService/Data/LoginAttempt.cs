@@ -19,4 +19,15 @@ public class LoginAttempt
 
     /// <summary>When the lock lifts, or null when not locked.</summary>
     public DateTimeOffset? LockedUntil { get; set; }
+
+    /// <summary>
+    /// Optimistic concurrency token, bumped on every counted failure. Two
+    /// parallel failed logins both read the same count and both write count+1;
+    /// without the token the second write silently overwrites the first and a
+    /// failure is LOST — which is a free extra password guess. With it, the
+    /// loser's UPDATE matches no row, EF raises a conflict, and the caller
+    /// re-reads and counts again. SQLite has no native rowversion, so this is
+    /// a plain integer the service maintains.
+    /// </summary>
+    public int Version { get; set; }
 }

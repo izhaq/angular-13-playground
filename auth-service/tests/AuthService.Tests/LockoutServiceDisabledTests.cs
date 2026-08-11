@@ -79,4 +79,18 @@ public class LockoutServiceDisabledTests : IDisposable
 
         Assert.True(_db.LoginAttempts.AsNoTracking().Any(a => a.Username == "operation"));
     }
+
+    [Fact]
+    public async Task Unlock_still_clears_the_row_because_it_is_a_repair_not_a_policy()
+    {
+        // The manual release (R1.5b) does not consult the policy: it is what
+        // an operator reaches for to clean up, and the leftover rows from when
+        // lockout was on are exactly what there is to clean up. Refusing here
+        // would mean "the config says off, so I cannot help you".
+        Store("operation", 5, DateTimeOffset.UtcNow.AddMinutes(30));
+
+        await _lockout.Unlock("operation");
+
+        Assert.False(_db.LoginAttempts.AsNoTracking().Any(a => a.Username == "operation"));
+    }
 }

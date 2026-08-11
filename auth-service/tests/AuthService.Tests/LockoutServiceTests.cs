@@ -144,6 +144,39 @@ public class LockoutServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Unlock_releases_a_live_lock()
+    {
+        // The manual release (R1.5b), shared by the CLI and the admin
+        // endpoint. Unlike the auto-unlock it does not wait for the window.
+        Store("operation", MaxAttempts, DateTimeOffset.UtcNow.AddMinutes(15));
+
+        await _lockout.Unlock("operation");
+
+        Assert.False(await _lockout.IsLocked("operation"));
+    }
+
+    [Fact]
+    public async Task Unlock_forgets_the_counter_as_well_as_the_lock()
+    {
+        // Releasing only the lock would leave the user one failure away from
+        // being locked straight back out.
+        Store("operation", MaxAttempts, DateTimeOffset.UtcNow.AddMinutes(15));
+
+        await _lockout.Unlock("operation");
+
+        Assert.False(await _lockout.RecordFailure("operation"));
+        Assert.Equal(1, Row("operation").FailedCount);
+    }
+
+    [Fact]
+    public async Task Unlock_is_a_no_op_for_a_username_that_was_never_locked()
+    {
+        // Idempotent by design: the operator running it should not have to
+        // know the account's state, and the endpoint answers 204 either way.
+        Assert.Null(await Record.ExceptionAsync(() => _lockout.Unlock("nobody")));
+    }
+
+    [Fact]
     public async Task Each_username_is_counted_on_its_own()
     {
         for (var i = 0; i < MaxAttempts; i++)

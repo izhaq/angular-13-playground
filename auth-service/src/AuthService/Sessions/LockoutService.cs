@@ -72,7 +72,7 @@ public class LockoutService
             return true;
         }
 
-        await Unlock(username);
+        await ClearExpiredLock(username);
         return false;
     }
 
@@ -173,23 +173,65 @@ public class LockoutService
             return;
         }
 
-        // One set-based DELETE: no fetch, no change tracking, nothing to go
-        // stale between reading and writing. Two stations logging in at the
-        // same moment simply both delete nothing-or-something; neither can
-        // fail the way a tracked Remove + SaveChanges could (PR #29's bug in
-        // SessionService.Delete, which this used to repeat). It also drops one
-        // SELECT from every successful login.
+        await Forget(username);
+    }
+
+    /// <summary>
+    /// The manual release (R1.5b): clears the lock AND the counter for one
+    /// username, on the spot. Shared by the <c>unlock</c> command and the
+    /// admin endpoint, and idempotent — an unknown or unlocked username is a
+    /// no-op, which is what lets both callers answer "done" without revealing
+    /// whether there was anything to do.
+    ///
+    /// Deliberately NOT gated on the policy being on: this is a repair, not an
+    /// enforcement. Someone turning lockout off still wants the rows from when
+    /// it was on to go, and an operator at the station should never be told
+    /// "the config says off, so I cannot release your account".
+    /// </summary>
+    public async Task Unlock(string username)
+    {
+        await Forget(username);
+    }
+
+    /// <summary>
+    /// Drops a username's row — lock and count together, since the count is
+    /// meaningless without the run it belongs to.
+    ///
+    /// One set-based DELETE: no fetch, no change tracking, nothing to go stale
+    /// between reading and writing. Two stations logging in at the same moment
+    /// simply both delete nothing-or-something; neither can fail the way a
+    /// tracked Remove + SaveChanges could (PR #29's bug in
+    /// SessionService.Delete, which this used to repeat). It also drops one
+    /// SELECT from every successful login.
+    /// </summary>
+    private async Task Forget(string username)
+    {
         await _db.LoginAttempts
             .Where(a => a.Username == username)
             .ExecuteDeleteAsync();
+
+        // ExecuteDelete goes straight to the database and tells the change
+        // tracker nothing, so a row this context read earlier lives on as a
+        // ghost — and the next RecordFailure for the same username would try
+        // to insert a second instance of the same key and throw. Requests each
+        // get their own context today, but "correct only if nobody calls the
+        // sibling method afterwards" is exactly the trap this class documents
+        // itself as refusing to set.
+        var ghost = _db.ChangeTracker.Entries<LoginAttempt>()
+            .FirstOrDefault(entry => entry.Entity.Username == username);
+        if (ghost is not null)
+        {
+            ghost.State = EntityState.Detached;
+        }
     }
 
     /// <summary>
     /// Clears an expired lock and its count, set-based for the same reason as
-    /// <see cref="Reset"/>. The Version bump makes any failed login that read
-    /// the pre-unlock count re-read instead of writing a stale one.
+    /// <see cref="Forget"/>. The row is kept and its Version bumped, so any
+    /// failed login that read the pre-unlock count re-reads instead of writing
+    /// a stale one.
     /// </summary>
-    private async Task Unlock(string username)
+    private async Task ClearExpiredLock(string username)
     {
         await _db.LoginAttempts
             .Where(a => a.Username == username)

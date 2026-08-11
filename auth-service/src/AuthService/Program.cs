@@ -1,8 +1,17 @@
 using System.Text.Json;
+using AuthService.Admin;
 using AuthService.Data;
 using AuthService.Sessions;
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+
+// The operator commands run BEFORE any host is built (R1.5b). They must work
+// with the service stopped, they have no business opening an HTTP listener,
+// and the web host's command-line configuration provider would reject a bare
+// argument like "unlock" outright.
+if (UnlockCommand.Matches(args))
+{
+    return await UnlockCommand.Run(args, Console.Out, Console.Error);
+}
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,15 +25,10 @@ builder.Services.Configure<Microsoft.AspNetCore.Routing.RouteHandlerOptions>(
     options => options.ThrowOnBadRequest = true);
 
 // SQLite file pinned to the service folder regardless of the process CWD
-// (npm run auth-service starts from the repo root).
-var connectionString = builder.Configuration.GetConnectionString("AuthDb") ?? "Data Source=auth.db";
-var connection = new SqliteConnectionStringBuilder(connectionString);
-if (!Path.IsPathRooted(connection.DataSource))
-{
-    connection.DataSource = Path.Combine(builder.Environment.ContentRootPath, connection.DataSource);
-}
-
-builder.Services.AddDbContext<AuthDb>(options => options.UseSqlite(connection.ToString()));
+// (npm run auth-service starts from the repo root). The unlock command
+// resolves it through the same helper, so both open the same file.
+builder.Services.AddDbContext<AuthDb>(options => options.UseSqlite(
+    AuthDbConnection.Resolve(builder.Configuration, builder.Environment.ContentRootPath)));
 builder.Services.AddScoped<SessionService>();
 
 // The lockout policy is parsed ONCE, here, and shared as a singleton — not
@@ -41,6 +45,18 @@ const string CorsPolicy = "AllowClient";
 var allowedOrigin = builder.Configuration["AllowedOrigin"] ?? "http://localhost:4200";
 builder.Services.AddCors(options => options.AddPolicy(CorsPolicy, policy =>
     policy.WithOrigins(allowedOrigin).AllowAnyHeader().AllowAnyMethod().AllowCredentials()));
+
+// The operator endpoints are off unless AdminUrls says otherwise (R1.5b).
+// When it does, the service binds a SECOND Kestrel listener on loopback and
+// the admin routes answer only there — see AdminListenerOptions for why that
+// is a listener rather than a remote-IP check. Invalid values (a public
+// address, the public API's own port) stop startup naming the key, exactly
+// like the lockout knobs above.
+var adminListener = AdminListenerOptions.FromConfiguration(builder.Configuration);
+if (adminListener.IsOn)
+{
+    builder.WebHost.UseUrls([.. adminListener.ServerUrls]);
+}
 
 var app = builder.Build();
 
@@ -125,6 +141,28 @@ static CookieOptions SessionCookieOptions(TimeSpan? maxAge = null) => new()
     MaxAge = maxAge,
     // No Secure flag: dev runs on plain HTTP. Production behind TLS adds it.
 };
+
+if (adminListener.IsOn)
+{
+    // The gate runs before the endpoint executes, so on the public port
+    // /admin/* is not "there but refused" — it is not there at all: no body is
+    // bound, no handler runs, and the answer is the same 404 an unmapped path
+    // gets. Routing has already picked the endpoint by now; only UseEndpoints,
+    // at the end of the pipeline, would run it.
+    app.Use(async (context, next) =>
+    {
+        if (context.Request.Path.StartsWithSegments(UnlockEndpoint.PathPrefix) &&
+            !adminListener.Accepts(context.Connection.LocalPort))
+        {
+            context.Response.StatusCode = StatusCodes.Status404NotFound;
+            return;
+        }
+
+        await next(context);
+    });
+
+    app.MapPost(UnlockEndpoint.Route, UnlockEndpoint.Handle);
+}
 
 app.MapGet("/api/auth/health", () => Results.Json(new { status = "ok" }));
 
@@ -216,6 +254,7 @@ app.MapGet("/api/auth/session", async (SessionService sessions, HttpContext http
 });
 
 app.Run();
+return 0;
 
 // Exposes the implicit Program class to the test host (WebApplicationFactory<Program>).
 public partial class Program { }

@@ -105,4 +105,112 @@ public class AdminListenerOptionsTests
 
         Assert.Contains("AdminUrls", error.Message);
     }
+
+    [Theory]
+    [InlineData("http://*:5051")]
+    [InlineData("http://+:5051")]
+    public void A_wildcard_main_url_does_not_smuggle_the_admin_port_past_the_collision_check(string mainUrl)
+    {
+        // 'http://*:5051' and 'http://+:5051' are the documented ASPNETCORE_URLS
+        // forms a container has to use, and neither is a URI Uri.TryCreate will
+        // parse. Left unnormalised, the port never reaches the collision check
+        // and the admin endpoints end up on the public listener. Kestrel would
+        // then abort with AddressInUseException — fail-safe, but a socket error
+        // instead of the message this class exists to give.
+        var error = ParseError(("Urls", mainUrl), ("AdminUrls", "http://127.0.0.1:5051"));
+
+        Assert.Contains("AdminUrls", error.Message);
+        Assert.Contains("5051", error.Message);
+    }
+
+    [Theory]
+    [InlineData("http://*:5000")]
+    [InlineData("http://+:5000")]
+    public void A_wildcard_main_url_on_another_port_is_still_fine(string mainUrl)
+    {
+        // Normalising the host must not turn every wildcard into a collision.
+        var options = Parse(("Urls", mainUrl), ("AdminUrls", "http://127.0.0.1:5051"));
+
+        Assert.True(options.Accepts(5051));
+        Assert.False(options.Accepts(5000));
+    }
+
+    // ---------------------------------------------------------------------
+    // What the server ACTUALLY bound, checked against what was asked for.
+    //
+    // Everything above reads configuration, and configuration is not the last
+    // word: 'Kestrel:Endpoints' overrides 'Urls' and 'AdminUrls' ENTIRELY, so
+    // a service can be told to serve the admin endpoints on loopback, log a
+    // single "Now listening on: http://0.0.0.0:5051", and never create the
+    // admin listener at all. Nothing above can see that — only the addresses
+    // the server reports once it is up can.
+    // ---------------------------------------------------------------------
+
+    private static AdminListenerOptions AdminOn(string adminUrls = "http://127.0.0.1:5051") =>
+        Parse(("Urls", "http://localhost:5001"), ("AdminUrls", adminUrls));
+
+    private static Exception BindingError(AdminListenerOptions options, params string[] boundAddresses) =>
+        Assert.ThrowsAny<Exception>(() => options.VerifyBoundAddresses(boundAddresses));
+
+    [Fact]
+    public void The_bindings_that_were_asked_for_are_accepted()
+    {
+        AdminOn().VerifyBoundAddresses(["http://localhost:5001", "http://127.0.0.1:5051"]);
+    }
+
+    [Theory]
+    [InlineData("http://0.0.0.0:5051")]
+    [InlineData("http://*:5051")]
+    [InlineData("http://[::]:5051")]
+    public void A_non_loopback_binding_on_an_admin_port_is_refused_by_name(string boundAddress)
+    {
+        // The reported blocker: Kestrel:Endpoints put the admin PORT on a
+        // public address and the admin listener was never created, so the
+        // unauthenticated unlock endpoint answered from off-box.
+        var error = BindingError(AdminOn(), boundAddress);
+
+        Assert.Contains("AdminUrls", error.Message);
+        Assert.Contains("5051", error.Message);
+        Assert.Contains("Kestrel:Endpoints", error.Message);
+    }
+
+    [Fact]
+    public void An_admin_url_the_server_never_bound_is_refused_by_name()
+    {
+        // The milder form of the same fault: the admin listener silently does
+        // not exist, so the feature is simply gone with no signal at all.
+        var error = BindingError(AdminOn(), "http://0.0.0.0:5000");
+
+        Assert.Contains("AdminUrls", error.Message);
+        Assert.Contains("http://127.0.0.1:5051", error.Message);
+        Assert.Contains("Kestrel:Endpoints", error.Message);
+    }
+
+    [Fact]
+    public void Every_admin_url_has_to_be_bound_not_just_one_of_them()
+    {
+        var error = BindingError(
+            AdminOn("http://127.0.0.1:5051;http://127.0.0.1:5052"),
+            "http://localhost:5001", "http://127.0.0.1:5051");
+
+        Assert.Contains("5052", error.Message);
+    }
+
+    [Fact]
+    public void A_server_that_reports_no_addresses_is_not_second_guessed()
+    {
+        // The in-memory test host has no listeners and reports none. "I bound
+        // nothing" is not "I bound the wrong thing", and refusing to start on
+        // it would only teach the operator that this check cries wolf.
+        AdminOn().VerifyBoundAddresses([]);
+        AdminOn().VerifyBoundAddresses(null);
+    }
+
+    [Fact]
+    public void With_the_admin_listener_off_there_is_nothing_to_verify()
+    {
+        // No admin URL, no admin port, no route mapped — whatever the server
+        // bound is none of this class's business.
+        Parse().VerifyBoundAddresses(["http://0.0.0.0:5051"]);
+    }
 }

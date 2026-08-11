@@ -1,8 +1,10 @@
+using System.Net;
 using System.Threading.RateLimiting;
 using AuthService.Admin;
 using AuthService.Data;
 using AuthService.Http;
 using AuthService.Sessions;
+using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
@@ -70,10 +72,29 @@ if (loginRateLimit.IsOn)
     {
         limiter.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
-        // Partitioned by remote IP: one noisy caller must not spend the
-        // station's own budget. Connections with no remote address (the
-        // in-memory test host, a unix socket) share one partition rather than
-        // each getting a free one.
+        // Partitioned by the CONNECTION's peer address — genuinely one budget
+        // per peer, and read from the socket, so nothing a caller sends can
+        // change which partition it lands in.
+        //
+        // Note what that IS NOT, because the deployment the spec recommends
+        // takes it away: behind a reverse proxy on the same host, every
+        // request has the SAME peer (the proxy), so all logins share one
+        // partition and this becomes a single global login budget. One noisy
+        // caller then does spend the station's own budget — an outsider can
+        // exhaust the window and keep the operator from logging in without
+        // knowing any username at all, which is cheaper than the lockout
+        // denial of service the spec already records under "Known accepted
+        // risk". Directly exposed, or behind a proxy that does not share the
+        // machine, the per-peer reading holds.
+        //
+        // Trusting X-Forwarded-For instead would restore per-caller partitions
+        // ONLY together with UseForwardedHeaders configured with KnownProxies.
+        // Without that pairing the header is attacker-controlled, and a
+        // limiter an attacker can partition themselves out of is worse than
+        // none — so neither is wired here.
+        //
+        // Connections with no remote address (the in-memory test host, a unix
+        // socket) share one partition rather than each getting a free one.
         limiter.AddPolicy(LoginRateLimitOptions.PolicyName, context =>
             RateLimitPartition.GetFixedWindowLimiter(
                 context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
@@ -116,6 +137,14 @@ var adminListener = AdminListenerOptions.FromConfiguration(builder.Configuration
 if (adminListener.IsOn)
 {
     builder.WebHost.UseUrls([.. adminListener.ServerUrls]);
+
+    // UseUrls is a REQUEST, not a guarantee: 'Kestrel:Endpoints' configuration
+    // overrides it entirely and Kestrel says so in one log line before
+    // carrying on. AdminListenerGuard checks the addresses the server actually
+    // bound once it is up, and stops the service if the admin listener is
+    // missing or is not on loopback — see AdminListenerOptions.
+    builder.Services.AddHostedService(services =>
+        new AdminListenerGuard(adminListener, services.GetRequiredService<IServer>()));
 }
 
 var app = builder.Build();
@@ -197,13 +226,37 @@ if (adminListener.IsOn)
     // bound, no handler runs, and the answer is the same 404 an unmapped path
     // gets. Routing has already picked the endpoint by now; only UseEndpoints,
     // at the end of the pipeline, would run it.
+    //
+    // Two facts about the SOCKET have to hold, and both are about our end of
+    // it — never about what the request says about itself, which is the
+    // remote-IP check the spec forbids:
+    //
+    // - the connection was accepted on an admin port, and
+    // - the address it was accepted ON is loopback.
+    //
+    // The second is not redundant. 'Kestrel:Endpoints' configuration overrides
+    // UseUrls entirely, so the admin listener can silently never be created
+    // while the public listener happens to hold the admin port on 0.0.0.0 —
+    // and then the port check alone passes for a request that came off the
+    // network. AdminListenerGuard refuses that configuration at startup; this
+    // line means the endpoint is unreachable even in the moments before it
+    // does, and under any future way of binding nobody has thought of. It only
+    // ever narrows: a connection genuinely accepted by the loopback admin
+    // listener satisfies both.
     app.Use(async (context, next) =>
     {
-        if (context.Request.Path.StartsWithSegments(UnlockEndpoint.PathPrefix) &&
-            !adminListener.Accepts(context.Connection.LocalPort))
+        if (context.Request.Path.StartsWithSegments(UnlockEndpoint.PathPrefix))
         {
-            context.Response.StatusCode = StatusCodes.Status404NotFound;
-            return;
+            var localAddress = context.Connection.LocalIpAddress;
+            var onAdminListener = localAddress is not null &&
+                IPAddress.IsLoopback(localAddress) &&
+                adminListener.Accepts(context.Connection.LocalPort);
+
+            if (!onAdminListener)
+            {
+                context.Response.StatusCode = StatusCodes.Status404NotFound;
+                return;
+            }
         }
 
         await next(context);

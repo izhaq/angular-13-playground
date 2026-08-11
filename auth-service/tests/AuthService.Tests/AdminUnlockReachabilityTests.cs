@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace AuthService.Tests;
 
@@ -74,5 +76,83 @@ public class AdminUnlockReachabilityTests : IDisposable
             new { username = "operation", password = "operation123!", mode = "operation", position = "active" });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    private const int AdminPort = 5051;
+
+    /// <summary>
+    /// The admin listener on, plus the seam that lets a test say which local
+    /// address and port accepted the connection (see
+    /// <see cref="ConnectionInfoOverride"/>).
+    /// </summary>
+    private WebApplicationFactory<Program> WithAdminListener() =>
+        _factory.WithWebHostBuilder(builder =>
+        {
+            builder.UseSetting("AdminUrls", $"http://127.0.0.1:{AdminPort}");
+            builder.ConfigureServices(services =>
+                services.AddSingleton<IStartupFilter, ConnectionInfoOverride>());
+        });
+
+    /// <summary>A well-formed unlock request, arriving on the connection the test describes.</summary>
+    private static Task<HttpResponseMessage> UnlockOverConnection(
+        WebApplicationFactory<Program> factory, string? localAddress, int localPort)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, "/admin/unlock")
+        {
+            Content = JsonContent.Create(new { username = "operation" }),
+        };
+
+        if (localAddress is not null)
+        {
+            request.Headers.Add(ConnectionInfoOverride.LocalAddressHeader, localAddress);
+        }
+
+        request.Headers.Add(ConnectionInfoOverride.LocalPortHeader, localPort.ToString());
+
+        return factory.CreateClient().SendAsync(request);
+    }
+
+    [Fact]
+    public async Task A_connection_accepted_on_a_non_loopback_local_address_is_refused()
+    {
+        // Defence in depth for what the port check alone cannot see: Kestrel's
+        // own 'Kestrel:Endpoints' configuration overrides UseUrls entirely, so
+        // the admin PORT can end up bound to 0.0.0.0 with the loopback admin
+        // listener never created. The port then matches for a connection that
+        // arrived from the network. The connection's LOCAL address — our end
+        // of the socket, not anything the request says about itself — rules
+        // that out. It is not a remote-IP check, and no proxy or header can
+        // influence it.
+        using var withAdmin = WithAdminListener();
+
+        var response = await UnlockOverConnection(withAdmin, "192.0.2.2", AdminPort);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task A_loopback_connection_on_the_admin_port_still_reaches_the_endpoint()
+    {
+        // The control for the test above: the same request differing only in
+        // the local address must still be served. A gate that narrowed itself
+        // into refusing everything would pass the test above for the wrong
+        // reason.
+        using var withAdmin = WithAdminListener();
+
+        var response = await UnlockOverConnection(withAdmin, "127.0.0.1", AdminPort);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task A_connection_with_no_local_address_at_all_is_refused()
+    {
+        // Whatever a server reporting no local address is, it is not proof
+        // that the connection arrived on the loopback admin listener.
+        using var withAdmin = WithAdminListener();
+
+        var response = await UnlockOverConnection(withAdmin, localAddress: null, AdminPort);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 }

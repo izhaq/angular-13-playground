@@ -43,10 +43,28 @@ public class LoginEndpointTests : IClassFixture<AuthServiceFactory>
         Assert.Equal("operation", user.GetProperty("mode").GetString());
         Assert.Equal("active", user.GetProperty("position").GetString());
 
-        // expiresAt: ISO-8601, roughly TTL (24h default) in the future.
+        // expiresAt: null by default since R1.2 — sessions do not expire on
+        // their own. SessionExpiryTests owns that story; the configured-TTL
+        // shape is the test below.
+        Assert.Equal(JsonValueKind.Null, body.RootElement.GetProperty("expiresAt").ValueKind);
+    }
+
+    [Fact]
+    public async Task Login_returns_an_iso_expires_at_when_a_ttl_is_configured()
+    {
+        // SessionTtlHours survives R1.2 as an opt-in escape hatch: set it and
+        // the pre-R1.2 timed behavior comes back exactly as it was.
+        using var factory = _factory.WithWebHostBuilder(builder =>
+            builder.UseSetting("SessionTtlHours", "2"));
+        var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/auth/login", ValidLogin());
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         var expiresAt = DateTimeOffset.Parse(body.RootElement.GetProperty("expiresAt").GetString()!);
-        Assert.True(expiresAt > DateTimeOffset.UtcNow.AddHours(23));
-        Assert.True(expiresAt < DateTimeOffset.UtcNow.AddHours(25));
+        Assert.True(expiresAt > DateTimeOffset.UtcNow.AddMinutes(110));
+        Assert.True(expiresAt < DateTimeOffset.UtcNow.AddMinutes(130));
     }
 
     [Fact]
@@ -85,7 +103,8 @@ public class LoginEndpointTests : IClassFixture<AuthServiceFactory>
         Assert.Equal("technician", session.Username);
         Assert.Equal("technician", session.Mode);
         Assert.Equal("passive", session.Position);
-        Assert.True(session.ExpiresAt > DateTimeOffset.UtcNow);
+        // No expiry by default since R1.2.
+        Assert.Null(session.ExpiresAt);
     }
 
     [Fact]

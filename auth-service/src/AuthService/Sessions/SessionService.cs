@@ -7,16 +7,33 @@ namespace AuthService.Sessions;
 /// <summary>Creates, looks up, and deletes session rows.</summary>
 public class SessionService
 {
+    /// <summary>
+    /// Cookie lifetime when sessions never expire (R1.2). It cannot be
+    /// omitted — a cookie with no Max-Age is a session cookie, which the
+    /// browser drops on restart, and a station reboot must not log the
+    /// station out. ~10 years is "forever" in station terms.
+    /// </summary>
+    private static readonly TimeSpan ForeverishCookieAge = TimeSpan.FromDays(3650);
+
     private readonly AuthDb _db;
-    private readonly TimeSpan _ttl;
+    private readonly TimeSpan? _ttl;
 
     public SessionService(AuthDb db, IConfiguration configuration)
     {
         _db = db;
-        _ttl = TimeSpan.FromHours(configuration.GetValue("SessionTtlHours", 24));
+
+        // Unset (the default since R1.2) means sessions never expire.
+        // A number restores the pre-R1.2 timed behavior, unchanged.
+        var ttlHours = configuration.GetValue<double?>("SessionTtlHours");
+        _ttl = ttlHours is null ? null : TimeSpan.FromHours(ttlHours.Value);
     }
 
-    public TimeSpan Ttl => _ttl;
+    /// <summary>
+    /// How long the sid cookie should live. With expiry off this is the long
+    /// fixed lifetime; with a TTL configured it matches the TTL exactly, so
+    /// cookie and session row always agree.
+    /// </summary>
+    public TimeSpan CookieMaxAge => _ttl ?? ForeverishCookieAge;
 
     public async Task<Session> Create(string username, string mode, string position)
     {
@@ -26,7 +43,7 @@ public class SessionService
             Username = username,
             Mode = mode,
             Position = position,
-            ExpiresAt = DateTimeOffset.UtcNow.Add(_ttl),
+            ExpiresAt = _ttl is null ? null : DateTimeOffset.UtcNow.Add(_ttl.Value),
         };
 
         _db.Sessions.Add(session);
@@ -38,11 +55,18 @@ public class SessionService
     /// The live session for a sid, or null when the sid is unknown or the
     /// session has expired. Rows are never purged, so an expired row is
     /// indistinguishable from a missing one — both mean "no session".
+    /// A row with no ExpiresAt never expires (R1.2): only logout, which
+    /// deletes the row, can end it.
     /// </summary>
     public async Task<Session?> FindLive(string sid)
     {
         var session = await _db.Sessions.SingleOrDefaultAsync(s => s.Sid == sid);
-        return session is not null && session.ExpiresAt > DateTimeOffset.UtcNow ? session : null;
+        if (session is null)
+        {
+            return null;
+        }
+
+        return session.ExpiresAt is null || session.ExpiresAt > DateTimeOffset.UtcNow ? session : null;
     }
 
     /// <summary>

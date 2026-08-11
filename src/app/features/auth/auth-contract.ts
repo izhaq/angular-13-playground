@@ -22,7 +22,12 @@ export interface LoginRequest {
 
 export interface UserSession {
   user: { username: string; mode: Mode; position: Position };
-  expiresAt: string; // ISO-8601
+  /**
+   * ISO-8601, or `null` when the session never expires — the default since
+   * R1.2, where only an explicit logout ends a session. A number in the
+   * service's `SessionTtlHours` brings a real timestamp back.
+   */
+  expiresAt: string | null;
 }
 
 export type AuthError = 'invalid_credentials' | 'locked' | 'invalid_request';

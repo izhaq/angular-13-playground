@@ -134,7 +134,7 @@ app.MapPost("/api/auth/login", async (LoginRequest request, AuthDb db, SessionSe
 
     var session = await sessions.Create(user.Username, request.Mode!, request.Position!);
 
-    http.Response.Cookies.Append(SessionCookieName, session.Sid, SessionCookieOptions(sessions.Ttl));
+    http.Response.Cookies.Append(SessionCookieName, session.Sid, SessionCookieOptions(sessions.CookieMaxAge));
 
     return Results.Ok(new
     {

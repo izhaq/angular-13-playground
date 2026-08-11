@@ -47,6 +47,28 @@ describe('AuthApiService', () => {
     expect(result).toEqual(session);
   });
 
+  it('accepts a null expiresAt — the contract shape for a session that never expires', () => {
+    // R1.2: the service answers `"expiresAt": null` whenever SessionTtlHours
+    // is unset, which is the default. The client must carry that through
+    // untouched, not coerce it into a string or drop the field.
+    const foreverSession: UserSession = {
+      user: { username: 'operation', mode: 'operation', position: 'active' },
+      expiresAt: null,
+    };
+    let result: UserSession | undefined;
+
+    service.login({
+      username: 'operation',
+      password: 'operation123!',
+      mode: 'operation',
+      position: 'active',
+    }).subscribe((s) => (result = s));
+
+    httpMock.expectOne('/api/auth/login').flush(foreverSession);
+    expect(result).toEqual(foreverSession);
+    expect(result?.expiresAt).toBeNull();
+  });
+
   it('POSTs to /api/auth/logout with credentials', () => {
     let completed = false;
 

@@ -10,5 +10,10 @@ public class Session
     public string Username { get; set; } = null!;
     public string Mode { get; set; } = null!;
     public string Position { get; set; } = null!;
-    public DateTimeOffset ExpiresAt { get; set; }
+
+    /// <summary>
+    /// When the session stops being valid, or <c>null</c> for "never" — the
+    /// default since R1.2, where only an explicit logout ends a session.
+    /// </summary>
+    public DateTimeOffset? ExpiresAt { get; set; }
 }

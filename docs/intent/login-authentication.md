@@ -91,6 +91,15 @@ Five changes arrived after the login flow was built (slices 0–4 merged).
    Working defaults, product may tune: 5 consecutive failures locks the
    username for 15 minutes, then auto-unlocks; success resets the counter.
 
+**Decision taken 2026-08-11 — lockout denial-of-service risk: accepted.**
+Anyone who can reach the login page can keep both station accounts locked
+(5 tries per 15 minutes, by default). We accept this **because there is now a
+way out**: an operator at the station can release a lock immediately, either
+with a command on the service or through a local-only unlock endpoint — no
+login needed, no waiting. Worth revisiting if the login page ever becomes
+reachable from a wider network (the shared two-system portal below would do
+that), or if it actually bites someone in practice. PM should confirm.
+
 **Deferred pending clarification (R2):**
 4. **"ubkey" station identification** — identify operator/technician from a
    hardware key and adjust the login options. Blocked on: what device is it

@@ -267,7 +267,17 @@ mean the same thing: *you are physically at the station*.
   operator/ops action, so it lives outside `/api/auth/*` and no Angular code
   calls it.
 
-**Known accepted risk (open with product):** lockout is a denial-of-service
+**Known risk — ACCEPTED 2026-08-11 (engineering, pending PM ratification).**
+The decision: keep lockout on with its defaults and accept the
+denial-of-service exposure below, because R1.5 gives an operator a way out —
+the CLI (`AuthService unlock <username>`) and the loopback admin endpoint
+both release a lock from the station itself, without a login and without
+waiting for the window. Revisit if the system ever leaves the closed network,
+if the login endpoint becomes reachable from a wider network (R2.5's shared
+portal would do that), or if an operator is ever actually locked out in
+practice. The risk itself:
+
+lockout is a denial-of-service
 lever — anyone able to reach the login endpoint can hold both station
 accounts locked at `MaxLoginAttempts` requests per window. R1.6's rate
 limiting raises the cost but does not remove it (a slow attacker within the

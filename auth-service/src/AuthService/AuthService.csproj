@@ -7,6 +7,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- The built-in OpenAPI document generator (R1.6b). Framework-owned but
+         shipped out of band, so it needs a reference. One patch ahead of the
+         10.0.10 the rest of this file pins: 10.0.10 drags in Microsoft.OpenApi
+         2.0.0, which NuGet audit flags (NU1903, GHSA-v5pm-xwqc-g5wc), and
+         10.0.11 is the release that raises it to a patched 2.7.5. -->
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.10" />
     <!-- Not a new dependency: EF Core's own SQLite native bundle, pinned one
          patch forward. EF Core 10.0.10 still carries 2.1.11, which NuGet audit

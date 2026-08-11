@@ -33,7 +33,7 @@ public static class UnlockEndpoint
         {
             // The one honest refusal: nothing was named, so nothing was
             // released. Same body shape as the login contract's 400.
-            return Results.Json(new { error = "invalid_request" }, statusCode: StatusCodes.Status400BadRequest);
+            return Results.Json(new ErrorResponse("invalid_request"), statusCode: StatusCodes.Status400BadRequest);
         }
 
         await lockout.Unlock(request.Username);

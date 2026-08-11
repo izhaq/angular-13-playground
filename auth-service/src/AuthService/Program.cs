@@ -1,7 +1,9 @@
-using System.Text.Json;
+using System.Threading.RateLimiting;
 using AuthService.Admin;
 using AuthService.Data;
+using AuthService.Http;
 using AuthService.Sessions;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 // The operator commands run BEFORE any host is built (R1.5b). They must work
@@ -20,9 +22,22 @@ var builder = WebApplication.CreateBuilder(args);
 // 400/415. By default this flag is on only in Development — without pinning
 // it, production would answer contract-breaking empty bodies while the test
 // host (which runs as Development) answers exceptions. Pinning it makes all
-// environments take the single path the middleware below shapes.
+// environments take the single path ContractExceptionHandler shapes.
 builder.Services.Configure<Microsoft.AspNetCore.Routing.RouteHandlerOptions>(
     options => options.ThrowOnBadRequest = true);
+
+// Contract hardening, part 2: those exceptions become the contract's
+// 400 {"error":"invalid_request"} (R1.6b, replacing a hand-written try/catch
+// middleware).
+//
+// AddProblemDetails is not decoration: UseExceptionHandler() refuses to build
+// with neither an ExceptionHandlingPath nor an inline handler, and an
+// IExceptionHandler alone does not satisfy it — registering ProblemDetails is
+// the documented way to say "the handlers decide". It only ever shapes what
+// ContractExceptionHandler declines, which is by definition a genuine fault:
+// those stay 500s instead of being dressed up as the client's mistake.
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<ContractExceptionHandler>();
 
 // SQLite file pinned to the service folder regardless of the process CWD
 // (npm run auth-service starts from the repo root). The unlock command
@@ -44,6 +59,36 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton(LockoutOptions.FromConfiguration(builder.Configuration));
 builder.Services.AddScoped<LockoutService>();
 
+// The login rate limit, parsed by the same rules and at the same moment as the
+// lockout policy above (R1.6b). Off unless configured, and an invalid value is
+// a startup failure naming the key rather than a limiter that means something
+// other than what the config file says.
+var loginRateLimit = LoginRateLimitOptions.FromConfiguration(builder.Configuration);
+if (loginRateLimit.IsOn)
+{
+    builder.Services.AddRateLimiter(limiter =>
+    {
+        limiter.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+        // Partitioned by remote IP: one noisy caller must not spend the
+        // station's own budget. Connections with no remote address (the
+        // in-memory test host, a unix socket) share one partition rather than
+        // each getting a free one.
+        limiter.AddPolicy(LoginRateLimitOptions.PolicyName, context =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = loginRateLimit.PermitLimit!.Value,
+                    Window = loginRateLimit.Window,
+
+                    // Refuse immediately rather than holding the caller open:
+                    // a queued login is a connection an attacker gets for free.
+                    QueueLimit = 0,
+                }));
+    });
+}
+
 // CORS with credentials: needed for the real deployment's cross-origin path
 // (same DNS, different ports — see spec "cookies and addresses"). The origin
 // must be exact (never '*') for the browser to attach cookies.
@@ -51,6 +96,15 @@ const string CorsPolicy = "AllowClient";
 var allowedOrigin = builder.Configuration["AllowedOrigin"] ?? "http://localhost:4200";
 builder.Services.AddCors(options => options.AddPolicy(CorsPolicy, policy =>
     policy.WithOrigins(allowedOrigin).AllowAnyHeader().AllowAnyMethod().AllowCredentials()));
+
+// The generated API description (R1.6b), Development only: it is a
+// documentation aid for the .NET team, not part of what a station serves.
+// The spec's "API Contract" section stays authoritative — OpenApiDocumentTests
+// checks the generated document against it so the two cannot drift silently.
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddOpenApi();
+}
 
 // The operator endpoints are off unless AdminUrls says otherwise (R1.5b).
 // When it does, the service binds a SECOND Kestrel listener on loopback and
@@ -83,55 +137,43 @@ using (var scope = app.Services.CreateScope())
 
 app.UseCors(CorsPolicy);
 
-// Contract hardening, part 2: requests that die BEFORE an endpoint runs —
-// malformed JSON syntax, wrong field types, a null/empty body, a non-JSON
-// content type — must still answer the contract's 400 body, exactly like
-// field-level validation does (spec: 400 → {"error":"invalid_request"},
-// "missing or malformed fields"). In .NET 6 minimal APIs there are no
-// endpoint filters (7+) or IExceptionHandler (8+), so a small middleware is
-// the idiomatic central place: with ThrowOnBadRequest pinned on above, every
-// binding failure funnels through this one catch.
+// The framework-owned half: every binding failure raised as an exception
+// becomes the contract's 400 (see ContractExceptionHandler). Registered here,
+// INSIDE UseCors, so a reshaped 400 still carries its CORS headers — CORS
+// re-applies them from an OnStarting callback, which survives the response
+// being cleared.
+app.UseExceptionHandler();
+
+// …and the thin half that IExceptionHandler cannot cover. A non-JSON content
+// type is not an exception: the framework short-circuits it as an empty-bodied
+// 415 even with ThrowOnBadRequest pinned on, so nothing is ever thrown for the
+// handler to see. The contract enumerates only 400/401/423 for login and calls
+// 400 "missing or malformed" — a body that is not JSON at all is the extreme
+// case of malformed, and answering 415 would be a contract change (spec:
+// contract changes update spec + client + server together).
 //
-// A non-JSON content type would natively be a 415; the contract enumerates
-// only 400/401/423 and calls 400 "missing or malformed" — a body that is not
-// JSON at all is the extreme case of malformed, and adding 415 would be a
-// contract change (spec: contract changes update spec + client + server
-// together). So every early failure maps to the one contract-defined 400.
+// An empty body (HasStarted false) on a 400/415 can only be a framework
+// rejection, since endpoint-authored 400s always carry the contract body.
 app.Use(async (context, next) =>
 {
-    try
-    {
-        await next(context);
+    await next(context);
 
-        // Not every early rejection throws: a non-JSON content type is
-        // short-circuited by the framework as an empty-bodied 415 even with
-        // ThrowOnBadRequest on. An empty body (HasStarted false) on a 400/415
-        // can only be a framework rejection — endpoint-authored 400s always
-        // carry the contract body — so reshape it here.
-        if (!context.Response.HasStarted &&
-            context.Response.StatusCode is StatusCodes.Status400BadRequest
-                or StatusCodes.Status415UnsupportedMediaType)
-        {
-            await WriteContractInvalidRequest(context);
-        }
-    }
-    catch (Exception ex) when (ex is BadHttpRequestException or JsonException)
+    if (!context.Response.HasStarted &&
+        context.Response.StatusCode is StatusCodes.Status400BadRequest
+            or StatusCodes.Status415UnsupportedMediaType)
     {
-        if (context.Response.HasStarted)
-        {
-            throw; // Too late to reshape the response — let the server abort it.
-        }
-
-        context.Response.Clear();
-        await WriteContractInvalidRequest(context);
-    }
-
-    static Task WriteContractInvalidRequest(HttpContext context)
-    {
-        context.Response.StatusCode = StatusCodes.Status400BadRequest;
-        return context.Response.WriteAsJsonAsync(new { error = "invalid_request" });
+        await ContractInvalidRequest.Write(context);
     }
 });
+
+// The per-IP login rate limit (R1.6b), off unless configured — see
+// LoginRateLimitOptions. Nothing is registered and no partition is tracked
+// when it is off, so "off" costs literally nothing. Placed after UseCors so a
+// 429 reaches a cross-origin browser as a 429 rather than as status 0.
+if (loginRateLimit.IsOn)
+{
+    app.UseRateLimiter();
+}
 
 // Single source of truth for the session cookie. Login's Append and logout's
 // Delete must agree on the name and attributes — a browser only drops a cookie
@@ -167,12 +209,23 @@ if (adminListener.IsOn)
         await next(context);
     });
 
-    app.MapPost(UnlockEndpoint.Route, UnlockEndpoint.Handle);
+    // ExcludeFromDescription: unlocking is an operator action outside the
+    // client contract (spec, "Manual unlock"), so it never appears in the
+    // published API description — a document that lists it invites a client to
+    // call it.
+    app.MapPost(UnlockEndpoint.Route, UnlockEndpoint.Handle).ExcludeFromDescription();
 }
 
-app.MapGet("/api/auth/health", () => Results.Json(new { status = "ok" }));
+// A liveness probe, not a contract endpoint — nobody implements against it, so
+// it stays out of the description too.
+app.MapGet("/api/auth/health", () => Results.Json(new { status = "ok" })).ExcludeFromDescription();
 
-app.MapPost("/api/auth/login", async (
+if (app.Environment.IsDevelopment())
+{
+    app.MapOpenApi();
+}
+
+var login = app.MapPost("/api/auth/login", async (
     LoginRequest request, AuthDb db, SessionService sessions, LockoutService lockout, HttpContext http) =>
 {
     if (!request.IsValid())
@@ -180,7 +233,7 @@ app.MapPost("/api/auth/login", async (
         // A malformed request never reaches the password check, so it is not
         // a failed attempt — otherwise anyone could lock an operator out with
         // pure garbage.
-        return Results.Json(new { error = "invalid_request" }, statusCode: StatusCodes.Status400BadRequest);
+        return Results.Json(new ErrorResponse("invalid_request"), statusCode: StatusCodes.Status400BadRequest);
     }
 
     // The lock is checked before any credential work (R1.4). Three things
@@ -190,7 +243,7 @@ app.MapPost("/api/auth/login", async (
     // invented username, so 423 tells a prober nothing.
     if (await lockout.IsLocked(request.Username!))
     {
-        return Results.Json(new { error = "locked" }, statusCode: StatusCodes.Status423Locked);
+        return Results.Json(new ErrorResponse("locked"), statusCode: StatusCodes.Status423Locked);
     }
 
     var user = await db.Users.SingleOrDefaultAsync(u => u.Username == request.Username);
@@ -203,8 +256,8 @@ app.MapPost("/api/auth/login", async (
         // Counted against the SUBMITTED username, real or not.
         var nowLocked = await lockout.RecordFailure(request.Username!);
         return nowLocked
-            ? Results.Json(new { error = "locked" }, statusCode: StatusCodes.Status423Locked)
-            : Results.Json(new { error = "invalid_credentials" }, statusCode: StatusCodes.Status401Unauthorized);
+            ? Results.Json(new ErrorResponse("locked"), statusCode: StatusCodes.Status423Locked)
+            : Results.Json(new ErrorResponse("invalid_credentials"), statusCode: StatusCodes.Status401Unauthorized);
     }
 
     await lockout.Reset(request.Username!);
@@ -213,12 +266,25 @@ app.MapPost("/api/auth/login", async (
 
     http.Response.Cookies.Append(SessionCookieName, session.Sid, SessionCookieOptions(sessions.CookieMaxAge));
 
-    return Results.Ok(new
-    {
-        user = new { username = user.Username, mode = session.Mode, position = session.Position },
-        expiresAt = session.ExpiresAt,
-    });
-});
+    return Results.Ok(new LoginResponse(
+        new UserView(user.Username, session.Mode, session.Position), session.ExpiresAt));
+})
+// The contract's status codes, so the generated description says what the spec
+// says. 429 is absent on purpose: the rate limiter is infrastructure and the
+// spec is explicit that it is not added to the client contract.
+.Produces<LoginResponse>(StatusCodes.Status200OK)
+.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+.Produces<ErrorResponse>(StatusCodes.Status401Unauthorized)
+.Produces<ErrorResponse>(StatusCodes.Status423Locked);
+
+// Rate limiting is attached HERE and nowhere else (R1.6b). /api/auth/session
+// and /api/auth/logout are what a page reload calls — limiting them would log
+// a station out for refreshing too eagerly — and /admin/unlock is unreachable
+// off-box, so limiting it would only hinder the operator standing at it.
+if (loginRateLimit.IsOn)
+{
+    login.RequireRateLimiting(LoginRateLimitOptions.PolicyName);
+}
 
 app.MapPost("/api/auth/logout", async (SessionService sessions, HttpContext http) =>
 {
@@ -235,7 +301,8 @@ app.MapPost("/api/auth/logout", async (SessionService sessions, HttpContext http
     http.Response.Cookies.Delete(SessionCookieName, SessionCookieOptions());
 
     return Results.NoContent();
-});
+})
+.Produces(StatusCodes.Status204NoContent);
 
 app.MapGet("/api/auth/session", async (SessionService sessions, HttpContext http) =>
 {
@@ -252,12 +319,12 @@ app.MapGet("/api/auth/session", async (SessionService sessions, HttpContext http
         return Results.Unauthorized();
     }
 
-    return Results.Ok(new
-    {
-        user = new { username = session.Username, mode = session.Mode, position = session.Position },
-        expiresAt = session.ExpiresAt,
-    });
-});
+    return Results.Ok(new LoginResponse(
+        new UserView(session.Username, session.Mode, session.Position), session.ExpiresAt));
+})
+// The spec defines no body for /session's 401, so none is described either.
+.Produces<LoginResponse>(StatusCodes.Status200OK)
+.Produces(StatusCodes.Status401Unauthorized);
 
 app.Run();
 return 0;

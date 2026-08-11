@@ -120,6 +120,27 @@ $auth-card-max-width: 380px;
     &__submit {
       margin-top: $auth-space-sm;
     }
+
+    // Small inline spinner inside the submit button while the login request
+    // is in flight. Pure CSS (no extra Material theme surface needed) and
+    // paired with the "Signing in…" label so the state is not color-only.
+    &__spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      margin-right: $auth-space-sm;
+      vertical-align: -2px;
+      border: 2px solid currentColor;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: auth-spin 0.7s linear infinite;
+    }
+  }
+}
+
+@keyframes auth-spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 

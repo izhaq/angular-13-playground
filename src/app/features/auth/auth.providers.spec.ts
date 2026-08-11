@@ -27,8 +27,11 @@ describe('provideAuth', () => {
     expiresAt: '2026-07-14T12:00:00+00:00',
   };
 
+  /** Where the user "is" when a later 401 interrupts them. */
+  const currentUrl = '/system-experiments';
+
   function setup(config?: Partial<AuthConfig>): void {
-    router = jasmine.createSpyObj<Router>('Router', ['navigateByUrl']);
+    router = jasmine.createSpyObj<Router>('Router', ['navigate'], { url: currentUrl });
     TestBed.configureTestingModule({
       providers: [
         provideAuth(config),
@@ -91,7 +94,7 @@ describe('provideAuth', () => {
     expect(consoleError).not.toHaveBeenCalled();
     // The interceptor must not treat the startup restore's own 401 as
     // "session gone" — a normal logged-out startup stays on its route.
-    expect(router.navigateByUrl).not.toHaveBeenCalled();
+    expect(router.navigate).not.toHaveBeenCalled();
   });
 
   it('registers the 401 interceptor on the http client it provides', () => {
@@ -108,7 +111,11 @@ describe('provideAuth', () => {
     httpMock.expectOne('/api/experiments').flush(null, { status: 401, statusText: 'Unauthorized' });
 
     expect(store.isLoggedIn()).toBeFalse();
-    expect(router.navigateByUrl).toHaveBeenCalledOnceWith(LOGIN_URL);
+    // Expiry mid-work: the redirect carries the interrupted page so login
+    // can bring the user back (same shape the guard produces).
+    expect(router.navigate).toHaveBeenCalledOnceWith([LOGIN_URL], {
+      queryParams: { returnUrl: currentUrl },
+    });
   });
 
   it('wires a host-configured defaultPostLoginUrl into AUTH_ROUTES_CONFIG', () => {

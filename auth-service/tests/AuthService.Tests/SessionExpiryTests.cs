@@ -45,11 +45,7 @@ public class SessionExpiryTests : IClassFixture<AuthServiceFactory>
         return ExtractSid(response);
     }
 
-    private static string ExtractSid(HttpResponseMessage response) =>
-        SidCookie(response).Split(';')[0]["sid=".Length..];
-
-    private static string SidCookie(HttpResponseMessage response) =>
-        response.Headers.GetValues("Set-Cookie").Single(c => c.StartsWith("sid="));
+    private static string ExtractSid(HttpResponseMessage response) => SidCookies.Value(response);
 
     private static Task<HttpResponseMessage> GetSession(HttpClient client, string sid)
     {
@@ -96,11 +92,8 @@ public class SessionExpiryTests : IClassFixture<AuthServiceFactory>
             new { username = "operation", password = "operation123!", mode = "operation", position = "active" });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var maxAge = SidCookie(response).Split(';')
-            .Select(part => part.Trim())
-            .Single(part => part.StartsWith("max-age=", StringComparison.OrdinalIgnoreCase));
-        var seconds = long.Parse(maxAge["max-age=".Length..]);
-        Assert.InRange(seconds, (long)Foreverish.TotalSeconds - 1, (long)Foreverish.TotalSeconds + 1);
+        Assert.InRange(SidCookies.MaxAgeSeconds(response),
+            (long)Foreverish.TotalSeconds - 1, (long)Foreverish.TotalSeconds + 1);
     }
 
     [Fact]

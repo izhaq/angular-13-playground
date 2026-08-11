@@ -65,6 +65,11 @@ public class LoginEndpointTests : IClassFixture<AuthServiceFactory>
         var expiresAt = DateTimeOffset.Parse(body.RootElement.GetProperty("expiresAt").GetString()!);
         Assert.True(expiresAt > DateTimeOffset.UtcNow.AddMinutes(110));
         Assert.True(expiresAt < DateTimeOffset.UtcNow.AddMinutes(130));
+
+        // The cookie must not outlive the session it carries: a body promising
+        // two hours next to a ten-year cookie would leave the browser holding a
+        // sid the server stopped honouring long ago.
+        Assert.Equal(2 * 3600, SidCookies.MaxAgeSeconds(response));
     }
 
     [Fact]
@@ -132,11 +137,7 @@ public class LoginEndpointTests : IClassFixture<AuthServiceFactory>
         var response = await client.PostAsJsonAsync("/api/auth/login", ValidLogin());
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var cookie = response.Headers.GetValues("Set-Cookie").Single(c => c.StartsWith("sid="));
-        var maxAge = cookie.Split(';')
-            .Select(part => part.Trim())
-            .Single(part => part.StartsWith("max-age=", StringComparison.OrdinalIgnoreCase));
-        Assert.Equal(2 * 3600, int.Parse(maxAge["max-age=".Length..]));
+        Assert.Equal(2 * 3600, SidCookies.MaxAgeSeconds(response));
     }
 
     [Fact]
@@ -183,9 +184,5 @@ public class LoginEndpointTests : IClassFixture<AuthServiceFactory>
         Assert.Equal("invalid_request", body.RootElement.GetProperty("error").GetString());
     }
 
-    private static string ExtractSid(HttpResponseMessage response)
-    {
-        var cookie = response.Headers.GetValues("Set-Cookie").Single(c => c.StartsWith("sid="));
-        return cookie.Split(';')[0]["sid=".Length..];
-    }
+    private static string ExtractSid(HttpResponseMessage response) => SidCookies.Value(response);
 }

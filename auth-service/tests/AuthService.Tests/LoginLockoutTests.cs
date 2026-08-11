@@ -17,8 +17,8 @@ namespace AuthService.Tests;
 /// Two properties are load-bearing and each has its own test below:
 /// - Attempts are counted for ANY submitted username, real or not, so
 ///   423-vs-401 cannot be used to discover which usernames exist.
-/// - The counter lives in the database, not in memory, so restarting the
-///   service does not hand an attacker a fresh five tries.
+/// - The counter lives in the database, not in host memory, so it is not
+///   something a restart of the service would hand back as fresh tries.
 ///
 /// Unlike the other suites this class builds its own factory per test (xUnit
 /// makes a new instance per test) instead of sharing one: lockout state is
@@ -193,16 +193,18 @@ public class LoginLockoutTests : IDisposable
     }
 
     [Fact]
-    public async Task The_lock_lives_in_the_database_so_a_restart_does_not_clear_it()
+    public async Task The_lock_is_not_host_state_so_a_second_host_sees_it()
     {
         await LockOut(_factory.CreateClient(), "operation");
 
-        // A second host over the same database is what a service restart
-        // looks like from the data's point of view. An in-memory counter
-        // would hand the attacker a fresh five tries here.
-        using var restarted = _factory.WithWebHostBuilder(_ => { });
+        // Two hosts share one in-memory database here, so what this proves is
+        // that the counter lives in the DATABASE and not in host memory — an
+        // in-memory counter would hand the attacker a fresh five tries. It is
+        // not a real process restart (the database would have to be the file
+        // on disk for that); the on-disk case follows from the same rows.
+        using var secondHost = _factory.WithWebHostBuilder(_ => { });
 
-        await AssertLockedBody(await Attempt(restarted.CreateClient(), "operation", GoodPassword));
+        await AssertLockedBody(await Attempt(secondHost.CreateClient(), "operation", GoodPassword));
     }
 
     [Fact]

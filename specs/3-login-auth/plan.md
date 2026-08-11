@@ -380,7 +380,7 @@ auth-contract.ts; store/specs adjusted (nothing renders it today).
 **Files:** `auth-service` (Session.cs, SessionService.cs, Program.cs, appsettings.json), tests; `auth-contract.ts` + affected specs
 **Dependencies:** R1.1
 
-### Task R1.3: Login retry limit — 423 becomes real (M)
+### Task R1.4: Login retry limit — 423 becomes real (M)
 **Description:** consecutive-failure tracking per submitted username (real
 or not — so 423-vs-401 can't probe which usernames exist), stored in the
 DB (survives service restart): after `MaxLoginAttempts` (default 5)
@@ -395,7 +395,7 @@ code expected.
 **Files:** `auth-service` (Data/, Sessions/, Program.cs, appsettings.json), tests
 **Dependencies:** R1.1 (parallel with R1.2)
 
-### ✅ Checkpoint R1 (review): net10 build; login → close browser → reopen → still in; 5 wrong passwords → locked → wait/shorten window → unlocked; logout still ends everything.
+### ✅ Checkpoint R1 (review): net10 build; **delete `auth-service/src/AuthService/auth.db*` first** — R1 changed the schema and `EnsureCreated` never updates an existing file, so a pre-R1 database makes the service refuse to start (see the Commands section of the spec); then: login → close browser → reopen → still in; 5 wrong passwords → locked → wait/shorten window → unlocked; logout still ends everything; parallel logins (right or wrong password) never answer 500.
 
 ---
 

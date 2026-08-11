@@ -223,15 +223,21 @@ page reload), or `401` if no valid session.
 **Lockout policy (R1.4):**
 - Failed logins are counted **per username** (there are only two). After
   `MaxLoginAttempts` consecutive failures (default 5), login answers `423`
-  for `LockoutMinutes` (default 15), then unlocks automatically. A
-  successful login resets the counter. Both knobs live in `appsettings.json`.
+  for `LockoutMinutes` (default 15), then unlocks automatically — the count
+  is forgotten together with the lock. A successful login resets the counter.
+  Both knobs live in `appsettings.json`.
+- The Nth consecutive failure is itself answered `423`: the user is told why
+  on the attempt that caused the lock, not on the next one.
 - The lock applies to login only; live sessions are unaffected.
+- Attempts are tracked for any submitted username, existing or not, so
+  `423`-vs-`401` reveals nothing about which accounts exist.
 - `423` and `401` bodies stay distinct by design — the UI must tell the user
-  the account is locked (product-visible), while wrong-vs-unknown user stays
-  indistinguishable (no username probing; a locked answer is only given for
-  usernames that actually exist? NO — locking is tracked for any attempted
-  username, existing or not, so a probe cannot use 423-vs-401 to discover
-  which usernames are real).
+  the account is locked (product-visible), while wrong password and unknown
+  user stay indistinguishable from each other.
+- Parallel logins for the same username must neither lose a counted failure
+  (an attacker with N connections would otherwise get materially more than
+  `MaxLoginAttempts` guesses per window) nor answer `500`: login only ever
+  answers the contract's `200`/`400`/`401`/`423`.
 
 ## Auth-Free Mode (dev/integration environments)
 
@@ -338,6 +344,21 @@ npm test                   → client unit tests (Karma/Jasmine)
 dotnet test auth-service   → auth service tests (xUnit)
 npm run build              → production build (same artifact for all environments)
 ```
+
+The auth service creates and seeds its SQLite file,
+`auth-service/src/AuthService/auth.db`, on first run. The schema comes from
+EF's `EnsureCreated`, which only ever creates a schema that is not there yet —
+it never updates one — so **after any change to the data model the old file
+must be deleted** (R1 added the `LoginAttempts` table and made
+`Sessions.ExpiresAt` nullable, so every pre-R1 file is stale):
+
+```
+rm auth-service/src/AuthService/auth.db*     → then restart; it recreates and reseeds
+```
+
+The service checks its schema at startup and refuses to start on a stale file,
+naming the file to delete, rather than booting into a state where every login
+answers `500`.
 
 ## Code Style
 

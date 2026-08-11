@@ -40,10 +40,16 @@ var app = builder.Build();
 
 // Dev-grade schema management: EnsureCreated + seed. Real migrations come
 // with the real database engine, behind the same EF seam.
+//
+// EnsureCreated stands down entirely when the database file already exists, so
+// a file from an earlier slice keeps its old schema and every login 500s. The
+// guard turns that into a startup failure naming the file to delete, because
+// booting into a service that cannot log anyone in helps nobody.
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AuthDb>();
     db.Database.EnsureCreated();
+    SchemaGuard.VerifyOrThrow(db);
     SeedData.EnsureSeeded(db);
 }
 

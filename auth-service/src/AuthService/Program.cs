@@ -26,6 +26,12 @@ if (!Path.IsPathRooted(connection.DataSource))
 
 builder.Services.AddDbContext<AuthDb>(options => options.UseSqlite(connection.ToString()));
 builder.Services.AddScoped<SessionService>();
+
+// The lockout policy is parsed ONCE, here, and shared as a singleton — not
+// re-read from IConfiguration on every login. Invalid values throw before the
+// host starts, so a config the service cannot honour as written is a startup
+// failure naming the key, never a silent reinterpretation (R1.5a).
+builder.Services.AddSingleton(LockoutOptions.FromConfiguration(builder.Configuration));
 builder.Services.AddScoped<LockoutService>();
 
 // CORS with credentials: needed for the real deployment's cross-origin path

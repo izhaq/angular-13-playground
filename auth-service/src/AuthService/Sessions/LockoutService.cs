@@ -8,6 +8,13 @@ namespace AuthService.Sessions;
 /// failures per submitted username and refuses logins for a while once the
 /// count reaches the limit.
 ///
+/// The whole mechanism is optional (R1.5). When <see cref="LockoutOptions"/>
+/// is <see cref="LockoutOptions.Off"/> every method here answers "not locked,
+/// nothing counted" and touches no row. That answer is given HERE, once,
+/// rather than by each caller: the login endpoint asks the same three
+/// questions in the same order whether or not lockout is configured, and a
+/// future caller cannot forget the check that does not exist.
+///
 /// Everything here keys off the username the caller TYPED, never off a user
 /// row, so an unknown username locks exactly like a real one and 423-vs-401
 /// leaks nothing about which accounts exist.
@@ -29,24 +36,31 @@ public class LockoutService
     private const int MaxSaveRounds = 3;
 
     private readonly AuthDb _db;
-    private readonly int _maxAttempts;
-    private readonly TimeSpan _window;
+    private readonly LockoutOptions _options;
 
-    public LockoutService(AuthDb db, IConfiguration configuration)
+    public LockoutService(AuthDb db, LockoutOptions options)
     {
         _db = db;
-        _maxAttempts = configuration.GetValue("MaxLoginAttempts", 5);
-        _window = TimeSpan.FromMinutes(configuration.GetValue("LockoutMinutes", 15.0));
+        _options = options;
     }
 
     /// <summary>
-    /// Whether logins for this username are currently refused. A lock whose
-    /// window has passed is cleared here — that is the auto-unlock — and the
-    /// failure count goes with it, so the user starts clean rather than one
-    /// slip away from being locked out again.
+    /// Whether logins for this username are currently refused. Always false
+    /// while lockout is off — including for a row left over from when it was
+    /// on, since turning the mechanism off is also the spec's escape hatch for
+    /// a locked-out station.
+    ///
+    /// A lock whose window has passed is cleared here — that is the
+    /// auto-unlock — and the failure count goes with it, so the user starts
+    /// clean rather than one slip away from being locked out again.
     /// </summary>
     public async Task<bool> IsLocked(string username)
     {
+        if (!_options.IsOn)
+        {
+            return false;
+        }
+
         var attempt = await Find(username);
         if (attempt?.LockedUntil is null)
         {
@@ -70,9 +84,18 @@ public class LockoutService
     /// Safe to call on its own: an expired lock is forgotten before counting
     /// and a live one is never extended, so this does not depend on
     /// <see cref="IsLocked"/> having run first.
+    ///
+    /// While lockout is off this counts nothing and writes nothing: the
+    /// LoginAttempts table stays empty rather than filling with rows no one
+    /// reads.
     /// </summary>
     public async Task<bool> RecordFailure(string username)
     {
+        if (!_options.IsOn)
+        {
+            return false;
+        }
+
         for (var round = 1; round <= MaxSaveRounds; round++)
         {
             if (round > 1)
@@ -107,9 +130,9 @@ public class LockoutService
 
             attempt.FailedCount++;
             attempt.Version++;
-            if (attempt.FailedCount >= _maxAttempts)
+            if (attempt.FailedCount >= _options.MaxAttempts)
             {
-                attempt.LockedUntil = DateTimeOffset.UtcNow.Add(_window);
+                attempt.LockedUntil = DateTimeOffset.UtcNow.Add(_options.Window);
             }
 
             try
@@ -143,6 +166,13 @@ public class LockoutService
     /// <summary>Forgets a username's failures — what a successful login earns.</summary>
     public async Task Reset(string username)
     {
+        if (!_options.IsOn)
+        {
+            // Nothing was ever counted, so there is nothing to forget — and no
+            // reason to put a DELETE on the path of every successful login.
+            return;
+        }
+
         // One set-based DELETE: no fetch, no change tracking, nothing to go
         // stale between reading and writing. Two stations logging in at the
         // same moment simply both delete nothing-or-something; neither can

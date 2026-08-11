@@ -3,7 +3,6 @@ using AuthService.Sessions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.Extensions.Configuration;
 
 namespace AuthService.Tests;
 
@@ -85,19 +84,14 @@ public class LockoutServiceRaceTests : IDisposable
         return builder.Options;
     }
 
-    private static IConfiguration Configuration => new ConfigurationBuilder()
-        .AddInMemoryCollection(new Dictionary<string, string?>
-        {
-            ["MaxLoginAttempts"] = MaxAttempts.ToString(),
-        })
-        .Build();
+    private static LockoutOptions Policy => LockoutOptions.On(MaxAttempts, TimeSpan.FromMinutes(15));
 
     /// <summary>A lockout service on its own context — one "request".</summary>
     private LockoutService Request(IInterceptor? interceptor = null)
     {
         var db = new AuthDb(Options(interceptor));
         _contexts.Add(db);
-        return new LockoutService(db, Configuration);
+        return new LockoutService(db, Policy);
     }
 
     private int FailedCount(string username)

@@ -2,7 +2,6 @@ using AuthService.Data;
 using AuthService.Sessions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 
 namespace AuthService.Tests;
 
@@ -26,13 +25,7 @@ public class LockoutServiceTests : IDisposable
         _connection.Open();
         _db = new AuthDb(new DbContextOptionsBuilder<AuthDb>().UseSqlite(_connection).Options);
         _db.Database.EnsureCreated();
-        _lockout = new LockoutService(_db, new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["MaxLoginAttempts"] = MaxAttempts.ToString(),
-                ["LockoutMinutes"] = "15",
-            })
-            .Build());
+        _lockout = new LockoutService(_db, LockoutOptions.On(MaxAttempts, TimeSpan.FromMinutes(15)));
     }
 
     public void Dispose()

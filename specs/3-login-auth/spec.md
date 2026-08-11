@@ -220,7 +220,13 @@ page reload), or `401` if no valid session.
   — e.g. future take-over) → the HTTP interceptor clears the session store
   and redirects to the login page.
 
-**Lockout policy (R1.4):**
+**Lockout policy (R1.4, extended by R1.5):**
+- **The whole mechanism is optional (R1.5).** `MaxLoginAttempts` absent or
+  null = **no lockout at all**: nothing is counted, nothing is stored, and
+  `423` is never returned. A number turns it on. Invalid values (≤ 0, or
+  `LockoutMinutes` ≤ 0 while lockout is on) are rejected **at startup** with
+  a clear message — never silently reinterpreted, because a lockout that
+  quietly behaves differently than its config reads is worse than none.
 - Failed logins are counted **per username** (there are only two). After
   `MaxLoginAttempts` consecutive failures (default 5), login answers `423`
   for `LockoutMinutes` (default 15), then unlocks automatically — the count
@@ -239,7 +245,63 @@ page reload), or `401` if no valid session.
   `MaxLoginAttempts` guesses per window) nor answer `500`: login only ever
   answers the contract's `200`/`400`/`401`/`423`.
 
-## Auth-Free Mode (dev/integration environments)
+**Manual unlock (R1.5)** — someone locked out cannot log in to free
+themselves, so the release must not require a login. Both mechanisms below
+mean the same thing: *you are physically at the station*.
+
+- **CLI (primary, always available):** `AuthService unlock <username>`
+  (`dotnet run -- unlock <username>` in dev) clears the lock and the counter
+  and exits. Zero network surface; works even when the service is stopped,
+  since it operates on the same database through the same EF seam.
+- **Local admin endpoint (opt-in, off by default):** `POST /admin/unlock`
+  with `{ "username": "..." }` → `204`, idempotent (unknown or unlocked
+  username also `204` — it reveals nothing).
+  **It must NOT live on the main port.** A "loopback only" check by remote
+  IP is unsafe here: the real deployment puts a reverse proxy on the same
+  machine, so proxied requests from anywhere appear to come from localhost.
+  Instead the endpoint is served on a **separate Kestrel listener bound to
+  `127.0.0.1`** (`AdminUrls`, e.g. `http://127.0.0.1:5051`), unset by
+  default. Network topology enforces the restriction, not request
+  inspection. The admin listener is never routed through the proxy.
+- Unlocking is not part of the client-facing API contract — it is an
+  operator/ops action, so it lives outside `/api/auth/*` and no Angular code
+  calls it.
+
+**Known accepted risk (open with product):** lockout is a denial-of-service
+lever — anyone able to reach the login endpoint can hold both station
+accounts locked at `MaxLoginAttempts` requests per window. R1.6's rate
+limiting raises the cost but does not remove it (a slow attacker within the
+limit still locks an account). Mitigations if product rejects the risk:
+disable lockout entirely (now supported), exempt the console, or switch to
+exponential backoff instead of a hard lock.
+
+## Platform Modernization (R1.6, .NET 10)
+
+Now that the service targets .NET 10, four framework capabilities replace
+hand-rolled or missing pieces. All are configuration-shaped and change no
+part of the client contract.
+
+- **`TimeProvider` for all time reads.** `SessionService` and
+  `LockoutService` take the clock as a dependency instead of calling
+  `DateTimeOffset.UtcNow` directly. Tests then control time instead of
+  ageing rows in the database to reach an expiry or an auto-unlock — faster,
+  clearer, and it removes the only place where tests manipulate storage to
+  simulate the passage of time. Production keeps `TimeProvider.System`.
+- **`IExceptionHandler`** replaces the custom middleware that rewrites early
+  request rejections into the contract's `400 {"error":"invalid_request"}`.
+  Same behavior, framework-owned pipeline. The CORS-headers-survive property
+  (already pinned by a test) must keep holding.
+- **Built-in rate limiting** on the login endpoint: a per-IP limiter,
+  **configurable and off unless configured**, returning `429` when
+  exceeded. Complements the per-username lockout — it raises the cost of the
+  parallel-guessing traffic the lockout exists to stop, without touching the
+  lockout's own rules. `429` is *not* added to the client contract: the
+  login page treats it like any other unexpected status (generic message).
+- **Built-in OpenAPI** document for `/api/auth/*`, served in Development
+  only. The contract is the deliverable for the .NET team; a
+  machine-readable form beside the prose spec is strictly better than prose
+  alone. Must not become a second source of truth — the spec's API Contract
+  section stays authoritative; the generated document is checked against it.
 
 Reality: ~10 dev environments + 2 integration environments, each on its own
 physical server, and **all get the same production build** (`ng build

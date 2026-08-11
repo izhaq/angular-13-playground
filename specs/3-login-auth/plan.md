@@ -401,6 +401,67 @@ code expected.
 
 ---
 
+## Slice R1.5/R1.6 — Optional lockout, manual unlock, .NET 10 modernization
+
+Follow-on to slice R1, same PR. Spec sources: "Lockout policy" (R1.5
+paragraphs), "Manual unlock (R1.5)", "Platform Modernization (R1.6)".
+
+### Task R1.5a: Lockout becomes optional + validated (S)
+**Description:** `MaxLoginAttempts` absent/null → the mechanism is fully off
+(nothing counted, nothing stored, `423` never returned). Invalid values
+(≤ 0, or `LockoutMinutes` ≤ 0 while on) fail fast at startup with a clear
+message. Config parsed once into a typed options object, not re-read per
+request.
+**Acceptance:**
+- [ ] xUnit: lockout off → 100 failures all `401`, `LoginAttempts` table stays empty
+- [ ] xUnit: on → today's behavior unchanged (existing lockout suite green)
+- [ ] xUnit: `MaxLoginAttempts: 0` / negative / `LockoutMinutes: 0` → startup throws with a message naming the key
+**Files:** `LockoutService.cs`, `Program.cs`, `appsettings.json`, tests
+**Dependencies:** none
+
+### Task R1.5b: Manual unlock — CLI + loopback admin endpoint (M)
+**Description:** `AuthService unlock <username>` clears lock + counter and
+exits (works with the service stopped; same EF seam, no raw SQL). Opt-in
+`POST /admin/unlock` → `204` idempotent, served **only** on a separate
+Kestrel listener bound to `127.0.0.1` (`AdminUrls`, unset by default) —
+never an IP check, because a same-host reverse proxy makes every request
+look local. Not part of the client contract.
+**Acceptance:**
+- [ ] xUnit: unlock releases a locked username; next correct password → 200; unknown/unlocked username → 204 (idempotent)
+- [ ] xUnit: with `AdminUrls` unset, `/admin/unlock` is not reachable on the main port (404)
+- [ ] Manual: lock an account, run the CLI, log in successfully
+**Files:** `Program.cs`, new `Admin/` (or `Sessions/`) unlock entry points, `appsettings.json`, tests, README note
+**Dependencies:** R1.5a
+
+### Task R1.6a: TimeProvider everywhere (M)
+**Description:** inject `TimeProvider` into `SessionService` and
+`LockoutService`; production uses `TimeProvider.System`. Rewrite the tests
+that age rows in the database (session expiry, lockout auto-unlock) to
+advance a fake clock instead.
+**Acceptance:**
+- [ ] No production code calls `DateTimeOffset.UtcNow` directly
+- [ ] The DB-ageing tricks are gone from tests; the same behaviors are still pinned
+**Files:** `SessionService.cs`, `LockoutService.cs`, `Program.cs`, affected tests
+**Dependencies:** R1.5a (touches the same class)
+
+### Task R1.6b: IExceptionHandler + rate limiting + OpenAPI (M)
+**Description:** (1) replace the contract-400 middleware with
+`IExceptionHandler`, keeping behavior and the CORS-headers-survive property;
+(2) per-IP rate limiter on login, configurable, **off unless configured**,
+`429` when exceeded, not added to the client contract; (3) built-in OpenAPI
+for `/api/auth/*`, Development only, checked against the spec's contract
+section (spec stays authoritative).
+**Acceptance:**
+- [ ] All existing contract-hardening tests green unchanged, including the CORS pin
+- [ ] xUnit: limiter off by default; configured → `429` past the limit; lockout rules unaffected
+- [ ] OpenAPI document lists the three `/api/auth/*` endpoints with their status codes
+**Files:** `Program.cs`, `appsettings.json`, tests
+**Dependencies:** R1.6a
+
+### ✅ Checkpoint R1.5/R1.6 (review): lockout off via config; lock an account then release it with the CLI; admin port refused from the main port; tests no longer age the database to travel in time.
+
+---
+
 ## Slice 5 — Auth-free mode (runtime switch)
 
 Goal: same production build, config file flips auth off for dev environments.

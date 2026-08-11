@@ -15,6 +15,15 @@ namespace AuthService.Sessions;
 /// questions in the same order whether or not lockout is configured, and a
 /// future caller cannot forget the check that does not exist.
 ///
+/// One consequence of "touches no row" is worth stating so it is not read as a
+/// leak: rows written while lockout was ON outlive it. Switching the policy
+/// off makes them unreachable — nothing reads them and no login is refused
+/// because of them — but nothing clears them either, so they sit in
+/// <c>LoginAttempts</c> until someone runs <c>AuthService unlock</c>. That is
+/// deliberate: turning the mechanism off is the spec's escape hatch for a
+/// locked-out station, and it should not depend on a cleanup pass that could
+/// itself fail.
+///
 /// Everything here keys off the username the caller TYPED, never off a user
 /// row, so an unknown username locks exactly like a real one and 423-vs-401
 /// leaks nothing about which accounts exist.

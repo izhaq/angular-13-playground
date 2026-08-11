@@ -13,6 +13,14 @@ namespace AuthService.Tests;
 /// Microsoft.Extensions.TimeProvider.Testing: the only thing under test here
 /// is "what does the service think the time is", so the timer/task-scheduling
 /// half of that package would be a new dependency bought for nothing.
+///
+/// Which is also the limit of this class: <see cref="GetUtcNow"/> is the ONLY
+/// member overridden, so anything timer-shaped — <c>CreateTimer</c>,
+/// <c>Delay</c>, <c>GetTimestamp</c> — silently falls through to
+/// <see cref="TimeProvider"/>'s real-clock behaviour and would not follow
+/// <see cref="Advance"/>. Nothing in the service uses those today; the day
+/// something does, reach for <c>FakeTimeProvider</c> rather than extending
+/// this, or the test will pass while measuring the wall clock.
 /// <see cref="Advance"/> is interlocked because the race suites drive this
 /// clock from more than one <c>LockoutService</c>.
 /// </summary>

@@ -19,6 +19,22 @@ namespace AuthService.Http;
 /// "this caller is talking too fast". Note what neither removes — a patient
 /// attacker staying under both still gets their guesses (spec, "Known
 /// accepted risk").
+///
+/// <b>What "per caller" means here, and where it stops meaning it.</b> The
+/// partition key is the connection's peer address, which nothing in the
+/// request can influence — but behind the deployment the spec recommends, a
+/// reverse proxy on the SAME host, every request arrives from that one peer.
+/// All logins then share a single partition, and this stops being a per-caller
+/// limit and becomes one global login budget. The consequence is worth stating
+/// plainly: an outsider can spend the whole window and keep the operator from
+/// logging in, without knowing any username — cheaper than the lockout denial
+/// of service already recorded in the spec. Directly exposed, or behind a
+/// proxy on another machine, the per-caller reading holds.
+///
+/// Fixing that means trusting <c>X-Forwarded-For</c>, which is only safe with
+/// <c>UseForwardedHeaders</c> configured with <c>KnownProxies</c> — an
+/// unpaired header is attacker-controlled, and a limiter an attacker can
+/// partition themselves out of is worse than no limiter. Neither is wired.
 /// </summary>
 public sealed class LoginRateLimitOptions
 {

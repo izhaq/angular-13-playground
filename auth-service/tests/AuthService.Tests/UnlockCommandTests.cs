@@ -42,6 +42,21 @@ public class UnlockCommandTests : IDisposable
     {
         _db.Dispose();
         _connection.Dispose();
+
+        foreach (var folder in _tempFolders)
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    private readonly List<string> _tempFolders = [];
+
+    /// <summary>A directory with no <c>auth.db</c> in it — i.e. "run from the wrong folder".</summary>
+    private string EmptyFolder()
+    {
+        var folder = Directory.CreateTempSubdirectory("authservice-unlock-").FullName;
+        _tempFolders.Add(folder);
+        return folder;
     }
 
     private Task<int> Run(params string[] args) => UnlockCommand.Run(args, _lockout, _output, _error);
@@ -129,6 +144,72 @@ public class UnlockCommandTests : IDisposable
 
         Assert.NotEqual(0, exitCode);
         Assert.True(await _lockout.IsLocked("operation")); // nothing guessed at
+    }
+
+    // ---------------------------------------------------------------------
+    // The command as the OPERATOR runs it: a folder on disk rather than an
+    // already-opened database.
+    //
+    // This is where the command is most easily believed and wrong. It resolves
+    // its database relative to the working directory, so running the binary
+    // from anywhere else used to CREATE a brand-new empty auth.db, find no
+    // lock in it (there is nothing in it), print a cheerful confirmation and
+    // exit 0 — while the real lock stood untouched. AuthDbConnection's own doc
+    // comment names this failure.
+    // ---------------------------------------------------------------------
+
+    [Fact]
+    public async Task A_missing_database_is_refused_by_path_and_nothing_is_created()
+    {
+        var folder = EmptyFolder();
+
+        var exitCode = await UnlockCommand.Run(["unlock", "operation"], folder, _output, _error);
+
+        // Non-zero, because nothing was unlocked.
+        Assert.NotEqual(0, exitCode);
+
+        // The resolved path, because "wrong directory" is invisible otherwise.
+        Assert.Contains(Path.Combine(folder, "auth.db"), _error.ToString());
+
+        // And emphatically no new database: creating one is what made the old
+        // behaviour a silent lie rather than an error.
+        Assert.Empty(Directory.GetFiles(folder));
+    }
+
+    [Fact]
+    public async Task A_missing_username_is_refused_before_any_database_is_touched()
+    {
+        // `AuthService unlock` with no username used to create auth.db and
+        // then print usage. Argument checking costs nothing; do it first.
+        var folder = EmptyFolder();
+
+        var exitCode = await UnlockCommand.Run(["unlock"], folder, _output, _error);
+
+        Assert.NotEqual(0, exitCode);
+        Assert.Contains("username", _error.ToString());
+        Assert.Empty(Directory.GetFiles(folder));
+    }
+
+    [Fact]
+    public async Task A_real_database_is_opened_and_the_success_line_names_it()
+    {
+        var folder = EmptyFolder();
+        var path = Path.Combine(folder, "auth.db");
+
+        await using (var db = new AuthDb(new DbContextOptionsBuilder<AuthDb>()
+            .UseSqlite($"Data Source={path}").Options))
+        {
+            await db.Database.EnsureCreatedAsync();
+        }
+
+        var exitCode = await UnlockCommand.Run(["unlock", "operation"], folder, _output, _error);
+
+        Assert.Equal(0, exitCode);
+        Assert.Empty(_error.ToString());
+
+        // Naming the file it actually opened is what lets an operator see at a
+        // glance that they released a lock in the database they meant to.
+        Assert.Contains(path, _output.ToString());
     }
 
     [Fact]

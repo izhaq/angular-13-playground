@@ -271,9 +271,17 @@ mean the same thing: *you are physically at the station*.
 lever — anyone able to reach the login endpoint can hold both station
 accounts locked at `MaxLoginAttempts` requests per window. R1.6's rate
 limiting raises the cost but does not remove it (a slow attacker within the
-limit still locks an account). Mitigations if product rejects the risk:
-disable lockout entirely (now supported), exempt the console, or switch to
-exponential backoff instead of a hard lock.
+limit still locks an account). And the rate limiter carries a cheaper version
+of the same risk once it is switched on: it partitions on the connecting
+peer, so behind the same-host reverse proxy recommended above every request
+shares one partition and the limit becomes a single global login budget —
+whoever spends the window keeps the operators off the login page too, without
+needing to know a username. (Per-caller budgets behind a proxy would mean
+trusting `X-Forwarded-For`, which is only safe paired with
+`UseForwardedHeaders` + `KnownProxies`; that pairing is deliberately not
+wired.) Mitigations if product rejects the risk: disable lockout entirely
+(now supported), exempt the console, or switch to exponential backoff instead
+of a hard lock.
 
 ## Platform Modernization (R1.6, .NET 10)
 

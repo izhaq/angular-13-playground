@@ -26,6 +26,7 @@ if (!Path.IsPathRooted(connection.DataSource))
 
 builder.Services.AddDbContext<AuthDb>(options => options.UseSqlite(connection.ToString()));
 builder.Services.AddScoped<SessionService>();
+builder.Services.AddScoped<LockoutService>();
 
 // CORS with credentials: needed for the real deployment's cross-origin path
 // (same DNS, different ports — see spec "cookies and addresses"). The origin
@@ -115,11 +116,25 @@ static CookieOptions SessionCookieOptions(TimeSpan? maxAge = null) => new()
 
 app.MapGet("/api/auth/health", () => Results.Json(new { status = "ok" }));
 
-app.MapPost("/api/auth/login", async (LoginRequest request, AuthDb db, SessionService sessions, HttpContext http) =>
+app.MapPost("/api/auth/login", async (
+    LoginRequest request, AuthDb db, SessionService sessions, LockoutService lockout, HttpContext http) =>
 {
     if (!request.IsValid())
     {
+        // A malformed request never reaches the password check, so it is not
+        // a failed attempt — otherwise anyone could lock an operator out with
+        // pure garbage.
         return Results.Json(new { error = "invalid_request" }, statusCode: StatusCodes.Status400BadRequest);
+    }
+
+    // The lock is checked before any credential work (R1.4). Three things
+    // follow, all of them wanted: a locked username is refused even with the
+    // right password; attempts made while locked are not counted, so they
+    // cannot extend the window; and the answer is identical for a real and an
+    // invented username, so 423 tells a prober nothing.
+    if (await lockout.IsLocked(request.Username!))
+    {
+        return Results.Json(new { error = "locked" }, statusCode: StatusCodes.Status423Locked);
     }
 
     var user = await db.Users.SingleOrDefaultAsync(u => u.Username == request.Username);
@@ -129,8 +144,14 @@ app.MapPost("/api/auth/login", async (LoginRequest request, AuthDb db, SessionSe
     var verified = Pbkdf2.Verify(request.Password!, user?.PasswordHash ?? Pbkdf2.DummyHash);
     if (user is null || !verified)
     {
-        return Results.Json(new { error = "invalid_credentials" }, statusCode: StatusCodes.Status401Unauthorized);
+        // Counted against the SUBMITTED username, real or not.
+        var nowLocked = await lockout.RecordFailure(request.Username!);
+        return nowLocked
+            ? Results.Json(new { error = "locked" }, statusCode: StatusCodes.Status423Locked)
+            : Results.Json(new { error = "invalid_credentials" }, statusCode: StatusCodes.Status401Unauthorized);
     }
+
+    await lockout.Reset(request.Username!);
 
     var session = await sessions.Create(user.Username, request.Mode!, request.Position!);
 

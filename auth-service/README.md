@@ -77,6 +77,9 @@ authoritative source.
 ```
 
 `mode` is `operation` or `technician`; `position` is `active` or `passive`.
+`username` is capped at 64 characters and `password` at 128 — anything longer
+is malformed input and answers the same `400` as a missing field. (The caps
+are a denial-of-service bound, not a policy: nothing legitimate comes close.)
 
 | Response | Meaning |
 |---|---|
@@ -266,6 +269,7 @@ treats it as an unexpected status and shows its generic message.
 | `Urls` | `http://localhost:5001` | Where the public API listens. |
 | `ConnectionStrings:AuthDb` | `Data Source=auth.db` | The database file. A relative path is resolved against the service folder, so starting from the repo root doesn't scatter database files. |
 | `AllowedOrigin` | `http://localhost:4200` | The exact web address allowed to call this service from a browser with cookies. Must be exact — a `*` wildcard is forbidden by browsers when cookies are involved. |
+| `SecureCookies` | `false` | Adds the `Secure` flag to the session cookie, so it only ever travels over HTTPS. **Set `true` in any deployment served over TLS.** Stays `false` in dev because on plain HTTP a `Secure` cookie is never sent back — nobody could log in. |
 
 ---
 
@@ -286,8 +290,9 @@ cryptographic generator, never sequential.
 
 **The cookie cannot be stolen by scripts** (`HttpOnly`), and is scoped
 `SameSite=Lax`, `Path=/`.
-*Production note:* there is no `Secure` flag, because development runs on
-plain HTTP. **A production deployment behind TLS should add it.**
+*Production note:* the `Secure` flag is configuration, not a code change —
+set `SecureCookies` to `true` in any deployment behind TLS (§5,
+Infrastructure). It defaults off only because development runs on plain HTTP.
 
 **The lock is checked before the password.** That single ordering buys three
 properties at once: a locked account is refused even with the right password,

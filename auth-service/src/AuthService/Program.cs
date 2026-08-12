@@ -210,13 +210,19 @@ if (loginRateLimit.IsOn)
 // their options here and cannot drift.
 const string SessionCookieName = "sid";
 
-static CookieOptions SessionCookieOptions(TimeSpan? maxAge = null) => new()
+// The Secure flag follows the deployment, not a comment: dev runs on plain
+// HTTP, where a Secure cookie would never be sent back (so false is the only
+// working default), and a TLS deployment sets SecureCookies=true in its own
+// configuration instead of relying on someone editing code at deploy time.
+var secureCookies = app.Configuration.GetValue("SecureCookies", false);
+
+CookieOptions SessionCookieOptions(TimeSpan? maxAge = null) => new()
 {
     HttpOnly = true,
+    Secure = secureCookies,
     SameSite = SameSiteMode.Lax,
     Path = "/",
     MaxAge = maxAge,
-    // No Secure flag: dev runs on plain HTTP. Production behind TLS adds it.
 };
 
 if (adminListener.IsOn)

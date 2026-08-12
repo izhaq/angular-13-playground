@@ -80,23 +80,16 @@ public class SessionService
     /// <summary>
     /// Deletes the session row for a sid. Idempotent: an unknown or already
     /// deleted sid is a no-op — logout has nothing to reveal.
+    ///
+    /// One set-based DELETE, same as <c>LockoutService.Forget</c> and for the
+    /// same reason: no fetch, no tracked state, nothing to go stale between
+    /// reading and writing — so two logouts racing for the same sid simply
+    /// both delete nothing-or-something, and the fetch-then-save concurrency
+    /// exception this method used to catch cannot arise at all.
     /// </summary>
     public async Task Delete(string sid)
     {
-        var session = await _db.Sessions.SingleOrDefaultAsync(s => s.Sid == sid);
-        if (session is not null)
-        {
-            _db.Sessions.Remove(session);
-            try
-            {
-                await _db.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                // A concurrent logout deleted the row between our fetch and
-                // save — already deleted, idempotent no-op.
-            }
-        }
+        await _db.Sessions.Where(s => s.Sid == sid).ExecuteDeleteAsync();
     }
 
     /// <summary>256 crypto-random bits, base64url so it is cookie-safe (no '=', '+', '/').</summary>

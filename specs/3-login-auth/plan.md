@@ -12,13 +12,30 @@ end-to-end, one user-visible behavior at a time; slice 5 adds the auth-free
 runtime mode; slice 6 proves extraction. After every slice: tests pass, both
 services run, and there is something new to see.
 
+### Note (2026-08-12): the auth service moved to its own repo
+
+Everything below was written while the service lived in this repo as
+`auth-service/`. It now lives at
+[izhaq/net-auth](https://github.com/izhaq/net-auth), whose repo root *is* the
+old `auth-service/` folder — extracted with full history via
+`git subtree split` (26 commits), zero code changes, 170/170 tests green at
+the new root.
+
+**The slice records below are left as they happened** — same convention as the
+.NET 6 → 10 retarget, which is recorded as a later change rather than edited
+back into slice 0. So when a task says `auth-service/src/AuthService/…`, read
+it as `src/AuthService/…` in the net-auth repo. Sections describing the
+*current* state (Architecture Decisions, Environment, slice 6) carry the update
+inline.
+
 ## Architecture Decisions (from the approved spec)
 
 - Session cookie (Option A), HttpOnly, opaque id, server-side session table.
 - **.NET 10** minimal API (org's version, current LTS — retargeted from
-  .NET 6 in R1.1, so the EOL trade-off is gone) in self-contained
-  `auth-service/` (port 5001); EF Core 10 + SQLite; Node server stays as the
-  experiments service (port 3000).
+  .NET 6 in R1.1, so the EOL trade-off is gone) in a self-contained service on
+  port 5001 — built here as `auth-service/`, since 2026-08-12 its own repo
+  [izhaq/net-auth](https://github.com/izhaq/net-auth); EF Core 10 + SQLite;
+  Node server stays as the experiments service (port 3000).
 - Client: standalone components + signals, flat `features/auth/` (8 files),
   `provideAuth()` as the wiring seam.
 - Runtime `app-config.json` switches real/mock auth; missing file = auth ON.
@@ -186,16 +203,24 @@ export function provideAuth(): (EnvironmentProviders | Provider)[] {
 }
 ```
 
-## Environment (verified 2026-07-22)
+## Environment (verified 2026-07-22, updated 2026-08-12)
 
+- **This repo now needs only Node.** The .NET side moved out — see the note in
+  the Overview. To run the full app you need two checkouts: this one
+  (`npm start` on :4200, `npm run server:start` on :3000) and a
+  [izhaq/net-auth](https://github.com/izhaq/net-auth) clone
+  (`dotnet run --project src/AuthService` on :5001). `proxy.conf.json` here is
+  what ties them together, and it is unchanged.
 - **.NET 10 SDK installed and verified** (10.0.110; the net10.0 service and
-  its test project build clean).
+  its test project build clean) — now a requirement of the net-auth clone,
+  not of this repo.
   ⚠ The remote container is ephemeral — a fresh session reinstalls with:
   `apt-get install -y dotnet-sdk-10.0` (packages.microsoft.com feed for
   Ubuntu 24.04, works through the proxy; `dot.net` script is blocked).
 - NuGet (api.nuget.org) reachable.
 - `npm install` needed once before client work.
-- No docker daemon here — the Dockerfile ships review-only.
+- No docker daemon here — the Dockerfile ships review-only. Its build context
+  is now the net-auth repo root: `docker build -t auth-service .`
 
 ---
 
@@ -495,6 +520,20 @@ and its tests pass standalone. Write the Dockerfile (base image
 **Files:** `auth-service/Dockerfile`, small check script
 **Dependencies:** all previous
 
+> **Update 2026-08-12 — the backend check stopped being a check.**
+> Rather than copying `auth-service/` to a temp dir, it was extracted for real
+> into [izhaq/net-auth](https://github.com/izhaq/net-auth) via
+> `git subtree split`, keeping all 26 of its commits. At that repo's root:
+> `dotnet build AuthService.sln` → **0 warnings**, `dotnet test AuthService.sln`
+> → **170/170 passing**, with **zero code changes**. The only edits the move
+> needed were paths in prose: the README's run/config commands, the
+> Dockerfile's build-context header, and two source comments that named the
+> old `npm run auth-service` script.
+> The client half of the check is unchanged and still holds — `ng build` in
+> this repo succeeds with `auth-service/` deleted, because nothing outside it
+> ever imported it. The only thing this repo keeps is `proxy.conf.json`'s
+> `/api/auth` → `:5001` route, which needed no change at all.
+
 ### Task 6.2: Docs (S)
 **Description:** `auth-service/README.md` (run, config, contract pointer,
 migration notes: SQLite → real DB = EF provider swap; framework retarget =
@@ -505,6 +544,12 @@ short `features/auth/README.md` (how a host app adopts:
 - [ ] A new reader can run both sides from the READMEs alone
 **Files:** 2 READMEs, spec.md status line
 **Dependencies:** 6.1
+
+> **Update 2026-08-12.** That service README is now the net-auth repo's root
+> `README.md`, and it points back here for the contract:
+> `specs/3-login-auth/spec.md` stays the authoritative source, in the repo that
+> holds the client. This playground's own `README.md` gained the other half of
+> the pointer — clone net-auth, run it on :5001.
 
 ### ✅ Checkpoint 6 (final review): success criteria 1–9 from the spec walked through, one by one, live.
 

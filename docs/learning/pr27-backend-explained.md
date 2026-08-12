@@ -4,6 +4,12 @@ A file-by-file walkthrough of the auth-service changes in PR #27 (slice 1:
 the login happy path). Written for someone who knows Angular well and is new
 to .NET. Every snippet below is real code from this PR.
 
+> **Where these files are now (2026-08-12):** the service moved to its own
+> repo, [izhaq/net-auth](https://github.com/izhaq/net-auth). The paths below
+> (`Program.cs`, `Data/…`, `Sessions/…`) are unchanged — they are relative to
+> `src/AuthService/` there, and used to be relative to
+> `auth-service/src/AuthService/` here. The code itself moved untouched.
+
 ## The 30-second picture
 
 A login request travels through the files like this:

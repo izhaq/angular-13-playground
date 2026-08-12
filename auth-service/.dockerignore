@@ -1,0 +1,12 @@
+# Build output and local SQLite state must never seed an image layer — a
+# copied-in auth.db would ship real session rows and defeat the volume.
+**/bin/
+**/obj/
+**/*.db
+**/*.db-shm
+**/*.db-wal
+
+tests/
+Dockerfile
+.dockerignore
+.gitignore

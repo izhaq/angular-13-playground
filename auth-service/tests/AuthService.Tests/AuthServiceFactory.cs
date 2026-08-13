@@ -29,6 +29,20 @@ public class AuthServiceFactory : WebApplicationFactory<Program>
         });
     }
 
+    /// <summary>
+    /// The same host with the clock under the test's control (R1.6a). The
+    /// default host keeps <c>TimeProvider.System</c> — production's clock —
+    /// so only the tests that need to travel in time pay for a fake one, and
+    /// the wiring test can still see what production registers.
+    /// </summary>
+    public WebApplicationFactory<Program> WithClock(
+        TimeProvider clock, Action<IWebHostBuilder>? alsoConfigure = null) =>
+        WithWebHostBuilder(builder =>
+        {
+            alsoConfigure?.Invoke(builder);
+            builder.ConfigureServices(services => services.AddSingleton(clock));
+        });
+
     protected override void Dispose(bool disposing)
     {
         base.Dispose(disposing);

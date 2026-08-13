@@ -36,8 +36,8 @@ Both pieces are designed for extraction into the real project.
   functional guard/interceptor, `inject()`. The rest of the app stays
   NgModule-based; mixing is officially supported and standard. Angular
   Material, Reactive Forms.
-- **Auth service:** .NET 6 / ASP.NET Core minimal API (matches the org's
-  current version; upgrading later is the safe direction), EF Core 6 with
+- **Auth service:** .NET 10 / ASP.NET Core minimal API (R1.1: the org moved
+  to 10 — current LTS, so the .NET 6 EOL trade-off is gone), EF Core 10 with
   SQLite (single-file DB, nothing to install). Own port (5001), own config,
   own Dockerfile.
 - **Experiments service:** the existing Node/Express server (`server/`,
@@ -197,10 +197,10 @@ it. JSON over HTTP under `/api/auth`.
 ```json
 { "username": "string", "password": "string", "mode": "operation" | "technician", "position": "active" | "passive" }
 ```
-- `200` → `{ "user": { "username": "...", "mode": "...", "position": "..." }, "expiresAt": "ISO-8601" }` + `Set-Cookie: sid=...; HttpOnly`
+- `200` → `{ "user": { "username": "...", "mode": "...", "position": "..." }, "expiresAt": "ISO-8601" | null }` + `Set-Cookie: sid=...; HttpOnly` — `expiresAt: null` means the session never expires (the default since R1).
 - `401` → `{ "error": "invalid_credentials" }`
-- `423` → `{ "error": "locked" }` — **reserved**. Not returned yet, but the
-  client handles it, so lockout can be added later without a contract change.
+- `423` → `{ "error": "locked" }` — too many failed attempts (R1; policy
+  below). The client renders it distinctly.
 - `400` → `{ "error": "invalid_request" }` — missing or malformed fields.
 
 **POST `/api/auth/logout`** → `204`, deletes the session. Idempotent.
@@ -208,14 +208,118 @@ it. JSON over HTTP under `/api/auth`.
 **GET `/api/auth/session`** → same `200` body as login (used on app startup /
 page reload), or `401` if no valid session.
 
-**Session rules:**
-- Lifetime from service config (`SessionTtlHours` in `appsettings.json`,
-  overridable by environment variable, default 24).
-- Expiry counts from login; activity does not extend it.
-- Any `401` from any API call means "session gone" → an HTTP interceptor
-  clears the session store and redirects to the login page. No auto-refresh.
+**Session rules (updated by R1, 2026-07-22):**
+- **Sessions never expire on their own — only explicit logout ends them**
+  (requirement change R1.2). `SessionTtlHours` in `appsettings.json` remains
+  as an optional escape hatch: unset/`null` (the default) = no expiry; a
+  number restores timed expiry. `expiresAt` in responses is `null` when
+  expiry is off.
+- The cookie must survive browser restarts (a station reboot must not log
+  the station out): long fixed `Max-Age` (~10 years) when expiry is off.
+- Any `401` from any API call still means "session gone" (killed server-side
+  — e.g. future take-over) → the HTTP interceptor clears the session store
+  and redirects to the login page.
 
-## Auth-Free Mode (dev/integration environments)
+**Lockout policy (R1.4, extended by R1.5):**
+- **The whole mechanism is optional (R1.5).** `MaxLoginAttempts` absent or
+  null = **no lockout at all**: nothing is counted, nothing is stored, and
+  `423` is never returned. A number turns it on. Invalid values (≤ 0, or
+  `LockoutMinutes` ≤ 0 while lockout is on) are rejected **at startup** with
+  a clear message — never silently reinterpreted, because a lockout that
+  quietly behaves differently than its config reads is worse than none.
+- Failed logins are counted **per username** (there are only two). After
+  `MaxLoginAttempts` consecutive failures (default 5), login answers `423`
+  for `LockoutMinutes` (default 15), then unlocks automatically — the count
+  is forgotten together with the lock. A successful login resets the counter.
+  Both knobs live in `appsettings.json`.
+- The Nth consecutive failure is itself answered `423`: the user is told why
+  on the attempt that caused the lock, not on the next one.
+- The lock applies to login only; live sessions are unaffected.
+- Attempts are tracked for any submitted username, existing or not, so
+  `423`-vs-`401` reveals nothing about which accounts exist.
+- `423` and `401` bodies stay distinct by design — the UI must tell the user
+  the account is locked (product-visible), while wrong password and unknown
+  user stay indistinguishable from each other.
+- Parallel logins for the same username must neither lose a counted failure
+  (an attacker with N connections would otherwise get materially more than
+  `MaxLoginAttempts` guesses per window) nor answer `500`: login only ever
+  answers the contract's `200`/`400`/`401`/`423`.
+
+**Manual unlock (R1.5)** — someone locked out cannot log in to free
+themselves, so the release must not require a login. Both mechanisms below
+mean the same thing: *you are physically at the station*.
+
+- **CLI (primary, always available):** `AuthService unlock <username>`
+  (`dotnet run -- unlock <username>` in dev) clears the lock and the counter
+  and exits. Zero network surface; works even when the service is stopped,
+  since it operates on the same database through the same EF seam.
+- **Local admin endpoint (opt-in, off by default):** `POST /admin/unlock`
+  with `{ "username": "..." }` → `204`, idempotent (unknown or unlocked
+  username also `204` — it reveals nothing).
+  **It must NOT live on the main port.** A "loopback only" check by remote
+  IP is unsafe here: the real deployment puts a reverse proxy on the same
+  machine, so proxied requests from anywhere appear to come from localhost.
+  Instead the endpoint is served on a **separate Kestrel listener bound to
+  `127.0.0.1`** (`AdminUrls`, e.g. `http://127.0.0.1:5051`), unset by
+  default. Network topology enforces the restriction, not request
+  inspection. The admin listener is never routed through the proxy.
+- Unlocking is not part of the client-facing API contract — it is an
+  operator/ops action, so it lives outside `/api/auth/*` and no Angular code
+  calls it.
+
+**Known risk — ACCEPTED 2026-08-11 (engineering, pending PM ratification).**
+The decision: keep lockout on with its defaults and accept the
+denial-of-service exposure below, because R1.5 gives an operator a way out —
+the CLI (`AuthService unlock <username>`) and the loopback admin endpoint
+both release a lock from the station itself, without a login and without
+waiting for the window. Revisit if the system ever leaves the closed network,
+if the login endpoint becomes reachable from a wider network (R2.5's shared
+portal would do that), or if an operator is ever actually locked out in
+practice. The risk itself:
+
+lockout is a denial-of-service
+lever — anyone able to reach the login endpoint can hold both station
+accounts locked at `MaxLoginAttempts` requests per window. R1.6's rate
+limiting raises the cost but does not remove it (a slow attacker within the
+limit still locks an account). And the rate limiter carries a cheaper version
+of the same risk once it is switched on: it partitions on the connecting
+peer, so behind the same-host reverse proxy recommended above every request
+shares one partition and the limit becomes a single global login budget —
+whoever spends the window keeps the operators off the login page too, without
+needing to know a username. (Per-caller budgets behind a proxy would mean
+trusting `X-Forwarded-For`, which is only safe paired with
+`UseForwardedHeaders` + `KnownProxies`; that pairing is deliberately not
+wired.) Mitigations if product rejects the risk: disable lockout entirely
+(now supported), exempt the console, or switch to exponential backoff instead
+of a hard lock.
+
+## Platform Modernization (R1.6, .NET 10)
+
+Now that the service targets .NET 10, four framework capabilities replace
+hand-rolled or missing pieces. All are configuration-shaped and change no
+part of the client contract.
+
+- **`TimeProvider` for all time reads.** `SessionService` and
+  `LockoutService` take the clock as a dependency instead of calling
+  `DateTimeOffset.UtcNow` directly. Tests then control time instead of
+  ageing rows in the database to reach an expiry or an auto-unlock — faster,
+  clearer, and it removes the only place where tests manipulate storage to
+  simulate the passage of time. Production keeps `TimeProvider.System`.
+- **`IExceptionHandler`** replaces the custom middleware that rewrites early
+  request rejections into the contract's `400 {"error":"invalid_request"}`.
+  Same behavior, framework-owned pipeline. The CORS-headers-survive property
+  (already pinned by a test) must keep holding.
+- **Built-in rate limiting** on the login endpoint: a per-IP limiter,
+  **configurable and off unless configured**, returning `429` when
+  exceeded. Complements the per-username lockout — it raises the cost of the
+  parallel-guessing traffic the lockout exists to stop, without touching the
+  lockout's own rules. `429` is *not* added to the client contract: the
+  login page treats it like any other unexpected status (generic message).
+- **Built-in OpenAPI** document for `/api/auth/*`, served in Development
+  only. The contract is the deliverable for the .NET team; a
+  machine-readable form beside the prose spec is strictly better than prose
+  alone. Must not become a second source of truth — the spec's API Contract
+  section stays authoritative; the generated document is checked against it.
 
 Reality: ~10 dev environments + 2 integration environments, each on its own
 physical server, and **all get the same production build** (`ng build
@@ -315,11 +419,26 @@ Shared touch points (the complete list):
 ```
 npm start                  → ng serve (proxy: /api/auth → :5001, /api → :3000)
 npm run server:start       → experiments service (Node) on :3000
-npm run auth-service       → auth service (.NET) on :5001  [requires .NET 6 SDK]
+npm run auth-service       → auth service (.NET) on :5001  [requires .NET 10 SDK]
 npm test                   → client unit tests (Karma/Jasmine)
 dotnet test auth-service   → auth service tests (xUnit)
 npm run build              → production build (same artifact for all environments)
 ```
+
+The auth service creates and seeds its SQLite file,
+`auth-service/src/AuthService/auth.db`, on first run. The schema comes from
+EF's `EnsureCreated`, which only ever creates a schema that is not there yet —
+it never updates one — so **after any change to the data model the old file
+must be deleted** (R1 added the `LoginAttempts` table and made
+`Sessions.ExpiresAt` nullable, so every pre-R1 file is stale):
+
+```
+rm auth-service/src/AuthService/auth.db*     → then restart; it recreates and reseeds
+```
+
+The service checks its schema at startup and refuses to start on a stale file,
+naming the file to delete, rather than booting into a state where every login
+answers `500`.
 
 ## Code Style
 
@@ -399,10 +518,11 @@ returns 401. These tests double as the contract's executable documentation.
    from the Node service.
 3. Page reload keeps the session (via `GET /api/auth/session`).
 4. Logout returns to `/login`; guarded routes are blocked again.
-5. Wrong credentials show an inline error; the reserved `locked` error shows
-   its own message.
-6. Session lifetime changes via `appsettings.json` alone; an expired session
-   bounces to `/login` on the next API call.
+5. Wrong credentials show an inline error; the `locked` error shows its own
+   message, and actually occurs after `MaxLoginAttempts` failures (R1.4).
+6. With `SessionTtlHours` unset, a session survives indefinitely (and the
+   cookie survives a browser restart); setting a number restores timed
+   expiry and the bounce-to-login on the next API call (R1.2).
 7. **Auth-free check:** the same production build, with `authEnabled: false`
    in `app-config.json`, opens the app with no login page and no auth HTTP
    calls. With the file missing, auth is ON.
@@ -432,3 +552,40 @@ returns 401. These tests double as the contract's executable documentation.
    folder design keeps both options open.
 6. **Product questions** — intent doc §3 stays with the PM; none block this
    build.
+
+## Requirement Changes — R1 (2026-07-22)
+
+Five requirement changes arrived after slices 0–4 merged. Split into two
+tracks:
+
+**R1 — in scope now (backend-led; current login page adjusts):**
+- **R1.1 — .NET 10.** The org moved to .NET 10 (current LTS). Retarget:
+  `TargetFramework`, EF Core 10 packages, Docker base image. The .NET 6 EOL
+  trade-off recorded above is void.
+- **R1.2 — sessions never expire; only explicit logout ends them.** Decision
+  recorded: the cookie survives browser restarts (a station reboot must not
+  log out the station) via a long fixed Max-Age. `SessionTtlHours` stays as
+  an optional escape hatch (unset = never, the new default). Contract:
+  `expiresAt` becomes nullable — this is a contract change, updated in the
+  contract section, `auth-contract.ts`, and the service together.
+  This requirement also retroactively validates Option A: with JWT, a
+  forever-valid token that logout cannot revoke would be unacceptable.
+- **R1.4 — login retry limit.** The reserved `423 locked` becomes real.
+  Defaults (product may tune): 5 consecutive failures per username → locked
+  15 minutes → auto-unlock; success resets the counter. Attempts are tracked
+  for any submitted username (existing or not) so 423-vs-401 cannot be used
+  to probe which usernames exist.
+
+**R2 — deferred pending interview (architecture-shaping):**
+- **R2.3 — "ubkey" station identification.** Identify operator/technician
+  from a hardware key and present login options. Blocked on: what device
+  exactly, and whether it identifies (pre-selects options) or authenticates
+  (replaces/accompanies the password).
+- **R2.5 — login as the access point of two systems** (this system + the WIP
+  maintenance system). Candidate shapes: standalone login mini-app (SSO-like
+  portal; current lean), shared module in both apps, or one app owning
+  login. Needs its own interview + spec round; the extraction-first design
+  and the independent auth service keep all three shapes open.
+
+Original slices 5 (auth-free mode) and 6 (extraction proof + docs) remain
+pending and unaffected; R1 lands first.

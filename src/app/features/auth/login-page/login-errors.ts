@@ -16,8 +16,8 @@ export const LOGIN_ERROR_MESSAGES: Record<LoginErrorKind, string> = {
 /**
  * Exact HTTP statuses with a known meaning:
  * - 401 → the contract's invalid_credentials.
- * - 423 → the contract's reserved locked state (never sent by the reference
- *   server yet, but the client must already render it distinctly).
+ * - 423 → the contract's locked state, real since R1.4: the server sends it
+ *   after MaxLoginAttempts consecutive failures for a username.
  * - status 0 → no connection at all → unreachable.
  */
 const LOGIN_ERROR_KIND_BY_STATUS: Record<number, LoginErrorKind> = {

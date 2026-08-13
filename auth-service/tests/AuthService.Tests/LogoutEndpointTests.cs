@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using AuthService.Data;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -130,6 +131,29 @@ public class LogoutEndpointTests : IClassFixture<AuthServiceFactory>
         // The clearing Set-Cookie is emitted for an unknown sid too — all
         // logout paths look identical (anti-leak).
         AssertClearsSidCookie(response);
+    }
+
+    [Fact]
+    public async Task Logout_clearing_cookie_carries_the_secure_flag_when_configured()
+    {
+        // A browser only drops a cookie when the clearing Set-Cookie matches
+        // the attributes it was set with — so when SecureCookies is on, the
+        // clear must carry Secure exactly like login's set does, or logout
+        // would leave the cookie standing.
+        using var factory = _factory.WithWebHostBuilder(builder =>
+            builder.UseSetting("SecureCookies", "true"));
+        var client = factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = false });
+        var sid = await Login(client);
+
+        var response = await Logout(client, sid);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+
+        // The full clearing shape first — same attributes, expiry in the past —
+        // and then the one attribute this configuration adds on top.
+        AssertClearsSidCookie(response);
+        var cookie = response.Headers.GetValues("Set-Cookie").Single(c => c.StartsWith("sid="));
+        Assert.Contains("secure", cookie.ToLowerInvariant());
     }
 
     [Fact]

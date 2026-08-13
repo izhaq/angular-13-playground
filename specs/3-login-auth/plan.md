@@ -15,9 +15,10 @@ services run, and there is something new to see.
 ## Architecture Decisions (from the approved spec)
 
 - Session cookie (Option A), HttpOnly, opaque id, server-side session table.
-- **.NET 6** minimal API (org's version; 6→8 upgrade later is the safe
-  direction) in self-contained `auth-service/` (port 5001); EF Core 6 +
-  SQLite; Node server stays as the experiments service (port 3000).
+- **.NET 10** minimal API (org's version, current LTS — retargeted from
+  .NET 6 in R1.1, so the EOL trade-off is gone) in self-contained
+  `auth-service/` (port 5001); EF Core 10 + SQLite; Node server stays as the
+  experiments service (port 3000).
 - Client: standalone components + signals, flat `features/auth/` (8 files),
   `provideAuth()` as the wiring seam.
 - Runtime `app-config.json` switches real/mock auth; missing file = auth ON.
@@ -41,14 +42,14 @@ services run, and there is something new to see.
 └───────────────────┼────────────────────────────────────────────┘
                     │ HTTP (cookie attached by the browser)
         ┌───────────▼───────────┐  dev proxy = reverse proxy role
-        │  /api/auth/* → :5001  │──▶ auth-service (.NET 6)
+        │  /api/auth/* → :5001  │──▶ auth-service (.NET 10)
         │  /api/*      → :3000  │──▶ experiments service (Node)
         └───────────────────────┘         │
                               ┌───────────▼───────────┐
                               │ auth-service           │
                               │  minimal API endpoints │
                               │  Sessions logic        │
-                              │  EF Core 6 ──▶ SQLite  │
+                              │  EF Core 10 ──▶ SQLite │
                               │  (Users, Sessions)     │
                               └────────────────────────┘
 ```
@@ -137,7 +138,7 @@ export const authGuard: CanActivateFn = (_, state) => {
 };
 ```
 
-`auth-service` login endpoint (.NET 6 minimal API, shape only):
+`auth-service` login endpoint (.NET 10 minimal API, shape only):
 
 ```csharp
 app.MapPost("/api/auth/login", async (LoginRequest req, AuthDb db, Sessions sessions) =>
@@ -153,7 +154,7 @@ app.MapPost("/api/auth/login", async (LoginRequest req, AuthDb db, Sessions sess
 });
 ```
 
-EF Core 6 entities (SQLite):
+EF Core 10 entities (SQLite):
 
 ```csharp
 public record User    { public string Username; public string PasswordHash; }
@@ -185,13 +186,13 @@ export function provideAuth(): (EnvironmentProviders | Provider)[] {
 }
 ```
 
-## Environment (verified 2026-07-13)
+## Environment (verified 2026-07-22)
 
-- **.NET 6 SDK installed and verified** (6.0.428; a net6.0 web project
-  builds clean). .NET 8 SDK also present (harmless).
+- **.NET 10 SDK installed and verified** (10.0.110; the net10.0 service and
+  its test project build clean).
   ⚠ The remote container is ephemeral — a fresh session reinstalls with:
-  `apt-get install -y dotnet-sdk-6.0` (packages.microsoft.com feed, works
-  through the proxy; `dot.net` script is blocked).
+  `apt-get install -y dotnet-sdk-10.0` (packages.microsoft.com feed for
+  Ubuntu 24.04, works through the proxy; `dot.net` script is blocked).
 - NuGet (api.nuget.org) reachable.
 - `npm install` needed once before client work.
 - No docker daemon here — the Dockerfile ships review-only.
@@ -205,7 +206,8 @@ through the Angular dev proxy. Nothing about auth yet — this de-risks all
 tooling in one small step.
 
 ### Task 0.1: Scaffold auth-service (S)
-**Description:** `dotnet new` solution + minimal API project (net6.0) + xUnit
+**Description:** `dotnet new` solution + minimal API project (net6.0 —
+retargeted to net10.0 later, in R1.1) + xUnit
 test project, `appsettings.json` with port 5001, one endpoint:
 `GET /api/auth/health` → `{ "status": "ok" }`. One xUnit test hits it via
 `WebApplicationFactory` (in-memory test host).
@@ -233,7 +235,7 @@ test project, `appsettings.json` with port 5001, one endpoint:
 Goal: a seeded user logs in from a real login page and lands in the app.
 
 ### Task 1.1: Backend — users, sessions, login endpoint (M)
-**Description:** EF Core 6 + SQLite: `Users` (2 seeded, PBKDF2-hashed
+**Description:** EF Core 6 (bumped to 10 later, in R1.1) + SQLite: `Users` (2 seeded, PBKDF2-hashed
 passwords) and `Sessions` tables. `POST /api/auth/login` as sketched above.
 `401 invalid_credentials`, `400 invalid_request`. CORS with credentials
 enabled. Sid via `RandomNumberGenerator.GetBytes(32)` → base64url.
@@ -347,6 +349,119 @@ pending; loading state.
 
 ---
 
+## Slice R1 — Requirement changes (2026-07-22): .NET 10, forever sessions, real lockout
+
+Inserted after slice 4 (all of 0–4 merged); runs BEFORE the original slices
+5–6. Spec source: "Requirement Changes — R1" section in spec.md. R2 items
+(ubkey, two-system access point) are NOT here — they await their interview.
+
+### Task R1.1: Retarget the service to .NET 10 (S)
+**Description:** `net10.0` in both csproj files, EF Core packages to the
+10.x line, test packages bumped only if the retarget forces it. No code
+changes expected (the code deliberately used nothing version-specific).
+Delete the local `auth.db` so it reseeds. (.NET 10 SDK 10.0.110 is
+installed and verified in this environment; NETSDK1138 warnings disappear.)
+**Acceptance:**
+- [ ] `dotnet build` clean on net10.0, no EOL warnings
+- [ ] All existing xUnit tests green unchanged (29)
+**Files:** `auth-service/src/AuthService/AuthService.csproj`, `tests/.../AuthService.Tests.csproj`
+**Dependencies:** none
+
+### Task R1.2: Sessions never expire until explicit logout (M)
+**Description:** `SessionTtlHours` becomes optional — unset/null (new
+default) = no expiry: `Session.ExpiresAt` nullable, `FindLive` treats null
+as live, cookie gets a long fixed Max-Age (~10 years) so it survives
+browser restarts; a configured number restores today's timed behavior.
+Contract change (spec already updated): `expiresAt` nullable in login and
+session responses. Client: `UserSession.expiresAt: string | null` in
+auth-contract.ts; store/specs adjusted (nothing renders it today).
+**Acceptance:**
+- [ ] xUnit: default config → expiresAt null, long-Max-Age cookie, /session lives past any old TTL boundary (clock-manipulated row)
+- [ ] xUnit: `SessionTtlHours: 2` → exactly today's timed behavior (existing tests keep passing under this config)
+- [ ] Jasmine: contract type updated; suite green
+**Files:** `auth-service` (Session.cs, SessionService.cs, Program.cs, appsettings.json), tests; `auth-contract.ts` + affected specs
+**Dependencies:** R1.1
+
+### Task R1.4: Login retry limit — 423 becomes real (M)
+**Description:** consecutive-failure tracking per submitted username (real
+or not — so 423-vs-401 can't probe which usernames exist), stored in the
+DB (survives service restart): after `MaxLoginAttempts` (default 5)
+consecutive failures → `423 {"error":"locked"}` for `LockoutMinutes`
+(default 15) → auto-unlock; a successful login resets the counter; locked
+answers don't extend the lock. Both knobs in appsettings.json. The login
+page already renders the locked message (slice 4) — verify live, no client
+code expected.
+**Acceptance:**
+- [ ] xUnit: 5 fails → 423; 4 fails + success → counter reset; locked + correct password → still 423 during the window; unlock after window; unknown username follows the same 423 path; per-username isolation
+- [ ] Manual: 5 wrong passwords in the browser → locked message appears
+**Files:** `auth-service` (Data/, Sessions/, Program.cs, appsettings.json), tests
+**Dependencies:** R1.1 (parallel with R1.2)
+
+### ✅ Checkpoint R1 (review): net10 build; **delete `auth-service/src/AuthService/auth.db*` first** — R1 changed the schema and `EnsureCreated` never updates an existing file, so a pre-R1 database makes the service refuse to start (see the Commands section of the spec); then: login → close browser → reopen → still in; 5 wrong passwords → locked → wait/shorten window → unlocked; logout still ends everything; parallel logins (right or wrong password) never answer 500.
+
+---
+
+## Slice R1.5/R1.6 — Optional lockout, manual unlock, .NET 10 modernization
+
+Follow-on to slice R1, same PR. Spec sources: "Lockout policy" (R1.5
+paragraphs), "Manual unlock (R1.5)", "Platform Modernization (R1.6)".
+
+### Task R1.5a: Lockout becomes optional + validated (S)
+**Description:** `MaxLoginAttempts` absent/null → the mechanism is fully off
+(nothing counted, nothing stored, `423` never returned). Invalid values
+(≤ 0, or `LockoutMinutes` ≤ 0 while on) fail fast at startup with a clear
+message. Config parsed once into a typed options object, not re-read per
+request.
+**Acceptance:**
+- [ ] xUnit: lockout off → 100 failures all `401`, `LoginAttempts` table stays empty
+- [ ] xUnit: on → today's behavior unchanged (existing lockout suite green)
+- [ ] xUnit: `MaxLoginAttempts: 0` / negative / `LockoutMinutes: 0` → startup throws with a message naming the key
+**Files:** `LockoutService.cs`, `Program.cs`, `appsettings.json`, tests
+**Dependencies:** none
+
+### Task R1.5b: Manual unlock — CLI + loopback admin endpoint (M)
+**Description:** `AuthService unlock <username>` clears lock + counter and
+exits (works with the service stopped; same EF seam, no raw SQL). Opt-in
+`POST /admin/unlock` → `204` idempotent, served **only** on a separate
+Kestrel listener bound to `127.0.0.1` (`AdminUrls`, unset by default) —
+never an IP check, because a same-host reverse proxy makes every request
+look local. Not part of the client contract.
+**Acceptance:**
+- [ ] xUnit: unlock releases a locked username; next correct password → 200; unknown/unlocked username → 204 (idempotent)
+- [ ] xUnit: with `AdminUrls` unset, `/admin/unlock` is not reachable on the main port (404)
+- [ ] Manual: lock an account, run the CLI, log in successfully
+**Files:** `Program.cs`, new `Admin/` (or `Sessions/`) unlock entry points, `appsettings.json`, tests, README note
+**Dependencies:** R1.5a
+
+### Task R1.6a: TimeProvider everywhere (M)
+**Description:** inject `TimeProvider` into `SessionService` and
+`LockoutService`; production uses `TimeProvider.System`. Rewrite the tests
+that age rows in the database (session expiry, lockout auto-unlock) to
+advance a fake clock instead.
+**Acceptance:**
+- [ ] No production code calls `DateTimeOffset.UtcNow` directly
+- [ ] The DB-ageing tricks are gone from tests; the same behaviors are still pinned
+**Files:** `SessionService.cs`, `LockoutService.cs`, `Program.cs`, affected tests
+**Dependencies:** R1.5a (touches the same class)
+
+### Task R1.6b: IExceptionHandler + rate limiting + OpenAPI (M)
+**Description:** (1) replace the contract-400 middleware with
+`IExceptionHandler`, keeping behavior and the CORS-headers-survive property;
+(2) per-IP rate limiter on login, configurable, **off unless configured**,
+`429` when exceeded, not added to the client contract; (3) built-in OpenAPI
+for `/api/auth/*`, Development only, checked against the spec's contract
+section (spec stays authoritative).
+**Acceptance:**
+- [ ] All existing contract-hardening tests green unchanged, including the CORS pin
+- [ ] xUnit: limiter off by default; configured → `429` past the limit; lockout rules unaffected
+- [ ] OpenAPI document lists the three `/api/auth/*` endpoints with their status codes
+**Files:** `Program.cs`, `appsettings.json`, tests
+**Dependencies:** R1.6a
+
+### ✅ Checkpoint R1.5/R1.6 (review): lockout off via config; lock an account then release it with the CLI; admin port refused from the main port; tests no longer age the database to travel in time.
+
+---
+
 ## Slice 5 — Auth-free mode (runtime switch)
 
 Goal: same production build, config file flips auth off for dev environments.
@@ -374,7 +489,7 @@ Goal: the two promises ("plug-out") are demonstrated, not claimed.
 **Description:** script/manual proof: `features/auth/` has zero imports from
 outside itself (grep-able check); `auth-service/` copied to a temp dir builds
 and its tests pass standalone. Write the Dockerfile (base image
-`mcr.microsoft.com/dotnet/aspnet:6.0`; review-only here — no docker daemon).
+`mcr.microsoft.com/dotnet/aspnet:10.0`; review-only here — no docker daemon).
 **Acceptance:**
 - [ ] Both checks pass and are recorded in the spec folder
 **Files:** `auth-service/Dockerfile`, small check script
@@ -382,8 +497,9 @@ and its tests pass standalone. Write the Dockerfile (base image
 
 ### Task 6.2: Docs (S)
 **Description:** `auth-service/README.md` (run, config, contract pointer,
-migration notes: SQLite → real DB = EF provider swap; net6.0 → net8.0 =
-three lines) and a short `features/auth/README.md` (how a host app adopts:
+migration notes: SQLite → real DB = EF provider swap; framework retarget =
+three lines, as demonstrated by the net6.0 → net10.0 move in R1.1) and a
+short `features/auth/README.md` (how a host app adopts:
 `provideAuth`, routes, config). Update spec status to "implemented".
 **Acceptance:**
 - [ ] A new reader can run both sides from the READMEs alone
@@ -405,8 +521,8 @@ checkpoint. Slices themselves are sequential.
 | Risk | Impact | Mitigation |
 |------|--------|------------|
 | Ephemeral container loses the .NET SDK between sessions | Med | One-line reinstall documented above; consider a SessionStart hook later |
-| .NET 6 is EOL (no patches) | Accepted | Org-version decision, recorded in spec; upgrade path is three lines |
-| First `dotnet restore` slow/flaky through proxy | Low | NuGet verified reachable; few dependencies (EF Core 6, SQLite) |
+| ~~.NET 6 is EOL (no patches)~~ | Resolved | R1.1 retargeted the service to .NET 10 (current LTS) — the upgrade path was indeed three lines |
+| First `dotnet restore` slow/flaky through proxy | Low | NuGet verified reachable; few dependencies (EF Core 10, SQLite) |
 | Cookie flags on plain HTTP dev (`Secure` would break it) | Med | Dev: `HttpOnly; SameSite=Lax`, no `Secure`; README notes production behind TLS adds `Secure` |
 | Karma/Chromium in remote env | Low | Chromium pre-installed (`CHROME_BIN`); verify at checkpoint 1 |
 | Disk allowance (SDKs + node_modules + NuGet) | Med | Clean `dist/`/temp copies after extraction check |

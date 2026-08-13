@@ -1,9 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
-using AuthService.Data;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace AuthService.Tests;
 
@@ -88,22 +87,18 @@ public class SessionEndpointTests : IClassFixture<AuthServiceFactory>
     {
         // Sessions are never purged, so an expired row still sits in the
         // table — the endpoint must gate on ExpiresAt, not just existence.
-        const string sid = "expired-session-for-test";
-        using (var scope = _factory.Services.CreateScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<AuthDb>();
-            db.Sessions.Add(new Session
-            {
-                Sid = sid,
-                Username = "operation",
-                Mode = "operation",
-                Position = "active",
-                ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(-1),
-            });
-            db.SaveChanges();
-        }
+        //
+        // The session is created by LOGGING IN and then expires because the
+        // clock moves past the configured TTL (R1.6a); the row is never
+        // written or aged by hand.
+        var clock = new TestTimeProvider();
+        using var host = _factory.WithClock(clock, builder => builder.UseSetting("SessionTtlHours", "2"));
+        var client = host.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = false });
+        var (sid, body) = await Login(client);
+        body.Dispose();
 
-        var client = CreateClient();
+        clock.Advance(TimeSpan.FromHours(3));
+
         var request = new HttpRequestMessage(HttpMethod.Get, "/api/auth/session");
         request.Headers.Add("Cookie", $"sid={sid}");
         var response = await client.SendAsync(request);

@@ -1,8 +1,0 @@
-# .NET build output
-bin/
-obj/
-
-# SQLite dev database (created on first run, seeded automatically)
-*.db
-*.db-shm
-*.db-wal

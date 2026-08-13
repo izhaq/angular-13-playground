@@ -10,7 +10,7 @@
     "server:build": "npx tsc --project server/tsconfig.json",
     "server:start": "npx ts-node --project server/tsconfig.json server/src/index.ts",
     "server:prod": "node server/dist/index.js",
-    "auth-service": "dotnet run --project auth-service/src/AuthService",
+    "auth-service": "node -e \"console.error('\\nThe auth service is no longer in this repo. It lives at:\\n  https://github.com/izhaq/net-auth\\n\\nClone it, then from ITS repo root run:\\n  dotnet run --project src/AuthService\\n\\nIt must listen on http://localhost:5001 (its default) — proxy.conf.json here\\nforwards /api/auth to that port.\\n'); process.exit(1)\"",
     "swap-domain-terms": "node scripts/swap-domain-terms.js"
   },
   "private": true,

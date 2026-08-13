@@ -10,12 +10,32 @@ Build the authentication slice of the system, both sides:
 
 - **Client:** a self-contained login feature — login page (username/password +
   Mode toggle + Position toggle), session handling, route protection, logout.
-- **Backend:** an independent .NET auth microservice (`auth-service/`),
-  self-contained and pluggable, with a simulated database.
+- **Backend:** an independent .NET auth microservice, self-contained and
+  pluggable, with a simulated database. Built here as `auth-service/`;
+  **since 2026-08-12 it lives in its own repo,
+  [izhaq/net-auth](https://github.com/izhaq/net-auth)** — see "Where the auth
+  service lives" below.
 - **Between them:** a language-neutral API contract — the source of truth both
-  sides implement.
+  sides implement. **This spec is that contract, and it stays here**, in the
+  repo that holds the client; the service repo's README links back to it.
 
 Both pieces are designed for extraction into the real project.
+
+### Where the auth service lives (updated 2026-08-12)
+
+The service was extracted to [izhaq/net-auth](https://github.com/izhaq/net-auth)
+with its full history (`git subtree split`, 26 commits). What was
+`auth-service/` here is that repo's root: `AuthService.sln`, `src/AuthService/`,
+`tests/AuthService.Tests/`, `Dockerfile`.
+
+Nothing about the design changed — the extraction needed **zero code changes**,
+and 170/170 tests passed at the new root on the first run. That is the
+"extractable backend unit" promise below, now a fact rather than a plan.
+
+Read this spec accordingly: where it says `auth-service/`, the paths described
+the folder while it lived here. The sections that tell you how to *run* things
+(Project Structure, Commands) have been updated; the historical design
+discussion is left as written.
 
 **Users:**
 - The two station users: Operation (Active station, in control) and
@@ -361,7 +381,9 @@ Safety rules:
 ## Project Structure
 
 Two self-contained units, mirroring each other's extraction story: the
-feature folder on the client, the service folder on the backend.
+feature folder on the client, the service on the backend. The backend half
+has since made the move for real — it is its own repo now, and the tree below
+shows where each part ended up.
 
 ```
 src/app/features/auth/            → extractable client unit, flat — 8 files + the
@@ -388,8 +410,17 @@ src/app/features/auth/            → extractable client unit, flat — 8 files 
 src/assets/app-config.json        → runtime config ({ "authEnabled": ... }, per environment)
 src/app/app-config.ts             → startup loader (APP_INITIALIZER), feeds provideAuth
 
-auth-service/                     → extractable backend unit (.NET, port 5001).
-                                    Nothing outside references anything inside.
+server/                           → Node experiments service — unchanged, port 3000
+```
+
+The backend unit is **no longer in this tree**. It is the repo
+[izhaq/net-auth](https://github.com/izhaq/net-auth), whose root is exactly what
+`auth-service/` used to be (.NET, port 5001):
+
+```
+<net-auth repo root>              → extractable backend unit, extracted 2026-08-12.
+                                    Nothing outside it ever referenced anything
+                                    inside — which is why the move was a folder move.
   AuthService.sln
   src/AuthService/
     Program.cs                    → minimal API: the three endpoints, CORS, cookie
@@ -397,9 +428,7 @@ auth-service/                     → extractable backend unit (.NET, port 5001)
     Data/                         → EF Core context, entities, seed (two users)
     Sessions/                     → session create/lookup/delete logic
   tests/AuthService.Tests/        → xUnit: contract round-trip tests
-  Dockerfile
-
-server/                           → Node experiments service — unchanged, port 3000
+  Dockerfile                      → build context is that repo's root
 ```
 
 What the modern APIs deleted: `auth.module.ts` and the whole
@@ -409,31 +438,46 @@ module wiring. Two modules fewer, five files fewer, same behavior.
 
 Shared touch points (the complete list):
 - `proxy.conf.json`: `/api/auth` → `:5001`; existing `/api` → `:3000` stays.
-- `package.json`: one convenience script to run the auth service.
+  This is the only one the extraction did not change: the service still
+  listens on 5001, it is just started from another repo.
+- `package.json`: one convenience script to run the auth service. Since the
+  extraction it cannot start anything — it prints where the service went and
+  exits non-zero.
 - `app-routing.module.ts`: `{ path: 'login', loadComponent: ... }` +
   `auth.guard` on feature routes.
 - `app.module.ts`: `provideAuth(...)` in the root providers.
 
 ## Commands
 
+In this repo (the client and the Node experiments service):
+
 ```
 npm start                  → ng serve (proxy: /api/auth → :5001, /api → :3000)
 npm run server:start       → experiments service (Node) on :3000
-npm run auth-service       → auth service (.NET) on :5001  [requires .NET 10 SDK]
 npm test                   → client unit tests (Karma/Jasmine)
-dotnet test auth-service   → auth service tests (xUnit)
 npm run build              → production build (same artifact for all environments)
 ```
 
-The auth service creates and seeds its SQLite file,
-`auth-service/src/AuthService/auth.db`, on first run. The schema comes from
-EF's `EnsureCreated`, which only ever creates a schema that is not there yet —
-it never updates one — so **after any change to the data model the old file
-must be deleted** (R1 added the `LoginAttempts` table and made
-`Sessions.ExpiresAt` nullable, so every pre-R1 file is stale):
+In the [izhaq/net-auth](https://github.com/izhaq/net-auth) clone, from its repo
+root (requires the .NET 10 SDK):
 
 ```
-rm auth-service/src/AuthService/auth.db*     → then restart; it recreates and reseeds
+dotnet run --project src/AuthService   → auth service on :5001
+dotnet test AuthService.sln            → auth service tests (xUnit)
+```
+
+`npm run auth-service` used to be the convenience script here. It no longer
+starts anything — it prints the repo to clone and exits non-zero.
+
+The auth service creates and seeds its SQLite file,
+`src/AuthService/auth.db` (relative to the net-auth repo root), on first run.
+The schema comes from EF's `EnsureCreated`, which only ever creates a schema
+that is not there yet — it never updates one — so **after any change to the
+data model the old file must be deleted** (R1 added the `LoginAttempts` table
+and made `Sessions.ExpiresAt` nullable, so every pre-R1 file is stale):
+
+```
+rm src/AuthService/auth.db*     → then restart; it recreates and reseeds
 ```
 
 The service checks its schema at startup and refuses to start on a stale file,
@@ -489,10 +533,13 @@ returns 401. These tests double as the contract's executable documentation.
 ## Boundaries
 
 - **Always:**
-  - Keep `features/auth/` and `auth-service/` free of references from/to
-    the rest of the repo — extraction is a success criterion.
+  - Keep `features/auth/` free of references from/to the rest of the repo —
+    extraction is a success criterion. The same rule applied to
+    `auth-service/`; it is now enforced by the repo boundary itself.
   - Keep the HTTP contract language-neutral. A contract change updates
-    `auth-contract.ts`, the .NET service, and this spec together.
+    `auth-contract.ts`, the .NET service, and this spec together — the
+    service now being a separate repo means that is two pull requests, not
+    one, and this spec is still the authority both of them follow.
   - Hash the seeded passwords (this code will be copied as an example —
     make it a correct one).
   - Run the tests before each commit.
@@ -527,9 +574,18 @@ returns 401. These tests double as the contract's executable documentation.
    in `app-config.json`, opens the app with no login page and no auth HTTP
    calls. With the file missing, auth is ON.
 8. **Extraction checks:** `features/auth/` compiles with zero imports from
-   outside its folder; `auth-service/` builds and its tests pass with the
-   folder copied out of the repo.
-9. All tests pass: `npm test` and `dotnet test`.
+   outside its folder; the auth service builds and its tests pass outside
+   this repo.
+   **Met — and for the backend half no longer a check but a demonstrated
+   fact (2026-08-12).** `auth-service/` was extracted into
+   [izhaq/net-auth](https://github.com/izhaq/net-auth) with its full history
+   via `git subtree split` (26 commits). At the new repo root it built with
+   **0 warnings** and **170/170 tests passed**, with **zero code changes** —
+   only paths in the README, the Dockerfile header and two comments needed
+   updating. The client half is unaffected: `ng build` still succeeds with
+   the folder gone, because nothing here ever imported it.
+9. All tests pass: `npm test` here, `dotnet test AuthService.sln` in the
+   net-auth repo.
 
 ## Open Questions
 

@@ -62,6 +62,14 @@ anything inside it; the only shared touch points are one dev-proxy route and one
 convenience script. Moving it to its own repo later = moving the folder.
 *Own-repo-per-microservice is the org convention to be verified (§3, question 12).*
 
+> **Answered 2026-08-12: its own repo,
+> [izhaq/net-auth](https://github.com/izhaq/net-auth).** The "later" arrived,
+> and the prediction held — it was a folder move. Full history came along
+> (`git subtree split`, 26 commits), 170/170 tests passed at the new root with
+> zero code changes, and of the two shared touch points only the npm script
+> needed anything (the dev-proxy route to :5001 is untouched). The API
+> contract, `specs/3-login-auth/spec.md`, deliberately stays in this repo.
+
 **Q7. What happens to the Node server?**
 It stays, as the "experiments data" service. This gives the playground the same shape
 as production: two services in different languages on different ports, behind one
@@ -158,6 +166,6 @@ Added 2026-07-12 (mostly for the engineering/infra side rather than product):
 | 4 | Sessions up to 24h, lifetime configurable | Control stations stay logged in all shift |
 | 5 | Language-neutral contract; both sides implement it | Contract is the source of truth |
 | 6 | Account management out of scope | Accounts are seeded |
-| 7 | .NET auth microservice, self-contained `auth-service/` folder in this repo | Independent and pluggable; own-repo question deferred (§3.12) |
+| 7 | .NET auth microservice, self-contained `auth-service/` folder in this repo | Independent and pluggable; own-repo question deferred (§3.12). **Superseded 2026-08-12: extracted to [izhaq/net-auth](https://github.com/izhaq/net-auth)** — see §2b Q6 |
 | 8 | Node server stays as the experiments-data service | Realistic two-microservice simulation behind one proxy |
 | 9 | Simulated DB = SQLite via EF Core | Real DB later is a provider swap, not a redesign |

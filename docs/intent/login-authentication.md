@@ -117,7 +117,55 @@ that), or if it actually bites someone in practice. PM should confirm.
    maintenance system) — architecture-shaping; will get its own interview
    and spec. Leading candidate: a small standalone login app both systems
    share (the session cookie + independent auth service already support
-   this).
+   this). *Interviewed 2026-08-16; the master user and the take-over rule
+   that came out of it are recorded in §2d.*
+
+---
+
+## 2d. Requirement Change (2026-08-16) — the master user, and kicking people out
+
+Two things became clear after the R2 interview. Both are decisions §3.2
+("must the system block a second Active login?") was waiting for.
+
+**1. There is a master user.**
+A third kind of account, with two new powers:
+- It can open **both** apps — the control app and the maintenance app.
+  Every account today opens exactly one, so this is the first account that
+  breaks that assumption.
+- It can be Active or Passive, and it can be on **at the same time** as a
+  regular user in the same position.
+
+That last point is what raises the limit. Normally one Active and one
+Passive are logged in. With a master, you can have **two Active, or two
+Passive**.
+
+**2. Taking over an Active station now has a defined behaviour.**
+If someone logs in Active and the Active places are already full:
+- They get a **warning first** — naming the person they are about to
+  disconnect.
+- Only if they confirm does the disconnection happen.
+- The disconnected station lands back on the login page. Nothing is lost
+  that would not also be lost by a session expiring, so no new machinery
+  is needed on the client.
+
+**3. It must be switchable, and off for developers.**
+- Turned off, a take-over **cannot happen** at all.
+- On developer machines (localhost, dev servers) we do **not** want it.
+  A developer blocked by a leftover session they cannot see would be worse
+  than the problem being prevented.
+
+Recorded as **R3** in the spec, with the API change and the settings
+written out. The session table already stores the position for every live
+login, so counting who is on costs one lookup — this is a server change,
+not a redesign.
+
+**Open — PM please confirm:**
+1. When both Active places are taken, who gets disconnected — the one who
+   has been on longest, or does the person choose?
+2. Does the master **use up** one of the two places (assumed yes), or is
+   the master always allowed in on top of the two?
+3. Can a regular user disconnect a **master**, or is the master protected?
+4. Is the limit of two counted across the whole system, or two per app?
 
 ---
 

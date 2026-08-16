@@ -168,6 +168,14 @@ gives that for free; JWT cannot do either without rebuilding a session table.
 
 Both are later server-only changes. The client and contract stay untouched.
 
+> **Updated 2026-08-16 — this is now R3.** The rules above became a real
+> requirement, with two additions this note did not anticipate: a master
+> account that occupies a second seat, and a configurable switch that turns
+> the whole thing off (required for development). The claim "the contract
+> stays untouched" did **not** survive: naming who you are about to
+> disconnect needs a new answer on `/login`. See
+> *Requirement Changes — R3* at the end of this document.
+
 ### Note: cookies and addresses (real deployment: same DNS, different ports)
 
 In the real environments the client and the services run as separate docker
@@ -645,3 +653,122 @@ tracks:
 
 Original slices 5 (auth-free mode) and 6 (extraction proof + docs) remain
 pending and unaffected; R1 lands first.
+
+## Requirement Changes — R3: seats and take-over (2026-08-16)
+
+Arrived after the R2 interview, and it turns the "single Active station"
+open question (intent §3.2) into a real requirement. It also makes the
+`Future enforcement (recorded, not built now)` note above live — the design
+recorded there is what R3 builds, with two additions the note did not
+anticipate: a **master** account, and a **configurable** switch.
+
+Depends on R2.5 (the shared login app) for the app-routing half; the seat
+half is server-only and can land first.
+
+### R3.1 — The master account
+
+A third kind of account. Two properties, both new:
+
+- **It may open both apps** — the control app *and* the maintenance app.
+  Today an account maps to exactly one app; the master is the first account
+  that maps to two, so the "one account, one app" shortcut stops being safe
+  to assume anywhere.
+- **It occupies a seat alongside a regular user**, in either position. This
+  is what raises the cap: normally one Active and one Passive are on; with
+  a master you can reach **two Active, or two Passive**.
+
+### R3.2 — Seat capacity
+
+> **Capacity is 2 per position.** At most 2 Active sessions and at most
+> 2 Passive sessions may be live at once.
+
+The count is over live rows in `Sessions`, which already carries `Position`
+— no schema change is needed for the cap itself.
+
+### R3.3 — Take-over with confirmation
+
+When a login would exceed the capacity for its position:
+
+1. The service does **not** log the person in. It answers "that position is
+   full", naming who currently holds the seats.
+2. The login app shows a warning: *continuing will disconnect
+   `<username>`*.
+3. If the person confirms, the login is re-sent with an explicit
+   take-over flag. The service deletes the displaced session row and
+   creates the new one.
+4. The displaced station's cookie now points at a deleted row. Its next
+   request gets `401` and the existing global 401 rule sends it to the
+   login page — no new client mechanism, and it is the same path a session
+   expiry already takes.
+
+Step 4 is why this is cheap: the take-over is a *delete*, and every client
+already handles "my session is gone".
+
+### R3.4 — Configurable, and off in development
+
+The whole of R3.2/R3.3 sits behind one setting, `Seats:Mode`:
+
+| Value | Cap enforced | Take-over allowed | Intended for |
+|-------|--------------|-------------------|--------------|
+| `off` | no | no | **development** (localhost, dev servers) — default |
+| `takeover` | yes | yes, with confirmation | **stations** — the behaviour above |
+| `strict` | yes | **no** — the second login is refused | sites that forbid disconnecting a live station |
+
+`off` is exactly today's behaviour: unlimited sessions, nobody is ever
+disconnected. That is the required dev behaviour — on a dev machine a
+refusal or a kick would block a developer over a session nobody can see.
+
+`strict` exists because "turned off means a kick-out cannot happen" and
+"the cap is enforced" are two different wants, and a site may need both.
+It carries the ghost-session risk the enforcement note above already
+flagged: a crashed station holds its seat until someone clears the row.
+Same escape hatch as lockout — the operator command (see R1.5b).
+
+Parsed once at startup by the same rules as `Lockout` and `LoginRateLimit`
+(R1.5a/R1.6b): an unknown value is a startup failure naming the key, never
+a silent fallback to a weaker mode.
+
+### R3.5 — Contract change
+
+`POST /api/auth/login` gains one optional request field and one new answer.
+
+```
+{ "username", "password", "mode", "position", "takeOver": true|false }   // takeOver optional, default false
+```
+
+```
+409 → { "error": "position_taken", "held_by": ["operator"] }
+```
+
+- `409` is only ever returned when `Seats:Mode` is `takeover`. Under
+  `strict` the same situation answers `409` with no take-over offered —
+  distinguished by a flag rather than a second status code, so a client
+  that ignores it simply cannot take over.
+- `held_by` is what the warning needs in order to name a person. It is a
+  deliberate, narrow disclosure: it only ever names accounts that are
+  logged in **right now**, and only to someone who has **already proved a
+  correct password** (the seat check runs after credential verification).
+  It cannot be used to probe which usernames exist.
+
+**Ordering matters.** The seat check must run *after* the password check
+and after the lockout check, for the reason above — otherwise `409` becomes
+a username oracle for an unauthenticated caller. This is the same
+"cheap and safe checks first, disclosure last" ordering R1.4 established.
+
+### Open questions for R3
+
+1. **Which session is displaced** when both seats for a position are held?
+   Oldest first, or does the person choose from the list? `held_by` is a
+   list precisely so the second option stays open.
+2. **Is the master exempt from the cap, or does it consume a seat?**
+   Written above as *consumes a seat* — that is what "at most 2 active"
+   reads as. If the master is meant to always get in, the cap becomes
+   "2 regular users" and the master is additive (up to 4 sessions).
+3. **May a master be disconnected** by a regular user's take-over, or is a
+   master's session protected?
+4. **Does the cap span both apps or apply per app?** Written above as
+   system-wide, since Position describes the station, not the app.
+5. **How is `Seats:Mode` set per environment?** Presumably the same
+   config mechanism as every other setting, with `off` in the dev
+   compose/appsettings — but the dev proxy path (R2) runs auth-free anyway,
+   so this may only matter for the "laptop — proxied" workflow.

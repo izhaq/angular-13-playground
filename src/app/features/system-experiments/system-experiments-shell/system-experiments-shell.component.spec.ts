@@ -281,6 +281,28 @@ describe('SystemExperimentsShellComponent', () => {
     expect(apiSpy.postPrimary).not.toHaveBeenCalled();
   });
 
+  it('onActiveApply blocks the POST when a field constraint is violated (abort + >1 wheel)', () => {
+    const warn = spyOn(console, 'warn');
+    component.selectedTabIndex = 0;                       // Primary owns `abort`
+    component.primary.formGroup.patchValue({ abort: YES_NO.Yes });
+    component.cmdDraft = { sides: ['left', 'right'], wheels: ['1'] };  // two wheels affected
+
+    component.onActiveApply();
+
+    expect(apiSpy.postPrimary).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalled();
+  });
+
+  it('onActiveApply lets abort through once the scope resolves to one wheel', () => {
+    component.selectedTabIndex = 0;
+    component.primary.formGroup.patchValue({ abort: YES_NO.Yes });
+    component.cmdDraft = { sides: ['left'], wheels: ['1'] };           // exactly one wheel
+
+    component.onActiveApply();
+
+    expect(apiSpy.postPrimary).toHaveBeenCalledTimes(1);
+  });
+
   // ---------------------------------------------------------------------------
   // Defaults flow — GLOBAL action. One POST, on success BOTH boards' forms
   // are reset and CMD (draft + saved) is cleared. The active tab is irrelevant

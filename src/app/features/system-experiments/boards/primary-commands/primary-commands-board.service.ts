@@ -7,6 +7,7 @@ import { BoardPostPayload } from '../../api/api-contract';
 import { SystemExperimentsApiService } from '../../api/system-experiments-api.service';
 import { CmdSelection } from '../../shared/models';
 import { buildFormGroup } from '../build-form-group';
+import { CmdValidationError, validateCmd } from '../validate-cmd';
 import {
   PRIMARY_COMMANDS_ALL_FIELDS,
   buildPrimaryCommandsDefaults,
@@ -44,6 +45,15 @@ export class PrimaryCommandsBoardService {
 
   cancel(): void {
     this.formGroup.reset(this.snapshot, { emitEvent: false });
+  }
+
+  /**
+   * CMD-scope check for the current form values. Empty = OK to Apply.
+   * Called by the shell before POSTing so a scope-limited field (e.g.
+   * `abort`) can veto the request before it leaves the client.
+   */
+  validate(cmd: CmdSelection): CmdValidationError[] {
+    return validateCmd(PRIMARY_COMMANDS_ALL_FIELDS, this.formGroup.getRawValue(), cmd);
   }
 
   /** Snapshot commits AFTER the API succeeds — failed Apply leaves snapshot intact. */

@@ -30,7 +30,20 @@ export const PRIMARY_COMMANDS_MAIN_FIELDS: FieldConfig[] = [
   { key: 'nuu',           label: L.nuu,           type: 'single', options: YES_NO_OPTIONS,         defaultValue: YES_NO.No },
   { key: 'muDump',        label: L.muDump,        type: 'single', options: YES_NO_OPTIONS,         defaultValue: YES_NO.No },
   { key: 'sendMtrTss',    label: L.sendMtrTss,    type: 'single', options: YES_NO_OPTIONS,         defaultValue: YES_NO.No },
-  { key: 'abort',         label: L.abort,         type: 'single', options: YES_NO_OPTIONS,         defaultValue: YES_NO.No },
+  {
+    key: 'abort',
+    label: L.abort,
+    type: 'single',
+    options: YES_NO_OPTIONS,
+    defaultValue: YES_NO.No,
+    // Backend applies abort to a single wheel only. Both sides + one wheel
+    // would target two wheels, so the CMD scope must resolve to exactly one.
+    cmdConstraint: {
+      appliesWhen: (value) => value === YES_NO.Yes,
+      maxAffectedWheels: 1,
+      message: L.abortScopeRule,
+    },
+  },
 ];
 
 /** Submitted with the form but excluded from the grid. */

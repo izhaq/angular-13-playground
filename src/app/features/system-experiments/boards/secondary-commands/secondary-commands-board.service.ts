@@ -7,6 +7,7 @@ import { BoardPostPayload } from '../../api/api-contract';
 import { SystemExperimentsApiService } from '../../api/system-experiments-api.service';
 import { CmdSelection } from '../../shared/models';
 import { buildFormGroup } from '../build-form-group';
+import { CmdValidationError, validateCmd } from '../validate-cmd';
 import {
   SECONDARY_COMMANDS_ALL_FIELDS,
   buildSecondaryCommandsDefaults,
@@ -36,6 +37,13 @@ export class SecondaryCommandsBoardService {
 
   cancel(): void {
     this.formGroup.reset(this.snapshot, { emitEvent: false });
+  }
+
+  /** See `PrimaryCommandsBoardService.validate` — same contract. Secondary
+   * declares no constrained fields today, so this returns `[]`, but the
+   * generic path stays identical so a future constraint is config-only. */
+  validate(cmd: CmdSelection): CmdValidationError[] {
+    return validateCmd(SECONDARY_COMMANDS_ALL_FIELDS, this.formGroup.getRawValue(), cmd);
   }
 
   apply(cmd: CmdSelection): Observable<void> {

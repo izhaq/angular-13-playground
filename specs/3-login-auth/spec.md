@@ -755,20 +755,59 @@ and after the lockout check, for the reason above — otherwise `409` becomes
 a username oracle for an unauthenticated caller. This is the same
 "cheap and safe checks first, disclosure last" ordering R1.4 established.
 
-### Open questions for R3
+### R3.6 — The master does not occupy a seat (answered 2026-08-18)
 
-1. **Which session is displaced** when both seats for a position are held?
-   Oldest first, or does the person choose from the list? `held_by` is a
-   list precisely so the second option stays open.
-2. **Is the master exempt from the cap, or does it consume a seat?**
-   Written above as *consumes a seat* — that is what "at most 2 active"
-   reads as. If the master is meant to always get in, the cap becomes
-   "2 regular users" and the master is additive (up to 4 sessions).
-3. **May a master be disconnected** by a regular user's take-over, or is a
-   master's session protected?
-4. **Does the cap span both apps or apply per app?** Written above as
-   system-wide, since Position describes the station, not the app.
-5. **How is `Seats:Mode` set per environment?** Presumably the same
-   config mechanism as every other setting, with `off` in the dev
-   compose/appsettings — but the dev proxy path (R2) runs auth-free anyway,
-   so this may only matter for the "laptop — proxied" workflow.
+The playground has three accounts: one Active, one Passive, one master
+(either position). The master's rule:
+
+> **The master is not counted.** It may log in and out at any time without
+> taking a seat, and a person using the master credentials is never blocked
+> by a regular user — nor does a master ever block one.
+
+This resolves the earlier open questions: the master is **exempt**, not a
+seat-consumer, so "which session is displaced" and "may a master be
+displaced" both fall away — a take-over only ever looks at regular
+sessions, and a master is invisible to that search.
+
+Note this still produces the original sentence *"at most 2 Active or 2
+Passive"* — one regular plus one master — but by a different route: not a
+cap of 2, rather a cap of 1 regular per position with the master beside it.
+The cap is on the **regular pool only**.
+
+### Open question for R3 — shared master credentials
+
+**Nothing currently stops several people logging in as master at once.**
+Each login writes its own `Sessions` row with its own cookie; the rows are
+independent and merely share a username. Since the master is uncounted,
+there is no check to stop the second, fifth, or tenth. Three consequences,
+recorded because they follow from R3.6 rather than from any oversight:
+
+1. **Multiple Active masters.** Active means *in control of the station*.
+   If the master is uncounted **and** may be Active, then any number of
+   people can be Active simultaneously — which is the precise condition the
+   seat rule exists to prevent. Exempting the master from the count also
+   exempts it from the safety property, and those are separable: see the
+   recommendation below.
+2. **One person's typo locks out everyone.** R1.4 counts failures *per
+   username*. Five bad attempts on `master` locks the master account for
+   15 minutes — for every station at once, and for anyone who knows the
+   username to trigger deliberately. This is a property of the shared
+   credential, not of the lockout design.
+3. **No audit trail.** The session row records the username. With one
+   shared password, the system cannot say *which person* took control.
+
+**Recommendation — separate "uncounted" from "unlimited".** Keep R3.6
+exactly as stated with respect to regular users, and add one rule: the
+master is limited to **one live session per position**. A second Active
+master meets the same take-over warning, naming the other master. The
+master still never blocks and is never blocked by a regular user, so R3.6
+holds; but "Active" keeps meaning *one station in control*.
+
+**Recommendation — make master a role, not a shared login.** Give each
+person their own account carrying an `IsMaster` flag. One boolean column,
+and consequences 2 and 3 disappear: lockout and audit become per person
+again. "Several masters at once" then becomes an ordinary multi-user
+question rather than several people wearing one identity.
+
+Both are product decisions, recorded here without being assumed into the
+design.

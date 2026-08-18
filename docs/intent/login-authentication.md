@@ -159,13 +159,32 @@ written out. The session table already stores the position for every live
 login, so counting who is on costs one lookup — this is a server change,
 not a redesign.
 
-**Open — PM please confirm:**
-1. When both Active places are taken, who gets disconnected — the one who
-   has been on longest, or does the person choose?
-2. Does the master **use up** one of the two places (assumed yes), or is
-   the master always allowed in on top of the two?
-3. Can a regular user disconnect a **master**, or is the master protected?
-4. Is the limit of two counted across the whole system, or two per app?
+**Answered 2026-08-18:** the master does **not** take a seat. It can log in
+and out whenever it likes, and it never blocks — or gets blocked by — the
+regular Active/Passive users. So the limit of two is really "one regular
+user per position, with the master alongside".
+
+**Still open — what if two people use the master login at the same time?**
+
+Nothing stops them today. Each login is its own separate session that just
+happens to share a name. Worth deciding, because three things follow:
+
+1. **Several people could be Active at once.** Active means "in control of
+   the station". If the master is uncounted and can be Active, the one rule
+   we set out to protect is the one the master walks around.
+2. **One person's typo locks everyone out.** Failed logins are counted per
+   username. Five bad tries on the master password locks the master account
+   for 15 minutes — on every station at once.
+3. **We can't tell who did what.** The record stores the username. One
+   shared password means we cannot say which person took control.
+
+**Two suggestions, both cheap:**
+- Keep the master uncounted against regular users, but allow only **one
+  master on at a time per position**. The second one gets the same warning.
+  Nothing about the master blocking rule changes.
+- Better: make "master" a **flag on a normal account** rather than a shared
+  login. Each person keeps their own username. Points 2 and 3 then solve
+  themselves.
 
 ---
 

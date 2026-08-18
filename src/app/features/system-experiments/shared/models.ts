@@ -31,6 +31,9 @@ export interface GridRow {
 export type LabeledOption = DropdownOption & { abbr: string };
 
 // No `inGrid` flag — form-only fields just stay out of `MAIN_FIELDS`.
+// Apply-time validation is NOT declared here — it lives in board-level rule
+// lists (see `boards/validation.ts`) so a rule can span any inputs (one field
+// vs the CMD scope, or one field vs another), not just a single field.
 interface BaseFieldConfig {
   key: string;
   label: string;

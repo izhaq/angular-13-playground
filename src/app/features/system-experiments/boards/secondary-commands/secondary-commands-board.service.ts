@@ -7,11 +7,12 @@ import { BoardPostPayload } from '../../api/api-contract';
 import { SystemExperimentsApiService } from '../../api/system-experiments-api.service';
 import { CmdSelection } from '../../shared/models';
 import { buildFormGroup } from '../build-form-group';
-import { CmdValidationError, validateCmd } from '../validate-cmd';
+import { RuleViolation, runRules } from '../validation';
 import {
   SECONDARY_COMMANDS_ALL_FIELDS,
   buildSecondaryCommandsDefaults,
 } from './secondary-commands.fields';
+import { SECONDARY_COMMANDS_RULES } from './secondary-commands.rules';
 
 /** Mirror of `PrimaryCommandsBoardService` — same shape, different fields/endpoint. */
 @Injectable()
@@ -40,10 +41,10 @@ export class SecondaryCommandsBoardService {
   }
 
   /** See `PrimaryCommandsBoardService.validate` — same contract. Secondary
-   * declares no constrained fields today, so this returns `[]`, but the
-   * generic path stays identical so a future constraint is config-only. */
-  validate(cmd: CmdSelection): CmdValidationError[] {
-    return validateCmd(SECONDARY_COMMANDS_ALL_FIELDS, this.formGroup.getRawValue(), cmd);
+   * declares no rules today, so this returns `[]`, but the generic path stays
+   * identical so adding a rule later is config-only. */
+  validate(cmd: CmdSelection): RuleViolation[] {
+    return runRules(SECONDARY_COMMANDS_RULES, { values: this.formGroup.getRawValue(), cmd });
   }
 
   apply(cmd: CmdSelection): Observable<void> {

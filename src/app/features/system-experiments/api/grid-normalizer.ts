@@ -1,6 +1,6 @@
 import { COL_IDS, GridColId } from '../shared/ids';
 import { SystemExperimentsResponse } from './api-contract';
-import { FieldConfig, GridColumn, GridRow } from '../shared/models';
+import { CellStyle, FieldConfig, GridColumn, GridRow } from '../shared/models';
 
 /**
  * Two-step pipeline: wire → flat-grid → rows.
@@ -61,21 +61,58 @@ export function buildRows(
   return fields.map((field) => ({
     fieldKey: field.key,
     label: field.label,
-    values: cellValuesForField(field, grid, columns),
+    ...cellsForField(field, grid, columns),
   }));
 }
 
-function cellValuesForField(
+/**
+ * Display text and style token for one field's row, in a single pass over
+ * the columns. Both are derived from the same raw value, which is why they
+ * are resolved together here rather than re-read downstream: by the time a
+ * row reaches the view, `values` holds `abbr` and the wire value is gone.
+ */
+function cellsForField(
   field: FieldConfig,
   grid: FlatGrid,
   columns: GridColumn[],
-): Record<string, string> {
+): Pick<GridRow, 'values' | 'styles'> {
   const values: Record<string, string> = {};
+  const styles: Record<string, CellStyle> = {};
+
   for (const col of columns) {
     const raw = grid[col.id as GridColId]?.[field.key];
     values[col.id] = abbrFor(field, raw);
+
+    const style = styleFor(field, raw);
+    if (style !== undefined) {
+      styles[col.id] = style;
+    }
   }
-  return values;
+
+  return { values, styles };
+}
+
+/**
+ * Cell styling rule — mirrors `abbrFor`, but keyed on the canonical value
+ * instead of resolving to `abbr`:
+ *   - no `cellStyles` on the field → never styled (the common case)
+ *   - missing / empty            → unstyled
+ *   - array                      → first element with a mapped style wins
+ *   - unmapped value             → unstyled
+ */
+function styleFor(
+  field: FieldConfig,
+  value: string | string[] | undefined,
+): CellStyle | undefined {
+  const map = field.cellStyles;
+  if (map === undefined || value === undefined || value === '') return undefined;
+  if (Array.isArray(value)) {
+    for (const one of value) {
+      if (map[one] !== undefined) return map[one];
+    }
+    return undefined;
+  }
+  return map[value];
 }
 
 /**

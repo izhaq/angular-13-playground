@@ -1,5 +1,5 @@
 import { SYSTEM_EXPERIMENTS_LABELS as L } from '../../shared/labels';
-import { FieldConfig } from '../../shared/models';
+import { CELL_STYLES, FieldConfig } from '../../shared/models';
 import { buildDefaultValues } from '../build-defaults';
 import {
   INT_EXT,
@@ -30,7 +30,14 @@ export const PRIMARY_COMMANDS_MAIN_FIELDS: FieldConfig[] = [
   { key: 'nuu',           label: L.nuu,           type: 'single', options: YES_NO_OPTIONS,         defaultValue: YES_NO.No },
   { key: 'muDump',        label: L.muDump,        type: 'single', options: YES_NO_OPTIONS,         defaultValue: YES_NO.No },
   { key: 'sendMtrTss',    label: L.sendMtrTss,    type: 'single', options: YES_NO_OPTIONS,         defaultValue: YES_NO.No },
-  { key: 'abort',         label: L.abort,         type: 'single', options: YES_NO_OPTIONS,         defaultValue: YES_NO.No },
+  // An aborted wheel is the one cell an operator must not miss at a glance,
+  // so a live `yes` frames its cell. Value-keyed, not abbr-keyed — see
+  // `FieldConfig.cellStyles`.
+  {
+    key: 'abort', label: L.abort, type: 'single', options: YES_NO_OPTIONS,
+    defaultValue: YES_NO.No,
+    cellStyles: { [YES_NO.Yes]: CELL_STYLES.Alert },
+  },
 ];
 
 /** Submitted with the form but excluded from the grid. */

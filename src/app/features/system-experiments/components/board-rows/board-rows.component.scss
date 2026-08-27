@@ -111,6 +111,19 @@ $cell-border:      1px solid #cccccc;
   background: #d8e6ff;
 }
 
+// Value-driven cell styles (`FieldConfig.cellStyles`). One modifier per
+// `CELL_STYLES` token — add a token there and its rule here, or the class is
+// emitted and styles nothing. A frame rather than a fill so it composes with
+// the column highlights above instead of fighting them.
+//
+// Declared BEFORE `--selected` so an explicit click-selection outline still
+// wins on a cell that also carries a value style (same specificity, later
+// rule takes it).
+.board-rows__data-cell--alert {
+  outline: 2px solid #d32f2f;
+  outline-offset: -2px;
+}
+
 // Single-cell selection (clicking a data cell) — orthogonal to column
 // highlight: an outline, so it layers cleanly on top of any column fill.
 .board-rows__data-cell--selected {

@@ -7,10 +7,12 @@ import { BoardPostPayload } from '../../api/api-contract';
 import { SystemExperimentsApiService } from '../../api/system-experiments-api.service';
 import { CmdSelection } from '../../shared/models';
 import { buildFormGroup } from '../build-form-group';
+import { RuleViolation, runRules } from '../validation';
 import {
   PRIMARY_COMMANDS_ALL_FIELDS,
   buildPrimaryCommandsDefaults,
 } from './primary-commands.fields';
+import { PRIMARY_COMMANDS_RULES } from './primary-commands.rules';
 
 /**
  * Per-board state for the Primary tab — owns the FormGroup, last-applied
@@ -44,6 +46,16 @@ export class PrimaryCommandsBoardService {
 
   cancel(): void {
     this.formGroup.reset(this.snapshot, { emitEvent: false });
+  }
+
+  /**
+   * Apply-time validation. Runs the board's rule list against the current
+   * form values + the CMD scope. Empty = OK to Apply. Called by the shell
+   * before POSTing so a rule (e.g. `abort`) can veto the request before it
+   * leaves the client.
+   */
+  validate(cmd: CmdSelection): RuleViolation[] {
+    return runRules(PRIMARY_COMMANDS_RULES, { values: this.formGroup.getRawValue(), cmd });
   }
 
   /** Snapshot commits AFTER the API succeeds — failed Apply leaves snapshot intact. */

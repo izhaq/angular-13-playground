@@ -237,6 +237,19 @@ export class SystemExperimentsShellComponent implements OnDestroy {
     if (this._footerLoading$.value !== null) {
       return;
     }
+
+    // CMD-scope gate. A field can veto Apply when the current selection
+    // exceeds what the backend allows (e.g. `abort` → one wheel only). On a
+    // violation we surface the message and send NO request. The host project
+    // swaps this console call for its own modal at migration time — the shell
+    // stays chrome-agnostic, matching the error no-ops below.
+    const violations = this.activeBoard.validate(this.cmdDraft);
+    if (violations.length > 0) {
+      // eslint-disable-next-line no-console
+      console.warn('[SystemExperiments] Apply blocked:', violations[0].message);
+      return;
+    }
+
     this._footerLoading$.next('apply');
     // Error branch is an explicit no-op: without it RxJS rethrows into the
     // global scope on a backend hiccup. Wire UI feedback (snackbar/toast)

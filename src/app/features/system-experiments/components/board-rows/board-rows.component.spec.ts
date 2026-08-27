@@ -11,7 +11,7 @@ import {
 } from '../../_external/ui-primitives';
 import { BoardRowsComponent } from './board-rows.component';
 import { BOARD_IDS, COL_IDS } from '../../shared/ids';
-import { FieldConfig, GridColumn, GridRow } from '../../shared/models';
+import { CELL_STYLES, FieldConfig, GridColumn, GridRow } from '../../shared/models';
 
 /**
  * BoardRowsComponent owns the unified form + data-grid body. The column
@@ -223,6 +223,59 @@ describe('BoardRowsComponent', () => {
       By.css(`[data-test-id="grid-${component.boardId}-bar-${columns[0].id}"]`),
     );
     expect(sibling.nativeElement.classList).not.toContain('board-rows__data-cell--selected');
+  });
+
+  // ---------------------------------------------------------------------------
+  // Value-driven cell styles
+  //
+  // The token→class mapping is this component's job; deciding WHICH cells
+  // carry a token belongs to `buildRows` (see grid-normalizer.spec.ts).
+  // ---------------------------------------------------------------------------
+
+  it('renders the modifier class for a cell carrying a style token', () => {
+    component.rows = [
+      { ...rows[0], styles: { [columns[0].id]: CELL_STYLES.Alert } },
+      rows[1],
+    ];
+    fixture.detectChanges();
+
+    const styled = fixture.debugElement.query(
+      By.css(`[data-test-id="grid-${component.boardId}-foo-${columns[0].id}"]`),
+    );
+    expect(styled.nativeElement.classList).toContain('board-rows__data-cell--alert');
+
+    const plain = fixture.debugElement.query(
+      By.css(`[data-test-id="grid-${component.boardId}-foo-${columns[1].id}"]`),
+    );
+    expect(plain.nativeElement.classList).not.toContain('board-rows__data-cell--alert');
+  });
+
+  it('leaves every cell unstyled when rows carry no styles at all', () => {
+    // `rows` is the default fixture — GridRow.styles is optional and absent.
+    const cells = fixture.debugElement.queryAll(By.css('.board-rows__data-cell'));
+
+    expect(cells.length).toBeGreaterThan(0);
+    cells.forEach((cell) => {
+      expect(cell.nativeElement.classList).not.toContain('board-rows__data-cell--alert');
+    });
+  });
+
+  it('keeps the style class alongside the click-selection class', () => {
+    component.rows = [
+      { ...rows[0], styles: { [columns[0].id]: CELL_STYLES.Alert } },
+      rows[1],
+    ];
+    fixture.detectChanges();
+
+    const target = fixture.debugElement.query(
+      By.css(`[data-test-id="grid-${component.boardId}-foo-${columns[0].id}"]`),
+    );
+    target.triggerEventHandler('click', null);
+    fixture.detectChanges();
+
+    // Both classes coexist — SCSS ordering decides which outline shows.
+    expect(target.nativeElement.classList).toContain('board-rows__data-cell--alert');
+    expect(target.nativeElement.classList).toContain('board-rows__data-cell--selected');
   });
 
   // ---------------------------------------------------------------------------

@@ -20,6 +20,7 @@
          [class.board-rows__data-cell--col-hovered]="h.hov === col.id"
          [class.board-rows__data-cell--col-selected]="h.sel === col.id"
          [class.board-rows__data-cell--selected]="isSelected(field.key, col.id)"
+         [ngClass]="cellStyleClass(field.key, col.id)"
          [attr.data-test-id]="'grid-' + boardId + '-' + field.key + '-' + col.id"
          (mouseenter)="onEnterColumn(col.id)"
          (mouseleave)="onLeaveColumn()"

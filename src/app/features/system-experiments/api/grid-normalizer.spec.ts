@@ -7,7 +7,7 @@ import {
   PrimaryStandardFields,
   SecondaryAdditionalFields,
 } from './api-contract';
-import { FieldConfig, GridColumn, LabeledOption } from '../shared/models';
+import { CELL_STYLES, FieldConfig, GridColumn, LabeledOption } from '../shared/models';
 import { PRIMARY_COMMANDS_COLUMNS } from '../boards/primary-commands/primary-commands.columns';
 import { SECONDARY_COMMANDS_COLUMNS } from '../boards/secondary-commands/secondary-commands.columns';
 import { buildRows, normalizeResponse } from './grid-normalizer';
@@ -203,6 +203,93 @@ describe('buildRows', () => {
 
     expect(row.values['left1']).toBe('une');
     expect(row.values['left2']).toBe('no');
+  });
+
+  // -------------------------------------------------------------------------
+  // Value-driven cell styles (`FieldConfig.cellStyles`)
+  //
+  // The style is keyed on the CANONICAL value, resolved here while the raw
+  // value is still in hand — by the time a row reaches the view, `values`
+  // holds `abbr` and the wire value is gone. `ABCD_OPTIONS` deliberately maps
+  // 'a' → 'A', so a spec that passed on abbr-keying would fail here.
+  // -------------------------------------------------------------------------
+
+  function styledField(key: string, styles: Record<string, typeof CELL_STYLES.Alert>): FieldConfig {
+    return { ...singleField(key), cellStyles: styles } as FieldConfig;
+  }
+
+  it('styles only the cells whose value matches the field config', () => {
+    const left = entity('left', {
+      mCommands: [
+        mItemWith({ tff: 'a' } as any),   // styled
+        mItemWith({ tff: 'b' } as any),   // not mapped
+        mItemWith({ tff: 'a' } as any),   // styled
+        emptyMItem(),                     // empty
+      ],
+    });
+
+    const grid = normalizeResponse(response(left, entity('right')));
+    const [row] = buildRows(
+      [styledField('tff', { a: CELL_STYLES.Alert })],
+      grid,
+      PRIMARY_COMMANDS_COLUMNS,
+    );
+
+    expect(row.styles).toEqual({ left1: CELL_STYLES.Alert, left3: CELL_STYLES.Alert });
+  });
+
+  it('keys the style on the wire value, not the rendered abbreviation', () => {
+    const left = entity('left', { mCommands: [mItemWith({ tff: 'a' } as any), emptyMItem(), emptyMItem(), emptyMItem()] });
+    const grid = normalizeResponse(response(left, entity('right')));
+
+    // 'a' renders as 'A'. Keying on the abbr must NOT match.
+    const [byAbbr] = buildRows([styledField('tff', { A: CELL_STYLES.Alert })], grid, PRIMARY_COMMANDS_COLUMNS);
+    expect(byAbbr.styles).toEqual({});
+
+    const [byValue] = buildRows([styledField('tff', { a: CELL_STYLES.Alert })], grid, PRIMARY_COMMANDS_COLUMNS);
+    expect(byValue.styles).toEqual({ left1: CELL_STYLES.Alert });
+  });
+
+  it('leaves styles empty for a field that declares none', () => {
+    const left = entity('left', { mCommands: [mItemWith({ tff: 'a' } as any), emptyMItem(), emptyMItem(), emptyMItem()] });
+    const grid = normalizeResponse(response(left, entity('right')));
+
+    const [row] = buildRows([singleField('tff')], grid, PRIMARY_COMMANDS_COLUMNS);
+
+    expect(row.styles).toEqual({});
+    expect(row.values['left1']).toBe('A');   // display unaffected
+  });
+
+  it('never styles an empty or missing cell', () => {
+    const grid = normalizeResponse(response(entity('left'), entity('right')));
+    const [row] = buildRows(
+      [styledField('tff', { a: CELL_STYLES.Alert, '': CELL_STYLES.Alert })],
+      grid,
+      PRIMARY_COMMANDS_COLUMNS,
+    );
+
+    expect(row.styles).toEqual({});
+  });
+
+  it('styles a multi-select cell when the array contains a mapped value', () => {
+    const left = entity('left', {
+      mCommands: [
+        mItemWith({ tff: ['b', 'a'] } as any),   // contains 'a' → styled
+        mItemWith({ tff: ['b', 'c'] } as any),   // no mapped value
+        mItemWith({ tff: [] } as any),           // empty array
+        emptyMItem(),
+      ],
+    });
+
+    const grid = normalizeResponse(response(left, entity('right')));
+    const [row] = buildRows(
+      [{ ...multiField('tff'), cellStyles: { a: CELL_STYLES.Alert } } as FieldConfig],
+      grid,
+      PRIMARY_COMMANDS_COLUMNS,
+    );
+
+    expect(row.styles).toEqual({ left1: CELL_STYLES.Alert });
+    expect(row.values['left1']).toBe('B,A');   // display still the joined abbrs
   });
 
   it('writes only to the columns it is given (Primary 8 vs Secondary 11)', () => {

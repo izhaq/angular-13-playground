@@ -64,6 +64,16 @@ export class BoardRowsComponent {
     return this.rowByKey.get(fieldKey)?.values[colId] ?? '';
   }
 
+  /**
+   * Value-driven cell style (see `FieldConfig.cellStyles`). Returns the BEM
+   * modifier for the cell's token, or `''` when the value asks for none —
+   * which is most cells, so the empty string keeps `ngClass` a no-op.
+   */
+  cellStyleClass(fieldKey: string, colId: string): string {
+    const token = this.rowByKey.get(fieldKey)?.styles?.[colId];
+    return token ? `board-rows__data-cell--${token}` : '';
+  }
+
   onEnterColumn(colId: GridColId): void {
     this.highlight.hover(colId);
   }

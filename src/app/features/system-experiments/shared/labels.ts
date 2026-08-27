@@ -49,6 +49,7 @@ export const SYSTEM_EXPERIMENTS_LABELS = {
   muDump: 'MU dump',
   sendMtrTss: 'Send Mtr TSS',
   abort: 'Abort',
+  abortScopeRule: 'Abort can affect only one wheel at a time. Select a single side and a single wheel before applying.',
 
   // -- Primary: "Cmd to GS" Sub-Section --------------------------------------
   cmdToGs: 'Cmd to GS',

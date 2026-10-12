@@ -27,6 +27,8 @@ describe('capture contract', () => {
       'set-cookie',
       'x-api-key',
       'x-auth-token',
+      'x-csrf-token',
+      'x-xsrf-token',
     ]);
     expect(DEFAULT_CAPTURE_POLICY.redactJsonKeys).toEqual([
       'password',
@@ -37,6 +39,14 @@ describe('capture contract', () => {
       'refreshtoken',
       'apikey',
       'authorization',
+      'clientsecret',
+      'idtoken',
+      'privatekey',
+      'sessionid',
+      'sessiontoken',
+      'csrftoken',
+      'xsrftoken',
+      'xapikey',
     ]);
     expect(DEFAULT_CAPTURE_POLICY.redactBodyUrls).toEqual([]);
     expect(DEFAULT_CAPTURE_POLICY.redactedValue).toBe('[redacted]');

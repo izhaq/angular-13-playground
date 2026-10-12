@@ -1,6 +1,15 @@
-import { CaptureEntry, CapturePolicy, CaptureStats, EntryDraft, EntryListener, Recorder, Unsubscribe } from '../contract';
+import {
+  CaptureEntry,
+  CapturePolicy,
+  CaptureStats,
+  EntryDraft,
+  EntryListener,
+  HeaderMap,
+  Recorder,
+  Unsubscribe,
+} from '../contract';
 import { toJsonSafe } from './json-safe';
-import { matchesAny, redactHeaders, redactJsonText, redactJsonValue } from './redact';
+import { looksLikeJsonContainer, matchesAny, redactHeaders, redactJsonText, redactParams } from './redact';
 import { RingBuffer } from './ring-buffer';
 import { truncate } from './truncate';
 
@@ -11,8 +20,12 @@ import { truncate } from './truncate';
  * exported.
  *
  * `record()` is the hot path (a busy WebSocket calls it many times a second):
- * every step is O(1) in the buffer size, and listeners are only copied when
- * there are any.
+ * every step is O(1) in the buffer size, a log call's cloning has a fixed
+ * budget, a socket's URL is redacted once rather than per frame, and
+ * listeners are only copied when there are any.
+ *
+ * Stored entries are deeply frozen — every part is frozen as it is built —
+ * so a listener cannot change what a later export contains.
  */
 export function createRecorder(policy: CapturePolicy): Recorder {
   const buffer = new RingBuffer<CaptureEntry>(policy.maxEntries);
@@ -23,6 +36,26 @@ export function createRecorder(policy: CapturePolicy): Recorder {
   let evicted = 0;
   let failed = 0;
 
+  // A busy socket stores the same URL with every frame: redact it once.
+  let lastUrl: string | undefined;
+  let lastPolicedUrl = '';
+
+  /**
+   * The URL as stored: secret query parameters redacted, then truncated.
+   * `ignoreUrls` and `redactBodyUrls` still match the original.
+   */
+  function policedUrl(url: string): string {
+    if (url !== lastUrl) {
+      lastPolicedUrl = truncate(redactParams(url, policy.redactJsonKeys, policy.redactedValue), policy.maxBodyLength);
+      lastUrl = url;
+    }
+    return lastPolicedUrl;
+  }
+
+  function policedHeaders(headers: HeaderMap): HeaderMap {
+    return redactHeaders(headers, policy.redactHeaders, policy.redactedValue, policy.maxBodyLength);
+  }
+
   /** Body / frame text after policy: whole-body redaction wins over key redaction. */
   function policedText(text: string, url: string, isJsonCandidate: boolean): string {
     if (matchesAny(url, policy.redactBodyUrls)) {
@@ -32,8 +65,49 @@ export function createRecorder(policy: CapturePolicy): Recorder {
     return truncate(redacted, policy.maxBodyLength);
   }
 
-  function policedBody(body: string | null, url: string): string | null {
-    return body === null ? null : policedText(body, url, true);
+  /**
+   * An HTTP body: JSON keys, or the parameters of a form body. A body with no
+   * content-type counts as a possible form: for a `URLSearchParams` body the
+   * browser adds the header only after the probe has seen the call.
+   */
+  function policedBody(body: string | null, url: string, headers: HeaderMap): string | null {
+    if (body === null) {
+      return null;
+    }
+    if (matchesAny(url, policy.redactBodyUrls)) {
+      return policy.redactedValue;
+    }
+    let redacted: string;
+    if (looksLikeJsonContainer(body)) {
+      redacted = redactJsonText(body, policy.redactJsonKeys, policy.redactedValue);
+    } else {
+      const type = contentType(headers);
+      redacted =
+        type === undefined || type.toLowerCase().indexOf('application/x-www-form-urlencoded') !== -1
+          ? redactParams(body, policy.redactJsonKeys, policy.redactedValue)
+          : body;
+    }
+    return truncate(redacted, policy.maxBodyLength);
+  }
+
+  /** Probes lower-case header names; look in any case anyway, a missed form type would leak. */
+  function contentType(headers: HeaderMap): string | undefined {
+    const direct = headers['content-type'];
+    if (direct !== undefined) {
+      return direct;
+    }
+    for (const name of Object.keys(headers)) {
+      if (name.toLowerCase() === 'content-type') {
+        return headers[name];
+      }
+    }
+    return undefined;
+  }
+
+  /** An error message may be a stringified object (an unhandled rejection) or name a URL with a token. */
+  function policedMessage(message: string): string {
+    const json = redactJsonText(message, policy.redactJsonKeys, policy.redactedValue);
+    return truncate(redactParams(json, policy.redactJsonKeys, policy.redactedValue), policy.maxBodyLength);
   }
 
   /** Builds the stored entry field by field, so nothing a probe attached beyond the contract is kept. */
@@ -45,9 +119,7 @@ export function createRecorder(policy: CapturePolicy): Recorder {
           seq,
           t: draft.t,
           level: draft.level,
-          args: draft.args.map((arg) =>
-            redactJsonValue(toJsonSafe(arg, policy.maxArgDepth), policy.redactJsonKeys, policy.redactedValue),
-          ),
+          args: toJsonSafe(draft.args, policy),
         };
       case 'http':
         return {
@@ -56,13 +128,13 @@ export function createRecorder(policy: CapturePolicy): Recorder {
           t: draft.t,
           transport: draft.transport,
           method: draft.method.toUpperCase(),
-          url: draft.url,
+          url: policedUrl(draft.url),
           status: draft.status,
           durationMs: draft.durationMs,
-          reqHeaders: redactHeaders(draft.reqHeaders, policy.redactHeaders, policy.redactedValue),
-          resHeaders: redactHeaders(draft.resHeaders, policy.redactHeaders, policy.redactedValue),
-          reqBody: policedBody(draft.reqBody, draft.url),
-          resBody: policedBody(draft.resBody, draft.url),
+          reqHeaders: policedHeaders(draft.reqHeaders),
+          resHeaders: policedHeaders(draft.resHeaders),
+          reqBody: policedBody(draft.reqBody, draft.url, draft.reqHeaders),
+          resBody: policedBody(draft.resBody, draft.url, draft.resHeaders),
           bytes: draft.bytes,
           error: draft.error,
         };
@@ -72,7 +144,7 @@ export function createRecorder(policy: CapturePolicy): Recorder {
           seq,
           t: draft.t,
           socketId: draft.socketId,
-          url: draft.url,
+          url: policedUrl(draft.url),
           event: draft.event,
           opcode: draft.opcode,
           bytes: draft.bytes,
@@ -86,7 +158,7 @@ export function createRecorder(policy: CapturePolicy): Recorder {
           seq,
           t: draft.t,
           source: draft.source,
-          message: truncate(draft.message, policy.maxBodyLength),
+          message: policedMessage(draft.message),
           stack: draft.stack === null ? null : truncate(draft.stack, policy.maxBodyLength),
         };
       default: {

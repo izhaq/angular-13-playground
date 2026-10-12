@@ -108,15 +108,48 @@ Type-only imports, re-exports and dynamic `import()` all count.
 
 - **Redaction happens before storage, never at display.** The recorder applies
   the policy on the way into the buffer, so an exported file cannot contain
-  anything the policy removed.
+  anything the policy removed. `ignoreUrls` and `redactBodyUrls` match the
+  original URL; the stored URL is the redacted one.
 - **Default redactions:**
   - Headers: `authorization`, `proxy-authorization`, `cookie`, `set-cookie`,
-    `x-api-key`, `x-auth-token`.
-  - JSON keys, anywhere in request/response bodies, WebSocket text frames and
-    logged objects: `password`, `passwd`, `secret`, `token`, `accesstoken`,
-    `refreshtoken`, `apikey`, `authorization` (case-insensitive).
+    `x-api-key`, `x-auth-token`, `x-csrf-token`, `x-xsrf-token`.
+  - Secret names (`redactJsonKeys`): `password`, `passwd`, `secret`, `token`,
+    `accesstoken`, `refreshtoken`, `apikey`, `authorization`, `clientsecret`,
+    `idtoken`, `privatekey`, `sessionid`, `sessiontoken`, `csrftoken`,
+    `xsrftoken`.
+- **Name matching ignores case, `_` and `-`** on both sides, so `accesstoken`
+  matches `access_token`, `Access-Token` and `accessToken`.
+- **A key is secret when it ends with a secret name**: `password` also covers
+  `newPassword`, `confirm_password` and `userPassword`; `apikey` covers
+  `x-api-key`. Names that only start with or contain one (`tokenCount`,
+  `passwordPolicy`, `secretary`) are kept. As a consequence pagination keys
+  such as `nextToken` are redacted too. Header names stay an exact match.
+- **Where secret names are looked for:**
+  - JSON request/response bodies and JSON WebSocket text frames (a leading
+    byte-order mark is fine);
+  - logged objects, at any depth, without reading the secret property;
+    logged `Map`s keyed by a secret name (Angular's `HttpHeaders` keeps its
+    values in a `Map`); `{ name, value }` / `{ param, value }` pairs naming a
+    secret (how `HttpHeaders` and `HttpParams` hold pending changes);
+  - logged strings, logged `Error` messages and `ErrorEntry.message` that hold
+    JSON (an unhandled rejection of a plain object is stored as its JSON) or
+    URL parameters — redacted before they are truncated;
+  - query and fragment parameters of HTTP and WebSocket URLs
+    (`wss://h/ws?access_token=[redacted]&x=1`), done on the raw string so the
+    rest of the URL stays byte for byte;
+  - form-encoded bodies: `application/x-www-form-urlencoded`, or a body with
+    no content-type (for a `URLSearchParams` body the browser adds the header
+    after the probe saw the call).
 - This app's login request body `{ username, password, mode, position }` is
   covered by the `password` key.
+- **Not redacted** — there are no keys to match: non-JSON text frames such as
+  socket.io `42["login",{…}]` or STOMP, NDJSON bodies, free text in error
+  messages and stacks beyond JSON and URL parameters, and secrets under names
+  that do not end with a listed one. Use `redactBodyUrls` for such endpoints.
+- **Logged objects' getters run at log time** — copying an object means
+  reading it. Secret properties are the exception: they are never read.
+- **Stored entries are deeply frozen** as they are built, so a listener on
+  `onEntry()` cannot change what a later export contains.
 - **Exported files may still contain business data** (experiment values,
   usernames, URLs). Treat them as sensitive and hand them over the same way as
   any other internal data.
@@ -126,11 +159,18 @@ Type-only imports, re-exports and dynamic `import()` all count.
 ## 5. Memory and Performance
 
 - **Ring buffer**, 5000 entries by default: the oldest entry is evicted.
-- **Body truncation**, 32 KiB by default, for bodies, frame data, messages and
-  stacks, with a marker.
-- **JSON-safe cloning of log arguments** at record time (depth-limited): the
-  buffer never holds live object references, so it cannot keep app objects
-  alive.
+- **Truncation**, 32 KiB by default (`maxBodyLength`), for bodies, frame
+  data, URLs, header values, messages and stacks, with a marker.
+- **JSON-safe cloning of log arguments** at record time: the buffer never
+  holds live object references, so it cannot keep app objects alive.
+- **A budget per log entry.** Depth (6) and width (100 items per level) limits
+  alone do not bound the work: a graph whose levels share one child is cloned
+  once per path — a 40-wide, 4-deep one took 490 ms and stored 33 MB. So all
+  the arguments of one call share a budget of 1000 values
+  (`MAX_CLONE_NODES`) and `maxBodyLength` characters of strings and keys;
+  past it, values become `"[…]"` and the entry still stores.
+- **A socket's URL is redacted once**, not per frame: the recorder remembers
+  the last URL it processed.
 - **Optional `sample()`** in the policy to drop drafts from chatty sockets —
   the system-experiments grid streams many frames per second. **No sampling
   by default**; turn it on only if a capture proves too noisy.
@@ -148,6 +188,13 @@ Type-only imports, re-exports and dynamic `import()` all count.
   are not read.
 - Pages that load **before the flag is set** capture nothing — set the flag,
   then reload.
+- Redaction is by name only: secrets in non-JSON text frames (socket.io,
+  STOMP), NDJSON bodies, free-text messages, or under names that do not end
+  with a listed one are kept (§4). Pagination keys like `nextToken` are
+  redacted (§4).
+- Logging an object runs its getters at log time (except secret ones).
+- A log call past its budget keeps only its first 1000 values and
+  `maxBodyLength` characters; the rest read `"[…]"`.
 
 ---
 

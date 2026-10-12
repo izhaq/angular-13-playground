@@ -1,5 +1,5 @@
 import { DEFAULT_CAPTURE_POLICY } from '../contract';
-import { matchesAny, redactHeaders, redactJsonText, redactJsonValue } from './redact';
+import { matchesAny, redactHeaders, redactJsonText, redactJsonValue, redactParams } from './redact';
 
 describe('redact', () => {
   const R = '[redacted]';
@@ -64,6 +64,117 @@ describe('redact', () => {
   it('keeps JSON text byte-for-byte when no key matches', () => {
     const pretty = '{\n  "a": 1\n}';
     expect(redactJsonText(pretty, ['password'], R)).toBe(pretty);
+  });
+
+  it('matches keys ignoring case, _ and - on both sides', () => {
+    const text = '{"access_token":"S5","refresh_token":"S6","id_token":"S7","api_key":"S8","client_secret":"S9","x":1}';
+
+    const result = redactJsonText(text, DEFAULT_CAPTURE_POLICY.redactJsonKeys, R);
+
+    expect(JSON.parse(result)).toEqual({
+      access_token: R,
+      refresh_token: R,
+      id_token: R,
+      api_key: R,
+      client_secret: R,
+      x: 1,
+    });
+    // Normalised on the policy side too: a key listed as `api_key` matches `apiKey` and `API-KEY`.
+    expect(redactJsonText('{"apiKey":1,"API-KEY":2}', ['api_key'], R)).toBe(
+      '{"apiKey":"[redacted]","API-KEY":"[redacted]"}',
+    );
+  });
+
+  it('redacts JSON text that starts with a byte-order mark', () => {
+    expect(redactJsonText('﻿{"password":"S12"}', ['password'], R)).toBe('{"password":"[redacted]"}');
+    expect(redactJsonText('﻿{"a":1}', ['password'], R)).toBe('﻿{"a":1}');
+  });
+
+  it('redacts the value of a { name, value } pair that names a secret', () => {
+    // jQuery serializeArray(), HAR headers and similar lists of named fields.
+    const text = '[{"name":"username","value":"op"},{"name":"Password","value":"S"}]';
+
+    expect(redactJsonText(text, ['password'], R)).toBe(
+      '[{"name":"username","value":"op"},{"name":"Password","value":"[redacted]"}]',
+    );
+  });
+
+  it('redacts secret URL query and fragment parameter values, leaving the rest byte for byte', () => {
+    const keys = DEFAULT_CAPTURE_POLICY.redactJsonKeys;
+
+    expect(redactParams('wss://h/ws?access_token=S&x=1', keys, R)).toBe('wss://h/ws?access_token=[redacted]&x=1');
+    expect(redactParams('https://h/a?x=%20a+b&TOKEN=S#id_token=S2&state=1', keys, R)).toBe(
+      'https://h/a?x=%20a+b&TOKEN=[redacted]#id_token=[redacted]&state=1',
+    );
+    expect(redactParams('https://h/a?access%5Ftoken=S', keys, R)).toBe('https://h/a?access%5Ftoken=[redacted]');
+    expect(redactParams('https://h/a?tokenish=1&b', keys, R)).toBe('https://h/a?tokenish=1&b');
+    expect(redactParams('https://h/plain', keys, R)).toBe('https://h/plain');
+  });
+
+  it('redacts secret parameters of a form body and of free text', () => {
+    const keys = DEFAULT_CAPTURE_POLICY.redactJsonKeys;
+
+    expect(redactParams('password=s3cret&username=op', keys, R)).toBe('password=[redacted]&username=op');
+    expect(redactParams('username=op&client_secret=c', keys, R)).toBe('username=op&client_secret=[redacted]');
+    expect(redactParams('GET https://h/x?token=t: 401 Unauthorized', keys, R)).toBe(
+      // Over-redacts the `:` rather than risk leaking a value that contains one.
+      'GET https://h/x?token=[redacted] 401 Unauthorized',
+    );
+    expect(redactParams('what? token is missing', keys, R)).toBe('what? token is missing');
+  });
+
+  it('truncates header values and freezes the result', () => {
+    const result = redactHeaders({ Authorization: 'Bearer abc', 'X-Long': 'abcdef' }, ['authorization'], R, 4);
+
+    expect(result).toEqual({ authorization: R, 'x-long': 'abcd…[truncated 2 chars]' });
+    expect(Object.isFrozen(result)).toBeTrue();
+  });
+
+  it('redactJsonValue matches normalised keys', () => {
+    const redacted: unknown = redactJsonValue({ Access_Token: 'a', ok: 1 }, ['accesstoken'], R);
+
+    expect(redacted).toEqual({ Access_Token: R, ok: 1 });
+  });
+
+  describe('secret names match by suffix', () => {
+    const keys = DEFAULT_CAPTURE_POLICY.redactJsonKeys;
+    const positives = ['newPassword', 'confirm_password', 'oldPassword', 'userPassword', 'oauthToken', 'x-api-key'];
+    const negatives = ['tokenCount', 'passwordPolicy', 'secretary'];
+
+    it('matches secret names by suffix', () => {
+      const body: Record<string, string> = {};
+      positives.forEach((name) => (body[name] = 'S'));
+      const expected: Record<string, string> = {};
+      positives.forEach((name) => (expected[name] = R));
+
+      expect(JSON.parse(redactJsonText(JSON.stringify(body), keys, R))).toEqual(expected);
+      expect(redactJsonText('[{"name":"newPassword","value":"S"}]', keys, R)).toBe(
+        '[{"name":"newPassword","value":"[redacted]"}]',
+      );
+      expect(redactParams(`https://h/a?${positives.map((n) => `${n}=S`).join('&')}`, keys, R)).toBe(
+        `https://h/a?${positives.map((n) => `${n}=${R}`).join('&')}`,
+      );
+      expect(redactParams('confirm_password=S&user=op', keys, R)).toBe(`confirm_password=${R}&user=op`);
+    });
+
+    it('does not redact names that only start with or contain a secret name', () => {
+      const body: Record<string, string> = {};
+      negatives.forEach((name) => (body[name] = 'kept'));
+      const text = JSON.stringify(body);
+
+      expect(redactJsonText(text, keys, R)).toBe(text);
+      const pair = '[{"name":"tokenCount","value":"kept"}]';
+      expect(redactJsonText(pair, keys, R)).toBe(pair);
+      const query = `https://h/a?${negatives.map((n) => `${n}=kept`).join('&')}`;
+      expect(redactParams(query, keys, R)).toBe(query);
+    });
+
+    it('keeps header names exact', () => {
+      expect(redactHeaders({ 'x-authorization-hint': 'kept' }, ['authorization'], R)).toEqual({
+        'x-authorization-hint': 'kept',
+      });
+      expect(redactHeaders({ 'new-cookie': 'kept' }, ['cookie'], R)).toEqual({ 'new-cookie': 'kept' });
+    });
   });
 
   it('matchesAny is stable with global regexes', () => {

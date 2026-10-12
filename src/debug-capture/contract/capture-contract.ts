@@ -35,7 +35,10 @@ export interface CaptureEntryBase {
 export interface LogEntry extends CaptureEntryBase {
   readonly kind: 'log';
   readonly level: LogLevel;
-  /** JSON-safe clones made at record time — never live references. */
+  /**
+   * JSON-safe clones made at record time — never live references. Redacted,
+   * frozen, and bounded per entry (see `CapturePolicy.maxBodyLength`).
+   */
   readonly args: readonly JsonValue[];
 }
 
@@ -45,7 +48,7 @@ export interface HttpEntry extends CaptureEntryBase {
   readonly transport: 'xhr' | 'fetch';
   /** Upper-case. */
   readonly method: string;
-  /** Absolute URL. */
+  /** Absolute URL; secret query parameters redacted (see `CapturePolicy.redactJsonKeys`). */
   readonly url: string;
   /** `null` when no HTTP response arrived (network error, abort, timeout). */
   readonly status: number | null;
@@ -67,6 +70,7 @@ export interface WebSocketEntry extends CaptureEntryBase {
   readonly kind: 'ws';
   /** 1-based per probe install, in creation order. */
   readonly socketId: number;
+  /** Secret query parameters redacted, like `HttpEntry.url`. */
   readonly url: string;
   readonly event: WebSocketEvent;
   /** `send` / `receive` only; otherwise `null`. */
@@ -111,16 +115,25 @@ export type EntryDraft =
 export interface CapturePolicy {
   /** Ring-buffer size; the oldest entry is evicted beyond it. Integer ≥ 1. */
   readonly maxEntries: number;
-  /** Bodies, frame data, messages and stacks longer than this are truncated with a marker. Integer ≥ 0. */
+  /**
+   * Bodies, frame data, URLs, header values, messages and stacks longer than
+   * this are truncated with a marker. Also the budget for one log entry: the
+   * characters of all its strings and keys together. Integer ≥ 0.
+   */
   readonly maxBodyLength: number;
   /** How deep log arguments are cloned before collapsing to a placeholder. Integer ≥ 0. */
   readonly maxArgDepth: number;
   /** Header names (case-insensitive) whose values are replaced by `redactedValue`. */
   readonly redactHeaders: readonly string[];
   /**
-   * Object keys (case-insensitive) whose values are replaced by
-   * `redactedValue` anywhere inside JSON bodies, JSON text frames and logged
-   * objects — e.g. the `password` in this app's login request.
+   * Secret names. Compared ignoring case, `_` and `-` on both sides, and a
+   * key matches when it ends with a name: `accesstoken` matches
+   * `access_token` and `Access-Token`, `password` matches `newPassword`
+   * (and `token` matches pagination keys like `nextToken`). Their values
+   * are replaced by `redactedValue` anywhere inside JSON bodies, JSON text
+   * frames, logged objects and Maps, JSON in logged strings and error
+   * messages, URL query parameters, and form-encoded bodies — e.g. the
+   * `password` in this app's login request.
    */
   readonly redactJsonKeys: readonly string[];
   /** Requests/sockets whose URL matches: every body / frame is replaced whole. */
@@ -143,6 +156,8 @@ export const DEFAULT_CAPTURE_POLICY: CapturePolicy = Object.freeze({
     'set-cookie',
     'x-api-key',
     'x-auth-token',
+    'x-csrf-token',
+    'x-xsrf-token',
   ]),
   redactJsonKeys: Object.freeze([
     'password',
@@ -153,6 +168,13 @@ export const DEFAULT_CAPTURE_POLICY: CapturePolicy = Object.freeze({
     'refreshtoken',
     'apikey',
     'authorization',
+    'clientsecret',
+    'idtoken',
+    'privatekey',
+    'sessionid',
+    'sessiontoken',
+    'csrftoken',
+    'xsrftoken',
   ]),
   redactBodyUrls: Object.freeze([]),
   redactedValue: '[redacted]',

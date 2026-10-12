@@ -7,6 +7,7 @@ import { AppRoutingModule } from './app-routing.module';
 import { DemoPageModule } from './demo/demo-page.module';
 import { provideAuth } from './features/auth/auth.providers';
 import { SessionIndicatorComponent } from './features/auth/session-indicator/session-indicator.component';
+import { provideDebugCapture } from './features/debug-capture';
 
 @NgModule({
   declarations: [AppComponent],
@@ -22,7 +23,11 @@ import { SessionIndicatorComponent } from './features/auth/session-indicator/ses
   // provideAuth() also provides the HttpClient (with the 401 interceptor
   // attached) — HttpClientModule is gone on purpose; re-importing it would
   // drop the interceptor.
-  providers: [provideAuth()],
+  providers: [
+    provideAuth(),
+    // Records errors Angular catches itself — only when main.ts started a capture.
+    provideDebugCapture(),
+  ],
   bootstrap: [AppComponent],
 })
 export class AppModule {}

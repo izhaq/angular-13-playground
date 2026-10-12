@@ -86,7 +86,7 @@ keyboard language. Three modifiers keep them away from browser shortcuts.
 installDebugCapture({
   policy: {
     maxEntries: 5000,          // keep the newest 5000 entries
-    maxBodyLength: 32768,      // cut longer bodies / frames / stacks
+    maxBodyLength: 32768,      // cut longer bodies / frames / URLs / stacks
     maxArgDepth: 6,            // how deep logged objects are copied
     redactHeaders: ['authorization', 'cookie' /* ... */],
     redactJsonKeys: ['password', 'token' /* ... */],
@@ -100,6 +100,24 @@ installDebugCapture({
 
 - Redaction happens **before** anything is stored. A redacted value can never
   end up in a file.
+- `redactJsonKeys` names are compared ignoring case, `_` and `-`. So
+  `accesstoken` also hides `access_token`, `Access-Token` and `accessToken`.
+  The values of those names are hidden in:
+  - JSON request / response bodies and JSON WebSocket text frames,
+  - logged objects, logged `Map`s (Angular's `HttpHeaders` keeps its values in
+    one) and `{ name, value }` pairs (how `HttpHeaders` keeps pending changes),
+  - logged strings and error messages that hold JSON or a URL,
+  - URL query parameters of requests and sockets
+    (`wss://h/ws?access_token=[redacted]&x=1`),
+  - form bodies (`application/x-www-form-urlencoded`, or no content type).
+- `ignoreUrls` and `redactBodyUrls` match the **original** URL. Query
+  redaction only changes what is stored.
+- One `console.log` call is bounded: at most 1000 values, and at most
+  `maxBodyLength` characters of text for all its arguments together. Past
+  that, values become `"[…]"`. Long URLs and header values are cut to
+  `maxBodyLength` too.
+- Stored entries are frozen all the way down, so a listener on `onEntry()`
+  cannot change what gets exported.
 - A bad limit (like `maxEntries: 0`) throws right away, before anything is
   changed on the page.
 - The full list of default redactions is `DEFAULT_CAPTURE_POLICY` in
@@ -154,6 +172,16 @@ The rest of the app imports only `src/app/features/debug-capture` (or
   read.
 - A page that loaded **before** the flag was set records nothing. Set the
   flag, then reload.
+- Some secrets are **not** redacted, because there are no keys to match:
+  - text frames that are not plain JSON, such as socket.io `42["login",{…}]`
+    or STOMP frames,
+  - NDJSON (one JSON object per line) bodies,
+  - free-text error messages and stacks (only JSON and URL parameters in them
+    are redacted),
+  - secrets under a name that is not in `redactJsonKeys` (for example
+    `newPassword` — add it if your app uses it).
+  Use `redactBodyUrls` to hide whole bodies and frames for such endpoints.
+- Logging an object runs its getters, at log time, to copy it.
 
 ## Be careful with the files
 

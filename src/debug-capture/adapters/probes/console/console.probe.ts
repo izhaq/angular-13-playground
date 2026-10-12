@@ -18,17 +18,18 @@ type ConsoleMethod = (this: unknown, ...args: unknown[]) => unknown;
  *   recording — otherwise one log line becomes infinite recursion.
  */
 export function installConsoleProbe(recorder: Recorder, clock: Clock, host: ConsoleHost = globalThis.console): Probe {
-  let active = true;
+  /** Dropped on dispose: a wrapper left in someone else's chain must not keep the buffer alive. */
+  let sink: Recorder | null = recorder;
   // Shared across levels: a `log` whose listener calls `warn` is still re-entry.
   let recording = false;
 
   const record = (level: LogLevel, args: unknown[]): void => {
-    if (!active || recording) {
+    if (!sink || recording) {
       return;
     }
     recording = true;
     try {
-      recorder.record({ kind: 'log', level, t: clock.now(), args });
+      sink.record({ kind: 'log', level, t: clock.now(), args });
     } catch {
       // Capture must never throw into the caller.
     } finally {
@@ -51,7 +52,7 @@ export function installConsoleProbe(recorder: Recorder, clock: Clock, host: Cons
     dispose(): void {
       // Flipping this first turns every wrapper into a pass-through, which
       // covers wrappers we cannot take back below.
-      active = false;
+      sink = null;
       for (const { level, original, wrapper } of patches) {
         // Someone wrapped us after install: restoring the original would
         // silently drop their patch, so ours stays as a pass-through.

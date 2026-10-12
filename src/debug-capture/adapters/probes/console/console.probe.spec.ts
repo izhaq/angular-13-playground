@@ -34,6 +34,19 @@ function call(host: ConsoleHost, level: LogLevel, thisArg: unknown, ...args: unk
   return method.apply(thisArg, args);
 }
 
+/** Wraps a recorder so every member the probe touches is listed once `watch()` is called. */
+function watched(recorder: Recorder) {
+  const touched: PropertyKey[] = [];
+  let watching = false;
+  const proxy = new Proxy(recorder, {
+    get(target, key, receiver) {
+      if (watching) touched.push(key);
+      return Reflect.get(target, key, receiver);
+    },
+  });
+  return { recorder: proxy, touched, watch: () => (watching = true) };
+}
+
 describe('installConsoleProbe', () => {
   let host: SpyHost;
   let originals: SpyHost;
@@ -212,5 +225,26 @@ describe('installConsoleProbe', () => {
 
     expect(drafts).toEqual([]);
     expect(originals.error.calls.allArgs()).toEqual([['via host'], ['x'], ['via stale reference']]);
+  });
+
+  it('drops its recorder reference on dispose', () => {
+    const spy = watched(recorder);
+    const probe = installConsoleProbe(spy.recorder, clock, host);
+    call(host, 'log', host, 'before');
+    expect(drafts.length).toBe(1);
+    // Someone else's wrapper keeps ours alive in their chain.
+    const ours = host.warn;
+    host.warn = jasmine.createSpy('theirs').and.callFake(function (this: unknown, ...args: unknown[]) {
+      return ours.apply(this, args);
+    });
+
+    probe.dispose();
+    spy.watch();
+    call(host, 'warn', host, 'through their chain');
+    ours.call(host, 'stale reference');
+
+    expect(spy.touched).toEqual([]);
+    expect(drafts.length).toBe(1);
+    expect(originals.warn.calls.allArgs()).toEqual([['through their chain'], ['stale reference']]);
   });
 });

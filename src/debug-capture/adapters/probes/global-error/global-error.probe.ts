@@ -20,27 +20,28 @@ export function installGlobalErrorProbe(
   clock: Clock,
   host: ErrorEventHost = globalThis,
 ): Probe {
-  let active = true;
+  /** Dropped on dispose, so a listener someone still holds cannot keep the buffer alive. */
+  let sink: Recorder | null = recorder;
 
   const onError = (event: Event): void => {
-    if (!active) {
+    if (!sink) {
       return;
     }
     try {
       const { message, stack } = describeErrorEvent(event);
-      recorder.record({ kind: 'error', source: 'window', t: clock.now(), message, stack });
+      sink.record({ kind: 'error', source: 'window', t: clock.now(), message, stack });
     } catch {
       // Capture must never throw — least of all from inside an error report.
     }
   };
 
   const onRejection = (event: Event): void => {
-    if (!active) {
+    if (!sink) {
       return;
     }
     try {
       const { message, stack } = describeReason('reason' in event ? event.reason : undefined);
-      recorder.record({ kind: 'error', source: 'unhandledrejection', t: clock.now(), message, stack });
+      sink.record({ kind: 'error', source: 'unhandledrejection', t: clock.now(), message, stack });
     } catch {
       // Same rule as above.
     }
@@ -52,10 +53,10 @@ export function installGlobalErrorProbe(
   return {
     name: 'global-error',
     dispose(): void {
-      if (!active) {
+      if (!sink) {
         return;
       }
-      active = false;
+      sink = null;
       host.removeEventListener('error', onError);
       host.removeEventListener('unhandledrejection', onRejection);
     },

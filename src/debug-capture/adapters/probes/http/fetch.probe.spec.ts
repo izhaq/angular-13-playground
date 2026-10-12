@@ -60,6 +60,59 @@ function deferred<T>() {
 /** Lets pending promise callbacks (the probe's body read) run. */
 const flush = () => new Promise<void>((resolve) => setTimeout(resolve));
 
+/** The slice of zone.js (loaded by Karma) these specs use — read structurally, never imported. */
+interface ZoneTask {
+  type: string;
+}
+interface ZoneDelegate {
+  invokeTask(target: unknown, task: ZoneTask, applyThis: unknown, applyArgs?: unknown[]): unknown;
+}
+interface TestZone {
+  name: string;
+  run<T>(work: () => T): T;
+  fork(spec: {
+    name: string;
+    onInvokeTask(
+      delegate: ZoneDelegate,
+      current: TestZone,
+      target: TestZone,
+      task: ZoneTask,
+      applyThis: unknown,
+      applyArgs?: unknown[],
+    ): unknown;
+  }): TestZone;
+}
+const zones = (globalThis as unknown as { Zone: { root: TestZone; current: TestZone } }).Zone;
+
+/** A zone standing in for Angular's: NgZone runs change detection after every task it invokes. */
+function countingZone() {
+  let tasks = 0;
+  const zone = zones.root.fork({
+    name: 'app',
+    onInvokeTask(delegate, _current, target, task, applyThis, applyArgs) {
+      tasks++;
+      return delegate.invokeTask(target, task, applyThis, applyArgs);
+    },
+  });
+  return { zone, tasks: () => tasks };
+}
+
+/** Lists every recorder member the probe touches once `watch()` is called. */
+function watchedRecorder() {
+  const touched: PropertyKey[] = [];
+  let watching = false;
+  const base = fakeRecorder();
+  const recorder = new Proxy(base.recorder, {
+    get(target, key, receiver) {
+      if (watching) touched.push(key);
+      return Reflect.get(target, key, receiver);
+    },
+  });
+  return { recorder, base, touched, watch: () => (watching = true) };
+}
+
+const CAP_MARKER = '…[capture stopped at 1048576 chars]';
+
 describe('installFetchProbe', () => {
   let rec: ReturnType<typeof fakeRecorder>;
   let time: ReturnType<typeof fakeClock>;
@@ -296,5 +349,143 @@ describe('installFetchProbe', () => {
     expect(await bad).toBe(failure);
     await flush();
     expect(rec.drafts).toEqual([]);
+  });
+
+  it('records a fetch aborted while its body is read as error abort', async () => {
+    // A real fetch, aborted after the headers arrived.
+    const host = realHost();
+    const probe = installFetchProbe(rec.recorder, time.clock, host);
+    const controller = new AbortController();
+    const url = URL.createObjectURL(new Blob(['x'.repeat(100_000)], { type: 'text/plain' }));
+    blobUrls.push(url);
+    const response = await host.fetch(url, { signal: controller.signal });
+    controller.abort();
+    await expectAsync(response.text()).toBeRejected();
+
+    // The same failure, deterministically: the body stream errors with an AbortError.
+    const aborting = new ReadableStream<Uint8Array>({
+      start(stream) {
+        stream.enqueue(new TextEncoder().encode('partial'));
+        stream.error(new DOMException('The user aborted a request.', 'AbortError'));
+      },
+    });
+    const fake = fakeHost(() => Promise.resolve(new Response(aborting, { headers: { 'Content-Type': 'application/json' } })));
+    const fakeProbe = installFetchProbe(rec.recorder, time.clock, fake.host);
+    await fake.host.fetch('/aborted');
+
+    const drafts = await rec.waitFor(2);
+    expect(drafts.map((d) => [d.url, d.status, d.resBody, d.error])).toEqual([
+      [url, 200, null, 'abort'],
+      ['http://app.test/aborted', 200, null, 'abort'],
+    ]);
+    probe.dispose();
+    fakeProbe.dispose();
+  });
+
+  it('stops reading an endless text body at the cap and leaves the app\'s body readable', async () => {
+    const chunk = new TextEncoder().encode('{"tick":1}\n'.repeat(1000));
+    let cancelled = false;
+    const endless = new ReadableStream<Uint8Array>({
+      pull: (stream) => stream.enqueue(chunk),
+      cancel: () => {
+        cancelled = true;
+      },
+    });
+    const response = new Response(endless, { headers: { 'Content-Type': 'application/x-ndjson' } });
+    const { host } = fakeHost(() => Promise.resolve(response));
+    const probe = installFetchProbe(rec.recorder, time.clock, host);
+
+    const got = await host.fetch('/ticks');
+    const [draft] = await rec.waitFor(1);
+    const body = draft.resBody ?? '';
+    expect(body.length).toBe(1_048_576 + CAP_MARKER.length);
+    expect(body.endsWith(CAP_MARKER)).toBeTrue();
+    expect(body.startsWith('{"tick":1}\n{"tick":1}\n')).toBeTrue();
+    // Neither a content-length nor the whole text: the size is unknown.
+    expect(draft.bytes).toBeNull();
+    expect(draft.error).toBeNull();
+
+    // Cancelling our branch of the clone left the source (and the app's branch) alone.
+    expect(cancelled).toBeFalse();
+    expect(got.bodyUsed).toBeFalse();
+    const reader = (got.body as ReadableStream<Uint8Array>).getReader();
+    const read = await reader.read();
+    expect(read.done).toBeFalse();
+    expect(read.value?.byteLength).toBe(chunk.byteLength);
+    // Once the app cancels its branch too, the source is cancelled: ours already was.
+    await reader.cancel();
+    expect(cancelled).toBeTrue();
+    probe.dispose();
+  });
+
+  it('keeps a text body that ends exactly at the cap whole', async () => {
+    const text = 'a'.repeat(1_048_576);
+    const { host } = fakeHost(() => Promise.resolve(new Response(text, { headers: { 'Content-Type': 'text/plain' } })));
+    const probe = installFetchProbe(rec.recorder, time.clock, host);
+    await host.fetch('/exact');
+    const [draft] = await rec.waitFor(1);
+    expect(draft.resBody).toBe(text);
+    expect(draft.bytes).toBe(1_048_576);
+    probe.dispose();
+  });
+
+  it('probe listeners run outside the app\'s zone', async () => {
+    const app = countingZone();
+    const recordedIn: string[] = [];
+    const recorder: Recorder = {
+      ...rec.recorder,
+      record: (draft) => {
+        recordedIn.push(zones.current.name);
+        rec.recorder.record(draft);
+      },
+    };
+
+    async function tasksFor(contentType: string): Promise<{ tasks: number; callbackZone: string }> {
+      const { host } = fakeHost(() =>
+        Promise.resolve(new Response('{"a":1}', { headers: { 'Content-Type': contentType } })),
+      );
+      const probe = installFetchProbe(recorder, time.clock, host);
+      const before = app.tasks();
+      let callbackZone = '';
+      const count = rec.http().length;
+      app.zone.run(() => host.fetch('/x').then(() => (callbackZone = zones.current.name)));
+      await rec.waitFor(count + 1);
+      await flush();
+      probe.dispose();
+      return { tasks: app.tasks() - before, callbackZone };
+    }
+
+    const binary = await tasksFor('application/octet-stream');
+    const json = await tasksFor('application/json');
+    // The caller's promise stays in the caller's zone...
+    expect(json.callbackZone).toBe('app');
+    // ...but reading the body adds no task to it.
+    expect(json.tasks).toBe(binary.tasks);
+    expect(recordedIn[1]).toBe('<root>');
+  });
+
+  it('drops its recorder reference on dispose', async () => {
+    const watched = watchedRecorder();
+    const pending = deferred<Response>();
+    const queue = [Promise.resolve(new Response('ok')), pending.promise, Promise.resolve(new Response('after'))];
+    const { host } = fakeHost(() => queue.shift() as Promise<Response>);
+    const probe = installFetchProbe(watched.recorder, time.clock, host);
+    await host.fetch('/before');
+    await watched.base.waitFor(1);
+
+    // A fetch in flight, and someone else's patch on top of ours that keeps
+    // our wrapper alive in their chain.
+    const inFlight = host.fetch('/in-flight');
+    const ours = host.fetch;
+    host.fetch = (input, init) => ours(input, init);
+    probe.dispose();
+    watched.watch();
+
+    pending.resolve(new Response('late'));
+    expect(await (await inFlight).text()).toBe('late');
+    expect(await (await host.fetch('/after')).text()).toBe('after');
+    await flush();
+    expect(watched.touched).toEqual([]);
+    expect(watched.base.http().length).toBe(1);
   });
 });

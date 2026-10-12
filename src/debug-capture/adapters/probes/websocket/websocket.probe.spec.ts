@@ -113,6 +113,43 @@ async function until(condition: () => boolean): Promise<void> {
   expect(condition()).withContext('condition never became true').toBeTrue();
 }
 
+/** The slice of zone.js (loaded by Karma) these specs use — read structurally, never imported. */
+interface ZoneTask {
+  type: string;
+  source: string;
+}
+interface ZoneDelegate {
+  invokeTask(target: unknown, task: ZoneTask, applyThis: unknown, applyArgs?: unknown[]): unknown;
+}
+interface TestZone {
+  run<T>(work: () => T): T;
+  fork(spec: {
+    name: string;
+    onInvokeTask(
+      delegate: ZoneDelegate,
+      current: TestZone,
+      target: TestZone,
+      task: ZoneTask,
+      applyThis: unknown,
+      applyArgs?: unknown[],
+    ): unknown;
+  }): TestZone;
+}
+
+/** A zone standing in for Angular's: NgZone runs change detection after every task it invokes. */
+function countingZone() {
+  const root = (globalThis as unknown as { Zone: { root: TestZone } }).Zone.root;
+  const events: string[] = [];
+  const zone = root.fork({
+    name: 'app',
+    onInvokeTask(delegate, _current, target, task, applyThis, applyArgs) {
+      if (task.type === 'eventTask') events.push(task.source);
+      return delegate.invokeTask(target, task, applyThis, applyArgs);
+    },
+  });
+  return { zone, events };
+}
+
 const RealWebSocket = window.WebSocket;
 
 describe('installWebSocketProbe', () => {
@@ -416,5 +453,57 @@ describe('installWebSocketProbe', () => {
     host.WebSocket = later;
     probe.dispose();
     expect(host.WebSocket).toBe(later);
+  });
+
+  it('probe listeners run outside the app\'s zone', () => {
+    const host = fakeHost();
+    install(host);
+    const app = countingZone();
+    const socket = app.zone.run(() => {
+      const created = openFake(host);
+      created.addEventListener('message', () => undefined);
+      return created;
+    });
+
+    socket.fireOpen();
+    for (let i = 0; i < 10; i++) socket.fireMessage(`frame ${i}`);
+    socket.fireError();
+    socket.fireClose(1000);
+
+    expect(recorder.ws().length).toBe(13);
+    // Ten frames, ten tasks in the app's zone: only the app's own listener.
+    expect(app.events.length).withContext(app.events.join()).toBe(10);
+    expect(app.events.every((source) => source.indexOf('message') !== -1)).toBeTrue();
+  });
+
+  it('drops its recorder reference on dispose', async () => {
+    const touched: PropertyKey[] = [];
+    let watching = false;
+    const watched = new Proxy(recorder, {
+      get(target, key, receiver) {
+        if (watching) touched.push(key);
+        return Reflect.get(target, key, receiver);
+      },
+    });
+    const host = fakeHost();
+    const probe = installWebSocketProbe(watched, clock, host);
+    // A socket that stays open, and someone else's subclass on top of ours.
+    const socket = openFake(host);
+    socket.fireOpen();
+    const theirs = class extends host.WebSocket {};
+    host.WebSocket = theirs;
+    socket.fireMessage(new Blob(['in flight']));
+
+    probe.dispose();
+    watching = true;
+    socket.fireMessage('late');
+    socket.send('late');
+    socket.send(new Blob(['late']));
+    openFake(host).fireOpen();
+    socket.fireClose(1000);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    expect(touched).toEqual([]);
+    expect(recorder.ws().map((d) => d.event)).toEqual(['open']);
   });
 });

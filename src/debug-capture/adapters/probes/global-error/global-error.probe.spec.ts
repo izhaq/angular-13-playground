@@ -28,6 +28,19 @@ function rejection(reason: unknown): PromiseRejectionEvent {
   return new PromiseRejectionEvent('unhandledrejection', { promise, reason, cancelable: true });
 }
 
+/** Wraps a recorder so every member the probe touches is listed once `watch()` is called. */
+function watched(recorder: Recorder) {
+  const touched: PropertyKey[] = [];
+  let watching = false;
+  const proxy = new Proxy(recorder, {
+    get(target, key, receiver) {
+      if (watching) touched.push(key);
+      return Reflect.get(target, key, receiver);
+    },
+  });
+  return { recorder: proxy, touched, watch: () => (watching = true) };
+}
+
 describe('installGlobalErrorProbe', () => {
   // A real EventTarget stands in for window — the real one is never touched.
   let host: EventTarget;
@@ -186,5 +199,23 @@ describe('installGlobalErrorProbe', () => {
     expect(remove).toHaveBeenCalledTimes(2);
     host.dispatchEvent(new ErrorEvent('error', { message: 'x' }));
     expect(drafts).toEqual([]);
+  });
+
+  it('drops its recorder reference on dispose', () => {
+    const spy = watched(recorder);
+    const add = spyOn(host, 'addEventListener').and.callThrough();
+    const probe = installGlobalErrorProbe(spy.recorder, clock, host);
+    host.dispatchEvent(new ErrorEvent('error', { message: 'before' }));
+    expect(drafts.length).toBe(1);
+    // Listeners someone else still holds (a stale reference) must not reach the recorder.
+    const listeners = add.calls.allArgs().map(([, listener]) => listener as (event: Event) => void);
+
+    probe.dispose();
+    spy.watch();
+    listeners[0](new ErrorEvent('error', { message: 'late' }));
+    listeners[1](rejection('late'));
+
+    expect(spy.touched).toEqual([]);
+    expect(drafts.length).toBe(1);
   });
 });

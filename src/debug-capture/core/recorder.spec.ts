@@ -1,4 +1,13 @@
-import { CaptureEntry, CapturePolicy, EntryDraft, ErrorEntry, HttpEntry, LogEntry, WebSocketEntry } from '../contract';
+import {
+  CaptureEntry,
+  CapturePolicy,
+  DEFAULT_CAPTURE_POLICY,
+  EntryDraft,
+  ErrorEntry,
+  HttpEntry,
+  LogEntry,
+  WebSocketEntry,
+} from '../contract';
 import { resolvePolicy } from './policy';
 import { createRecorder } from './recorder';
 
@@ -310,5 +319,224 @@ describe('createRecorder', () => {
     // A failed draft does not consume a seq.
     recorder.record(logDraft('ok'));
     expect(recorder.snapshot()[0].seq).toBe(1);
+  });
+  describe('review fixes', () => {
+    const R = '[redacted]';
+
+    it('bounds total work for a shared-subgraph object', () => {
+      let shared: unknown = 'leaf';
+      for (let d = 0; d < 4; d++) {
+        const level: Record<string, unknown> = {};
+        for (let i = 0; i < 40; i++) {
+          level[`k${i}`] = shared;
+        }
+        shared = level;
+      }
+      const recorder = recorderWith();
+
+      const start = performance.now();
+      recorder.record(logDraft(shared));
+      const elapsed = performance.now() - start;
+
+      expect(elapsed).toBeLessThan(50);
+      expect(recorder.snapshot().length).toBe(1);
+      const stored = JSON.stringify(recorder.snapshot()[0]);
+      expect(stored.length).toBeLessThanOrEqual(DEFAULT_CAPTURE_POLICY.maxBodyLength + 2048);
+    });
+
+    it('shares one character budget across all args', () => {
+      const recorder = recorderWith({ maxBodyLength: 10 });
+
+      recorder.record(logDraft('a'.repeat(100_000), { s: 'b'.repeat(50_000) }));
+
+      expect(argsOf(recorder.snapshot()[0])).toEqual(['aaaaaaaaaa…[truncated 99990 chars]', '[…]']);
+    });
+
+    it('truncates long string args', () => {
+      const recorder = recorderWith({ maxBodyLength: 10 });
+
+      recorder.record(logDraft({ s: 'b'.repeat(50_000) }));
+
+      expect(argsOf(recorder.snapshot()[0])).toEqual([{ s: 'bbbbbbbbb…[truncated 49991 chars]' }]);
+    });
+
+    it('redacts logged Maps and JSON strings', () => {
+      const recorder = recorderWith();
+
+      recorder.record(
+        logDraft('req', new Map([['authorization', 'Bearer SECRET1']]), { headers: new Map([['token', 'SECRET2']]) }),
+      );
+      recorder.record(logDraft(JSON.stringify({ password: 'SECRET3' })));
+
+      const [maps, json] = recorder.snapshot();
+      expect(argsOf(maps)).toEqual([
+        'req',
+        { '[Map]': [['authorization', R]] },
+        { headers: { '[Map]': [['token', R]] } },
+      ]);
+      expect(argsOf(json)).toEqual(['{"password":"[redacted]"}']);
+      expect(JSON.stringify(recorder.snapshot())).not.toContain('SECRET');
+    });
+
+    it('redacts JSON and URL parameters in error messages before truncating', () => {
+      const recorder = recorderWith({ maxBodyLength: 100 });
+
+      // What the global-error probe stores for an unhandled rejection of a plain object.
+      recorder.record({
+        kind: 'error',
+        t: 1,
+        source: 'unhandledrejection',
+        message: JSON.stringify({ url: '/login', body: { password: 'SECRET4' }, padding: 'x'.repeat(100) }),
+        stack: null,
+      });
+      recorder.record({
+        kind: 'error',
+        t: 1,
+        source: 'angular',
+        message: 'Http failure response for https://h/api?access_token=SECRET5: 401 Unauthorized',
+        stack: null,
+      });
+
+      const [rejection, http] = recorder.snapshot() as [ErrorEntry, ErrorEntry];
+      expect(rejection.message).toMatch(/^\{"url":"\/login","body":\{"password":"\[redacted\]"\}/);
+      expect(http.message).toBe('Http failure response for https://h/api?access_token=[redacted] 401 Unauthorized');
+      expect(JSON.stringify(recorder.snapshot())).not.toContain('SECRET');
+    });
+
+    it('redacts snake_case and newly defaulted secret keys', () => {
+      const recorder = recorderWith();
+      const body = {
+        access_token: 'a',
+        refresh_token: 'b',
+        api_key: 'c',
+        client_secret: 'd',
+        id_token: 'e',
+        private_key: 'f',
+        session_id: 'g',
+        sessionToken: 'h',
+        csrf_token: 'i',
+        xsrfToken: 'j',
+        'x-api-key': 'k',
+        keep: 'l',
+      };
+
+      recorder.record(httpDraft({ resBody: JSON.stringify(body) }));
+      recorder.record(logDraft(body));
+
+      const [http, log] = recorder.snapshot() as [HttpEntry, LogEntry];
+      const expected: Record<string, string> = {};
+      for (const key of Object.keys(body)) {
+        expected[key] = key === 'keep' ? 'l' : R;
+      }
+      expect(JSON.parse(http.resBody ?? 'null')).toEqual(expected);
+      expect(argsOf(log)).toEqual([expected]);
+    });
+
+    it('redacts default CSRF headers', () => {
+      const recorder = recorderWith();
+
+      recorder.record(httpDraft({ reqHeaders: { 'x-csrf-token': 'a', 'x-xsrf-token': 'b', accept: '*/*' } }));
+
+      expect((recorder.snapshot()[0] as HttpEntry).reqHeaders).toEqual({
+        'x-csrf-token': R,
+        'x-xsrf-token': R,
+        accept: '*/*',
+      });
+    });
+
+    it('redacts secret URL query parameters of http and ws entries', () => {
+      const recorder = recorderWith();
+
+      const url = 'wss://h/ws?access_token=SECRET10&x=1';
+      recorder.record(wsDraft({ event: 'open', opcode: null, data: null, url }));
+      recorder.record(wsDraft({ url }));
+      recorder.record(httpDraft({ url: 'https://h/api/items?page=2&api_key=SECRET11' }));
+
+      const [open, frame, http] = recorder.snapshot() as [WebSocketEntry, WebSocketEntry, HttpEntry];
+      expect(open.url).toBe('wss://h/ws?access_token=[redacted]&x=1');
+      expect(frame.url).toBe('wss://h/ws?access_token=[redacted]&x=1');
+      expect(http.url).toBe('https://h/api/items?page=2&api_key=[redacted]');
+    });
+
+    it('matches ignoreUrls and redactBodyUrls against the original URL', () => {
+      const recorder = recorderWith({ ignoreUrls: [/token=drop/], redactBodyUrls: [/token=hide/] });
+
+      recorder.record(httpDraft({ url: 'https://h/a?token=drop' }));
+      recorder.record(httpDraft({ url: 'https://h/b?token=hide', resBody: 'visible?' }));
+
+      const entries = recorder.snapshot() as HttpEntry[];
+      expect(entries.length).toBe(1);
+      expect(entries[0].url).toBe('https://h/b?token=[redacted]');
+      expect(entries[0].resBody).toBe(R);
+      expect(recorder.stats().dropped).toBe(1);
+    });
+
+    it('redacts secret parameters of form-encoded bodies', () => {
+      const recorder = recorderWith();
+      const form = 'username=op&password=s3cret&grant_type=password';
+
+      recorder.record(
+        httpDraft({
+          method: 'post',
+          reqHeaders: { 'content-type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+          reqBody: form,
+          resHeaders: { 'content-type': 'application/x-www-form-urlencoded' },
+          resBody: 'access_token=SECRET&expires_in=60',
+        }),
+      );
+      // fetch/XHR with a URLSearchParams body: the browser adds the content-type after the probe saw the call.
+      recorder.record(httpDraft({ method: 'post', reqBody: form }));
+      // A declared non-form type is left alone.
+      recorder.record(httpDraft({ method: 'post', reqHeaders: { 'content-type': 'text/plain' }, reqBody: form }));
+
+      const [declared, implicit, plain] = recorder.snapshot() as [HttpEntry, HttpEntry, HttpEntry];
+      expect(declared.reqBody).toBe('username=op&password=[redacted]&grant_type=password');
+      expect(declared.resBody).toBe('access_token=[redacted]&expires_in=60');
+      expect(implicit.reqBody).toBe('username=op&password=[redacted]&grant_type=password');
+      expect(plain.reqBody).toBe(form);
+    });
+
+    it('stored entries are deeply immutable', () => {
+      const recorder = recorderWith();
+      const attempts: string[] = [];
+      recorder.onEntry((entry) => {
+        try {
+          if (entry.kind === 'log') {
+            (entry.args[0] as Record<string, unknown>)['password'] = 'LEAK';
+          } else if (entry.kind === 'http') {
+            (entry.reqHeaders as Record<string, string>)['authorization'] = 'LEAK';
+          }
+        } catch {
+          attempts.push(entry.kind);
+        }
+      });
+
+      recorder.record(logDraft({ a: 1, nested: { list: [1] } }));
+      recorder.record(httpDraft({ reqHeaders: { accept: '*/*' } }));
+
+      expect(attempts).toEqual(['log', 'http']);
+      expect(JSON.stringify(recorder.snapshot())).not.toContain('LEAK');
+      const [log, http] = recorder.snapshot() as [LogEntry, HttpEntry];
+      expect(Object.isFrozen(log.args)).toBeTrue();
+      expect(Object.isFrozen((log.args[0] as Record<string, Record<string, unknown>>)['nested']['list'])).toBeTrue();
+      expect(Object.isFrozen(http.reqHeaders)).toBeTrue();
+      expect(Object.isFrozen(http.resHeaders)).toBeTrue();
+    });
+
+    it('truncates very long URLs and header values', () => {
+      const recorder = recorderWith({ maxBodyLength: 20 });
+      const long = `https://h/${'p'.repeat(100)}`;
+
+      recorder.record(
+        httpDraft({ url: long, reqHeaders: { 'x-trace': 't'.repeat(100) }, resHeaders: { etag: 'e'.repeat(21) } }),
+      );
+      recorder.record(wsDraft({ url: long }));
+
+      const [http, ws] = recorder.snapshot() as [HttpEntry, WebSocketEntry];
+      expect(http.url).toBe('https://h/pppppppppp…[truncated 90 chars]');
+      expect(ws.url).toBe(http.url);
+      expect(http.reqHeaders['x-trace']).toBe(`${'t'.repeat(20)}…[truncated 80 chars]`);
+      expect(http.resHeaders['etag']).toBe(`${'e'.repeat(20)}…[truncated 1 chars]`);
+    });
   });
 });

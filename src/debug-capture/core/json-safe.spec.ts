@@ -1,10 +1,23 @@
-import { toJsonSafe as toJsonSafeTyped } from './json-safe';
+import { DEFAULT_CAPTURE_POLICY } from '../contract';
+import { JsonSafePolicy, MAX_CLONE_NODES, toJsonSafe as toJsonSafeTyped } from './json-safe';
+
+/** Cloning only: no redaction, and a character budget no test here reaches. */
+const PLAIN: JsonSafePolicy = {
+  maxArgDepth: 6,
+  maxBodyLength: 1_000_000,
+  redactJsonKeys: [],
+  redactedValue: '[redacted]',
+};
 
 /**
  * Jasmine's `Expected<T>` recursion blows up on the recursive `JsonValue`
  * type ("excessively deep"), so the assertions see `unknown`.
  */
-const toJsonSafe = (value: unknown, maxDepth: number): unknown => toJsonSafeTyped(value, maxDepth);
+const toJsonSafe = (value: unknown, maxDepth: number): unknown =>
+  toJsonSafeTyped([value], { ...PLAIN, maxArgDepth: maxDepth })[0];
+
+const cloneArgs = (args: readonly unknown[], overrides: Partial<JsonSafePolicy> = {}): readonly unknown[] =>
+  toJsonSafeTyped(args, { ...PLAIN, ...overrides });
 
 describe('toJsonSafe', () => {
   const DEPTH = 6;
@@ -249,5 +262,191 @@ describe('toJsonSafe', () => {
 
     expect(() => JSON.stringify(result)).not.toThrow();
     expect(JSON.parse(JSON.stringify(result))).toEqual(result);
+  });
+  describe('budget', () => {
+    it('stops after MAX_CLONE_NODES values and marks the unfinished containers', () => {
+      const rows = Array.from({ length: 20 }, () => Array.from({ length: 100 }, (_, i) => i));
+
+      const [result] = cloneArgs([rows]) as [ReadonlyArray<readonly unknown[]>];
+
+      const numbers = result.reduce(
+        (n, row) => n + (Array.isArray(row) ? row.filter((v) => typeof v === 'number').length : 0),
+        0,
+      );
+      expect(numbers).toBeLessThan(MAX_CLONE_NODES);
+      expect(numbers).toBeGreaterThan(MAX_CLONE_NODES - 30);
+      expect(result[result.length - 1]).toBe('[…]');
+      expect(result.length).toBeLessThan(20);
+    });
+
+    it('clones a shared-subgraph object in bounded time and size', () => {
+      // 4 levels of 40 keys all pointing at one child: ~160 real objects, 2.5M paths.
+      let shared: unknown = 'leaf';
+      for (let d = 0; d < 4; d++) {
+        const level: Record<string, unknown> = {};
+        for (let i = 0; i < 40; i++) {
+          level[`k${i}`] = shared;
+        }
+        shared = level;
+      }
+
+      const start = performance.now();
+      const result = cloneArgs([shared], { maxBodyLength: DEFAULT_CAPTURE_POLICY.maxBodyLength });
+      const elapsed = performance.now() - start;
+
+      expect(elapsed).toBeLessThan(50);
+      expect(JSON.stringify(result).length).toBeLessThanOrEqual(DEFAULT_CAPTURE_POLICY.maxBodyLength + 2048);
+      expect(JSON.stringify(result)).toContain('"[…]"');
+    });
+
+    it('shares one character budget across all args', () => {
+      expect(cloneArgs(['abcdef', 'ghijkl', 'x', 1], { maxBodyLength: 10 })).toEqual([
+        'abcdef',
+        'ghij…[truncated 2 chars]',
+        '[…]',
+      ]);
+    });
+
+    it('counts object keys against the character budget', () => {
+      expect(cloneArgs([{ abc: 'def', ghi: 'jkl' }], { maxBodyLength: 8 })).toEqual([
+        { abc: 'def', '…': '[…]' },
+      ]);
+    });
+
+    it('marks values beyond the budget with [the budget marker]', () => {
+      expect(cloneArgs([{ a: 'aaaa', b: { c: 1 }, d: [1, 2] }, { e: 1 }], { maxBodyLength: 5 })).toEqual([
+        { a: 'aaaa', '…': '[…]' },
+        '[…]',
+      ]);
+    });
+
+    it('truncates long string args', () => {
+      const [result] = cloneArgs(['a'.repeat(100_000)], { maxBodyLength: 10 });
+
+      expect(result).toBe('aaaaaaaaaa…[truncated 99990 chars]');
+    });
+
+    it('truncates logged Error message and stack', () => {
+      const error = new Error('m'.repeat(1000));
+      error.stack = 's'.repeat(1000);
+
+      const [result] = cloneArgs([error], { maxBodyLength: 20 }) as [{ name: string; message: string; stack: string }];
+
+      expect(result.name).toBe('Error');
+      expect(result.message).toBe(`${'m'.repeat(15)}…[truncated 985 chars]`);
+      expect(result.stack).toBe('[…]');
+    });
+
+    it('charges described leaves, function names and bigints too', () => {
+      expect(cloneArgs([BigInt('1'.repeat(30))], { maxBodyLength: 4 })).toEqual(['1111…[truncated 27 chars]']);
+      expect(cloneArgs([new RegExp('x'.repeat(30))], { maxBodyLength: 4 })).toEqual(['/xxx…[truncated 28 chars]']);
+    });
+  });
+
+  describe('redaction', () => {
+    const R = '[redacted]';
+    const SECRETS: Partial<JsonSafePolicy> = {
+      redactJsonKeys: DEFAULT_CAPTURE_POLICY.redactJsonKeys,
+      redactedValue: R,
+    };
+
+    it('redacts keys ignoring case, _ and -', () => {
+      const value = { access_token: 'a', 'Refresh-Token': 'b', API_KEY: 'c', nested: [{ Password: 'd' }], ok: 1 };
+
+      expect(cloneArgs([value], SECRETS)).toEqual([
+        { access_token: R, 'Refresh-Token': R, API_KEY: R, nested: [{ Password: R }], ok: 1 },
+      ]);
+    });
+
+    it('does not read the value of a redacted property', () => {
+      let reads = 0;
+      const value = {
+        get password(): string {
+          reads++;
+          return 'secret';
+        },
+      };
+
+      expect(cloneArgs([value], SECRETS)).toEqual([{ password: R }]);
+      expect(reads).toBe(0);
+    });
+
+    it('redacts a logged Map entry whose string key matches', () => {
+      const result = cloneArgs(
+        ['req', new Map([['authorization', 'Bearer SECRET1']]), { headers: new Map([['token', ['SECRET2']]]) }],
+        SECRETS,
+      );
+
+      expect(result).toEqual([
+        'req',
+        { '[Map]': [['authorization', R]] },
+        { headers: { '[Map]': [['token', R]] } },
+      ]);
+    });
+
+    it('redacts the value of a { name, value } pair that names a secret', () => {
+      // Angular's HttpHeaders keeps pending set() calls as { name, value, op } until first read,
+      // and HttpParams as { param, value, op }.
+      const pending = [
+        { name: 'Authorization', value: 'Bearer SECRET', op: 's' },
+        { param: 'access_token', value: 'SECRET', op: 's' },
+        { name: 'Accept', value: 'application/json', op: 's' },
+      ];
+
+      expect(cloneArgs([pending], SECRETS)).toEqual([
+        [
+          { name: 'Authorization', value: R, op: 's' },
+          { param: 'access_token', value: R, op: 's' },
+          { name: 'Accept', value: 'application/json', op: 's' },
+        ],
+      ]);
+    });
+
+    it('redacts JSON text inside string args and Error messages', () => {
+      const error = new Error(JSON.stringify({ password: 'SECRET4' }));
+
+      const [text, logged] = cloneArgs([JSON.stringify({ password: 'SECRET3' }), error], SECRETS) as [
+        string,
+        { message: string },
+      ];
+
+      expect(text).toBe('{"password":"[redacted]"}');
+      expect(logged.message).toBe('{"password":"[redacted]"}');
+    });
+
+    it('redacts JSON text before truncating it', () => {
+      const text = JSON.stringify({ password: 'SECRET', padding: 'x'.repeat(100) });
+
+      const [result] = cloneArgs([text], { ...SECRETS, maxBodyLength: 30 });
+
+      expect(result).toBe('{"password":"[redacted]","padd…[truncated 108 chars]');
+    });
+
+    it('redacts secret URL parameters inside string args', () => {
+      expect(cloneArgs(['GET https://h/api?access_token=S&x=1'], SECRETS)).toEqual([
+        'GET https://h/api?access_token=[redacted]&x=1',
+      ]);
+    });
+  });
+
+  it('freezes everything it builds', () => {
+    const error = new Error('e');
+    const [result, map, err] = cloneArgs([{ a: { b: [1, { c: 2 }] } }, new Map([['k', { v: 1 }]]), error]) as [
+      { a: { b: [number, object] } },
+      { '[Map]': [[string, object]] },
+      object,
+    ];
+    const all = cloneArgs([1]);
+
+    expect(Object.isFrozen(all)).toBeTrue();
+    expect(Object.isFrozen(result)).toBeTrue();
+    expect(Object.isFrozen(result.a)).toBeTrue();
+    expect(Object.isFrozen(result.a.b)).toBeTrue();
+    expect(Object.isFrozen(result.a.b[1])).toBeTrue();
+    expect(Object.isFrozen(map)).toBeTrue();
+    expect(Object.isFrozen(map['[Map]'])).toBeTrue();
+    expect(Object.isFrozen(map['[Map]'][0])).toBeTrue();
+    expect(Object.isFrozen(map['[Map]'][0][1])).toBeTrue();
+    expect(Object.isFrozen(err)).toBeTrue();
   });
 });

@@ -1,11 +1,20 @@
 import { Clock, HeaderMap, HttpEntry, Probe, Recorder } from '../../../core';
 import { describeBody, headersToMap, isTextual, responseBytes, toAbsoluteUrl } from './http-helpers';
+import { outsideZones } from './outside-zones';
 
 /** What the fetch probe patches: `host.fetch` is swapped for a wrapper. */
 export interface FetchHost {
   fetch: typeof fetch;
   location: { href: string };
 }
+
+/**
+ * The most text read from one response body. Textual streams can be endless
+ * (`application/x-ndjson` feeds, long polls): past this, reading stops and
+ * the captured text says so.
+ */
+const MAX_CAPTURED_BODY_CHARS = 1_048_576;
+const CAP_NOTE = `…[capture stopped at ${MAX_CAPTURED_BODY_CHARS} chars]`;
 
 /** What is known about a request when it starts. */
 interface StartedRequest {
@@ -23,7 +32,8 @@ interface StartedRequest {
  */
 export function installFetchProbe(recorder: Recorder, clock: Clock, host: FetchHost = globalThis): Probe {
   const original = host.fetch;
-  let active = true;
+  /** Dropped on dispose: a wrapper left in someone else's chain must not keep the buffer alive. */
+  let sink: Recorder | null = recorder;
 
   /**
    * The original is called exactly once, with `host` as `this` and the
@@ -33,7 +43,7 @@ export function installFetchProbe(recorder: Recorder, clock: Clock, host: FetchH
    * rejection the app never handles is still reported as unhandled.
    */
   const wrapper = function (...args: Parameters<typeof fetch>): Promise<Response> {
-    const started = active ? attempt(() => startRequest(args)) : null;
+    const started = sink ? attempt(() => startRequest(args)) : null;
     const pending = original.apply(host, args);
     if (started === null) return pending;
     try {
@@ -71,7 +81,8 @@ export function installFetchProbe(recorder: Recorder, clock: Clock, host: FetchH
   /**
    * Text bodies are read from a clone, outside the chain the caller sees, so
    * the app gets its `Response` without waiting and with its body unread.
-   * Binary and event-stream bodies are never read.
+   * Binary and event-stream bodies are never read. The read runs outside the
+   * app's zone: its promise callbacks are no business of change detection.
    */
   function onResponse(started: StartedRequest, response: Response): void {
     const resHeaders = headersToMap(response.headers);
@@ -80,26 +91,32 @@ export function installFetchProbe(recorder: Recorder, clock: Clock, host: FetchH
       record(started, { status, resHeaders, resBody: null, error: null });
       return;
     }
-    response
-      .clone()
-      .text()
-      .then(
-        (text) => record(started, { status, resHeaders, resBody: text, error: null }),
-        () => record(started, { status, resHeaders, resBody: null, error: null }),
-      );
+    const clone = response.clone();
+    outsideZones(() =>
+      readCapped(clone).then(
+        ({ text, complete }) =>
+          record(started, { status, resHeaders, resBody: text, error: null }, complete ? text : null),
+        // The body failed mid-read (the caller aborted, or the connection
+        // dropped): the request did not succeed, whatever its status said.
+        (error: unknown) => record(started, { status, resHeaders, resBody: null, error: errorKind(error) }),
+      ),
+    );
   }
 
   function onFailure(started: StartedRequest, error: unknown): void {
     record(started, { status: null, resHeaders: {}, resBody: null, error: errorKind(error) });
   }
 
+  /** `fullText` is the whole body as read — it sizes `bytes` when there is no `content-length`. */
   function record(
     started: StartedRequest,
     outcome: Pick<HttpEntry, 'status' | 'resHeaders' | 'resBody' | 'error'>,
+    fullText: string | null = outcome.resBody,
   ): void {
-    if (!active) return;
+    if (!sink) return;
+    const target = sink;
     safely(() =>
-      recorder.record({
+      target.record({
         kind: 'http',
         transport: 'fetch',
         t: started.start,
@@ -111,7 +128,7 @@ export function installFetchProbe(recorder: Recorder, clock: Clock, host: FetchH
         resHeaders: outcome.resHeaders,
         reqBody: started.reqBody,
         resBody: outcome.resBody,
-        bytes: outcome.status === null ? null : responseBytes(outcome.resHeaders, outcome.resBody),
+        bytes: outcome.status === null ? null : responseBytes(outcome.resHeaders, fullText),
         error: outcome.error,
       }),
     );
@@ -122,13 +139,38 @@ export function installFetchProbe(recorder: Recorder, clock: Clock, host: FetchH
   return {
     name: 'fetch',
     dispose(): void {
-      if (!active) return;
-      active = false;
+      if (!sink) return;
+      sink = null;
       // Someone patched on top of us: unwrapping would drop their patch, so
-      // ours stays in their chain as a pass-through (`active` is false).
+      // ours stays in their chain as a pass-through (`sink` is null).
       if (host.fetch === wrapper) host.fetch = original;
     },
   };
+}
+
+/**
+ * Reads a body as UTF-8 text — what `Response.text()` does — but stops after
+ * `MAX_CAPTURED_BODY_CHARS` and cancels the rest. `body` is a clone's branch
+ * of a tee: cancelling it leaves the app's branch, and the source, untouched.
+ * Falls back to `text()` where streams are unavailable.
+ */
+function readCapped(response: Response): Promise<{ text: string; complete: boolean }> {
+  const body = response.body;
+  if (!body || typeof body.getReader !== 'function' || typeof TextDecoder === 'undefined') {
+    return response.text().then((text) => ({ text, complete: true }));
+  }
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let text = '';
+  const next = (): Promise<{ text: string; complete: boolean }> =>
+    reader.read().then(({ done, value }) => {
+      if (done) return { text: text + decoder.decode(), complete: true };
+      text += decoder.decode(value, { stream: true });
+      if (text.length <= MAX_CAPTURED_BODY_CHARS) return next();
+      reader.cancel().catch(() => undefined);
+      return { text: text.slice(0, MAX_CAPTURED_BODY_CHARS) + CAP_NOTE, complete: false };
+    });
+  return next();
 }
 
 /**

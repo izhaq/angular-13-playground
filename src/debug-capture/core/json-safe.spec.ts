@@ -1,0 +1,253 @@
+import { toJsonSafe as toJsonSafeTyped } from './json-safe';
+
+/**
+ * Jasmine's `Expected<T>` recursion blows up on the recursive `JsonValue`
+ * type ("excessively deep"), so the assertions see `unknown`.
+ */
+const toJsonSafe = (value: unknown, maxDepth: number): unknown => toJsonSafeTyped(value, maxDepth);
+
+describe('toJsonSafe', () => {
+  const DEPTH = 6;
+
+  it('keeps strings, booleans, null and finite numbers as-is', () => {
+    expect(toJsonSafe('text', DEPTH)).toBe('text');
+    expect(toJsonSafe(true, DEPTH)).toBe(true);
+    expect(toJsonSafe(false, DEPTH)).toBe(false);
+    expect(toJsonSafe(null, DEPTH)).toBeNull();
+    expect(toJsonSafe(42.5, DEPTH)).toBe(42.5);
+    expect(toJsonSafe(0, DEPTH)).toBe(0);
+  });
+
+  it('names NaN and the infinities', () => {
+    expect(toJsonSafe(Number.NaN, DEPTH)).toBe('NaN');
+    expect(toJsonSafe(Number.POSITIVE_INFINITY, DEPTH)).toBe('Infinity');
+    expect(toJsonSafe(Number.NEGATIVE_INFINITY, DEPTH)).toBe('-Infinity');
+  });
+
+  it('marks undefined', () => {
+    expect(toJsonSafe(undefined, DEPTH)).toBe('[undefined]');
+    expect(toJsonSafe({ a: undefined }, DEPTH)).toEqual({ a: '[undefined]' });
+  });
+
+  it('writes a bigint with its n suffix', () => {
+    expect(toJsonSafe(123n, DEPTH)).toBe('123n');
+  });
+
+  it('describes a symbol', () => {
+    expect(toJsonSafe(Symbol('desc'), DEPTH)).toBe('Symbol(desc)');
+  });
+
+  it('names a function, or calls it anonymous', () => {
+    function namedFn(): void {
+      // body irrelevant
+    }
+    expect(toJsonSafe(namedFn, DEPTH)).toBe('[Function namedFn]');
+    expect(toJsonSafe([(): void => undefined][0], DEPTH)).toBe('[Function anonymous]');
+  });
+
+  it('turns an Error into name, message and stack', () => {
+    const error = new TypeError('bad thing');
+    expect(toJsonSafe(error, DEPTH)).toEqual({
+      name: 'TypeError',
+      message: 'bad thing',
+      stack: error.stack ?? null,
+    });
+
+    const stackless = new Error('no stack');
+    stackless.stack = undefined;
+    expect(toJsonSafe(stackless, DEPTH)).toEqual({ name: 'Error', message: 'no stack', stack: null });
+  });
+
+  it('turns a Date into an ISO string, or marks it invalid', () => {
+    expect(toJsonSafe(new Date(Date.UTC(2026, 9, 12, 8, 5, 3)), DEPTH)).toBe('2026-10-12T08:05:03.000Z');
+    expect(toJsonSafe(new Date(Number.NaN), DEPTH)).toBe('[Invalid Date]');
+  });
+
+  it('writes a RegExp as its source with flags', () => {
+    expect(toJsonSafe(/x/g, DEPTH)).toBe('/x/g');
+  });
+
+  it('clones a Map as its entries', () => {
+    const key = { id: 1 };
+    const map = new Map<unknown, unknown>([
+      ['a', 1],
+      [key, new Date(0)],
+    ]);
+
+    const result = toJsonSafe(map, DEPTH);
+
+    expect(result).toEqual({ '[Map]': [['a', 1], [{ id: 1 }, '1970-01-01T00:00:00.000Z']] });
+    key.id = 2;
+    expect(result).toEqual({ '[Map]': [['a', 1], [{ id: 1 }, '1970-01-01T00:00:00.000Z']] });
+  });
+
+  it('clones a Set as its values', () => {
+    expect(toJsonSafe(new Set(['a', { b: 1 }]), DEPTH)).toEqual({ '[Set]': ['a', { b: 1 }] });
+  });
+
+  it('describes binary data by type and size', () => {
+    expect(toJsonSafe(new ArrayBuffer(16), DEPTH)).toBe('[ArrayBuffer 16 bytes]');
+    expect(toJsonSafe(new Uint8Array(16), DEPTH)).toBe('[Uint8Array 16 bytes]');
+    expect(toJsonSafe(new Float64Array(2), DEPTH)).toBe('[Float64Array 16 bytes]');
+    expect(toJsonSafe(new DataView(new ArrayBuffer(4)), DEPTH)).toBe('[DataView 4 bytes]');
+  });
+
+  it('describes a DOM node instead of walking it', () => {
+    const div = document.createElement('div');
+    div.id = 'id';
+    div.className = 'a b';
+
+    expect(toJsonSafe(div, DEPTH)).toBe('[HTMLDivElement div#id.a.b]');
+    expect(toJsonSafe(document.createElement('span'), DEPTH)).toBe('[HTMLSpanElement span]');
+    expect(toJsonSafe(document.createTextNode('hi'), DEPTH)).toBe('[Text]');
+  });
+
+  it('marks a circular reference', () => {
+    const node: { name: string; self?: unknown; list: unknown[] } = { name: 'n', list: [] };
+    node.self = node;
+    node.list.push(node);
+
+    expect(toJsonSafe(node, DEPTH)).toEqual({ name: 'n', list: ['[Circular]'], self: '[Circular]' });
+  });
+
+  it('clones a shared but non-circular reference twice', () => {
+    const shared = { v: 1 };
+    expect(toJsonSafe({ a: shared, b: shared }, DEPTH)).toEqual({ a: { v: 1 }, b: { v: 1 } });
+  });
+
+  it('collapses values beyond maxDepth to a placeholder', () => {
+    const value = { a: { b: [1, 2, 3], c: { d: 1 } } };
+
+    expect(toJsonSafe(value, 0)).toBe('[Object]');
+    expect(toJsonSafe([1, 2, 3], 0)).toBe('[Array(3)]');
+    expect(toJsonSafe('top', 0)).toBe('top');
+    expect(toJsonSafe(value, 1)).toEqual({ a: '[Object]' });
+    expect(toJsonSafe(value, 2)).toEqual({ a: { b: '[Array(3)]', c: '[Object]' } });
+    expect(toJsonSafe(value, 3)).toEqual(value);
+  });
+
+  it('records a throwing getter or toJSON as a thrown marker for that property', () => {
+    const value = {
+      ok: 1,
+      get bad(): number {
+        throw new Error('getter failed');
+      },
+      nested: {
+        toJSON(): never {
+          throw new Error('toJSON failed');
+        },
+      },
+    };
+
+    expect(toJsonSafe(value, DEPTH)).toEqual({
+      ok: 1,
+      bad: '[Thrown: getter failed]',
+      nested: '[Thrown: toJSON failed]',
+    });
+  });
+
+  it('uses toJSON when an object provides it', () => {
+    const value = { toJSON: (): unknown => ({ via: 'toJSON', when: new Date(0) }) };
+    expect(toJsonSafe(value, DEPTH)).toEqual({ via: 'toJSON', when: '1970-01-01T00:00:00.000Z' });
+
+    const returnsItself = {
+      a: 1,
+      toJSON(): unknown {
+        return this;
+      },
+    };
+    expect(toJsonSafe(returnsItself, DEPTH)).toEqual({ a: 1, toJSON: '[Function toJSON]' });
+  });
+
+  it('caps arrays and objects at 100 items with a marker', () => {
+    const array = Array.from({ length: 103 }, (_, i) => i);
+    const arrayResult = toJsonSafe(array, DEPTH) as readonly unknown[];
+    expect(arrayResult.length).toBe(101);
+    expect(arrayResult[99]).toBe(99);
+    expect(arrayResult[100]).toBe('…3 more');
+
+    const object: Record<string, number> = {};
+    for (let i = 0; i < 105; i++) {
+      object[`k${i}`] = i;
+    }
+    const objectResult = toJsonSafe(object, DEPTH) as Readonly<Record<string, unknown>>;
+    expect(Object.keys(objectResult).length).toBe(101);
+    expect(objectResult['k99']).toBe(99);
+    expect(objectResult['k100']).toBeUndefined();
+    expect(objectResult['…']).toBe('…5 more');
+  });
+
+  it('copies own enumerable string keys only', () => {
+    class Base {
+      inherited = 'no';
+    }
+    const value = Object.create({ fromProto: 'no' }) as Record<string | symbol, unknown>;
+    value['own'] = 'yes';
+    value[Symbol('s')] = 'no';
+    Object.defineProperty(value, 'hidden', { value: 'no', enumerable: false });
+
+    expect(toJsonSafe(value, DEPTH)).toEqual({ own: 'yes' });
+    expect(toJsonSafe(new Base(), DEPTH)).toEqual({ inherited: 'no' });
+  });
+
+  it('keeps an own __proto__ key as data', () => {
+    const parsed: unknown = JSON.parse('{"__proto__":{"polluted":true},"a":1}');
+    const result = toJsonSafe(parsed, DEPTH) as object;
+
+    expect(Object.keys(result)).toEqual(['__proto__', 'a']);
+    expect(Object.getPrototypeOf(result)).toBe(Object.prototype);
+    expect(JSON.stringify(result)).toBe('{"__proto__":{"polluted":true},"a":1}');
+  });
+
+  it('does not throw on a hostile object', () => {
+    const fail = (): never => {
+      throw new Error('trap');
+    };
+    const hostile = new Proxy(
+      {},
+      {
+        get: fail,
+        set: fail,
+        has: fail,
+        ownKeys: fail,
+        getOwnPropertyDescriptor: fail,
+        getPrototypeOf: fail,
+        setPrototypeOf: fail,
+        defineProperty: fail,
+        deleteProperty: fail,
+        isExtensible: fail,
+        preventExtensions: fail,
+      },
+    );
+
+    expect(() => toJsonSafe(hostile, DEPTH)).not.toThrow();
+    expect(toJsonSafe(hostile, DEPTH)).toBe('[Thrown: trap]');
+    expect(() => toJsonSafe({ inner: hostile, list: [hostile] }, DEPTH)).not.toThrow();
+  });
+
+  it('returns a value JSON.stringify accepts', () => {
+    const circular: Record<string, unknown> = {};
+    circular['me'] = circular;
+    const everything = [
+      undefined,
+      Number.NaN,
+      10n,
+      Symbol('s'),
+      () => 1,
+      new Error('e'),
+      new Date(0),
+      /r/,
+      new Map([[1, 2]]),
+      new Set([1]),
+      new Uint16Array(3),
+      document.body,
+      circular,
+      { deep: { deeper: { deepest: {} } } },
+    ];
+
+    const result = toJsonSafe(everything, 2);
+
+    expect(() => JSON.stringify(result)).not.toThrow();
+    expect(JSON.parse(JSON.stringify(result))).toEqual(result);
+  });
+});

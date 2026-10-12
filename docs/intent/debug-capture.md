@@ -116,10 +116,14 @@ Type-only imports, re-exports and dynamic `import()` all count.
   - Secret names (`redactJsonKeys`): `password`, `passwd`, `secret`, `token`,
     `accesstoken`, `refreshtoken`, `apikey`, `authorization`, `clientsecret`,
     `idtoken`, `privatekey`, `sessionid`, `sessiontoken`, `csrftoken`,
-    `xsrftoken`, `xapikey`.
+    `xsrftoken`.
 - **Name matching ignores case, `_` and `-`** on both sides, so `accesstoken`
-  matches `access_token`, `Access-Token` and `accessToken`. Matching is exact
-  otherwise: `newPassword` is not `password`.
+  matches `access_token`, `Access-Token` and `accessToken`.
+- **A key is secret when it ends with a secret name**: `password` also covers
+  `newPassword`, `confirm_password` and `userPassword`; `apikey` covers
+  `x-api-key`. Names that only start with or contain one (`tokenCount`,
+  `passwordPolicy`, `secretary`) are kept. As a consequence pagination keys
+  such as `nextToken` are redacted too. Header names stay an exact match.
 - **Where secret names are looked for:**
   - JSON request/response bodies and JSON WebSocket text frames (a leading
     byte-order mark is fine);
@@ -141,7 +145,7 @@ Type-only imports, re-exports and dynamic `import()` all count.
 - **Not redacted** — there are no keys to match: non-JSON text frames such as
   socket.io `42["login",{…}]` or STOMP, NDJSON bodies, free text in error
   messages and stacks beyond JSON and URL parameters, and secrets under names
-  the policy does not list. Use `redactBodyUrls` for such endpoints.
+  that do not end with a listed one. Use `redactBodyUrls` for such endpoints.
 - **Logged objects' getters run at log time** — copying an object means
   reading it. Secret properties are the exception: they are never read.
 - **Stored entries are deeply frozen** as they are built, so a listener on
@@ -185,8 +189,9 @@ Type-only imports, re-exports and dynamic `import()` all count.
 - Pages that load **before the flag is set** capture nothing — set the flag,
   then reload.
 - Redaction is by name only: secrets in non-JSON text frames (socket.io,
-  STOMP), NDJSON bodies, free-text messages, or under unlisted names are kept
-  (§4).
+  STOMP), NDJSON bodies, free-text messages, or under names that do not end
+  with a listed one are kept (§4). Pagination keys like `nextToken` are
+  redacted (§4).
 - Logging an object runs its getters at log time (except secret ones).
 - A log call past its budget keeps only its first 1000 values and
   `maxBodyLength` characters; the rest read `"[…]"`.

@@ -46,7 +46,6 @@ describe('capture contract', () => {
       'sessiontoken',
       'csrftoken',
       'xsrftoken',
-      'xapikey',
     ]);
     expect(DEFAULT_CAPTURE_POLICY.redactBodyUrls).toEqual([]);
     expect(DEFAULT_CAPTURE_POLICY.redactedValue).toBe('[redacted]');

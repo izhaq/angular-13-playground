@@ -358,6 +358,24 @@ describe('toJsonSafe', () => {
       ]);
     });
 
+    it('matches secret names by suffix in objects, Maps and named pairs', () => {
+      const value = {
+        newPassword: 'a',
+        tokenCount: 3,
+        headers: new Map([['x-api-key', 'b'], ['passwordPolicy', 'kept']]),
+        fields: [{ name: 'confirm_password', value: 'c' }, { name: 'secretary', value: 'kept' }],
+      };
+
+      expect(cloneArgs([value], SECRETS)).toEqual([
+        {
+          newPassword: R,
+          tokenCount: 3,
+          headers: { '[Map]': [['x-api-key', R], ['passwordPolicy', 'kept']] },
+          fields: [{ name: 'confirm_password', value: R }, { name: 'secretary', value: 'kept' }],
+        },
+      ]);
+    });
+
     it('does not read the value of a redacted property', () => {
       let reads = 0;
       const value = {

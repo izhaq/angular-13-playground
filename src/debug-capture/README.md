@@ -102,7 +102,11 @@ installDebugCapture({
   end up in a file.
 - `redactJsonKeys` names are compared ignoring case, `_` and `-`. So
   `accesstoken` also hides `access_token`, `Access-Token` and `accessToken`.
-  The values of those names are hidden in:
+- A key is secret when it **ends with** one of those names: `password` also
+  hides `newPassword` and `confirm_password`, but not `passwordPolicy`. So
+  paging keys like `nextToken` are hidden too. Header names must match
+  exactly.
+- The values of secret names are hidden in:
   - JSON request / response bodies and JSON WebSocket text frames,
   - logged objects, logged `Map`s (Angular's `HttpHeaders` keeps its values in
     one) and `{ name, value }` pairs (how `HttpHeaders` keeps pending changes),
@@ -178,8 +182,8 @@ The rest of the app imports only `src/app/features/debug-capture` (or
   - NDJSON (one JSON object per line) bodies,
   - free-text error messages and stacks (only JSON and URL parameters in them
     are redacted),
-  - secrets under a name that is not in `redactJsonKeys` (for example
-    `newPassword` — add it if your app uses it).
+  - secrets under a name that does not end with one in `redactJsonKeys`
+    (for example `pin` — add it if your app uses it).
   Use `redactBodyUrls` to hide whole bodies and frames for such endpoints.
 - Logging an object runs its getters, at log time, to copy it.
 

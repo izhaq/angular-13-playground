@@ -126,8 +126,10 @@ export interface CapturePolicy {
   /** Header names (case-insensitive) whose values are replaced by `redactedValue`. */
   readonly redactHeaders: readonly string[];
   /**
-   * Secret names. Compared ignoring case, `_` and `-` on both sides, so
-   * `accesstoken` also matches `access_token` and `Access-Token`. Their values
+   * Secret names. Compared ignoring case, `_` and `-` on both sides, and a
+   * key matches when it ends with a name: `accesstoken` matches
+   * `access_token` and `Access-Token`, `password` matches `newPassword`
+   * (and `token` matches pagination keys like `nextToken`). Their values
    * are replaced by `redactedValue` anywhere inside JSON bodies, JSON text
    * frames, logged objects and Maps, JSON in logged strings and error
    * messages, URL query parameters, and form-encoded bodies — e.g. the
@@ -173,7 +175,6 @@ export const DEFAULT_CAPTURE_POLICY: CapturePolicy = Object.freeze({
     'sessiontoken',
     'csrftoken',
     'xsrftoken',
-    'xapikey',
   ]),
   redactBodyUrls: Object.freeze([]),
   redactedValue: '[redacted]',

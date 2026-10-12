@@ -136,6 +136,47 @@ describe('redact', () => {
     expect(redacted).toEqual({ Access_Token: R, ok: 1 });
   });
 
+  describe('secret names match by suffix', () => {
+    const keys = DEFAULT_CAPTURE_POLICY.redactJsonKeys;
+    const positives = ['newPassword', 'confirm_password', 'oldPassword', 'userPassword', 'oauthToken', 'x-api-key'];
+    const negatives = ['tokenCount', 'passwordPolicy', 'secretary'];
+
+    it('matches secret names by suffix', () => {
+      const body: Record<string, string> = {};
+      positives.forEach((name) => (body[name] = 'S'));
+      const expected: Record<string, string> = {};
+      positives.forEach((name) => (expected[name] = R));
+
+      expect(JSON.parse(redactJsonText(JSON.stringify(body), keys, R))).toEqual(expected);
+      expect(redactJsonText('[{"name":"newPassword","value":"S"}]', keys, R)).toBe(
+        '[{"name":"newPassword","value":"[redacted]"}]',
+      );
+      expect(redactParams(`https://h/a?${positives.map((n) => `${n}=S`).join('&')}`, keys, R)).toBe(
+        `https://h/a?${positives.map((n) => `${n}=${R}`).join('&')}`,
+      );
+      expect(redactParams('confirm_password=S&user=op', keys, R)).toBe(`confirm_password=${R}&user=op`);
+    });
+
+    it('does not redact names that only start with or contain a secret name', () => {
+      const body: Record<string, string> = {};
+      negatives.forEach((name) => (body[name] = 'kept'));
+      const text = JSON.stringify(body);
+
+      expect(redactJsonText(text, keys, R)).toBe(text);
+      const pair = '[{"name":"tokenCount","value":"kept"}]';
+      expect(redactJsonText(pair, keys, R)).toBe(pair);
+      const query = `https://h/a?${negatives.map((n) => `${n}=kept`).join('&')}`;
+      expect(redactParams(query, keys, R)).toBe(query);
+    });
+
+    it('keeps header names exact', () => {
+      expect(redactHeaders({ 'x-authorization-hint': 'kept' }, ['authorization'], R)).toEqual({
+        'x-authorization-hint': 'kept',
+      });
+      expect(redactHeaders({ 'new-cookie': 'kept' }, ['cookie'], R)).toEqual({ 'new-cookie': 'kept' });
+    });
+  });
+
   it('matchesAny is stable with global regexes', () => {
     const patterns = [/\/never/, /\/api\/stream/g];
     const url = 'http://localhost/api/stream';

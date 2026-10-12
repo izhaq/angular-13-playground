@@ -19,7 +19,7 @@ export function setJsonKey(target: JsonObject, key: string, value: JsonValue): v
 /**
  * The form a secret key is compared in: lower-case, without `_` and `-`. So
  * `access_token`, `Access-Token` and `accessToken` are one key, and a policy
- * may list it in any of those spellings.
+ * may list it in any of those spellings. See `isSecretKey` for the match.
  */
 export function normaliseKey(key: string): string {
   const lower = key.toLowerCase();
@@ -44,7 +44,8 @@ function cachedSet(
   const frozen = Object.isFrozen(names);
   let set = frozen ? cache.get(names) : undefined;
   if (set === undefined) {
-    set = new Set(names.map(convert));
+    // An empty name (e.g. `'_'` normalised) would be a suffix of every key.
+    set = new Set(names.map(convert).filter((name) => name !== ''));
     if (frozen) {
       cache.set(names, set);
     }
@@ -61,8 +62,28 @@ export function secretKeySet(keys: readonly string[]): ReadonlySet<string> {
   return cachedSet(keySets, keys, normaliseKey);
 }
 
+/**
+ * A key is secret when its normalised form **ends with** a secret name:
+ * `password` also covers `newPassword`, `confirm_password` and `userPassword`;
+ * `token` covers `oauthToken` (and pagination keys such as `nextToken` — a
+ * price worth paying). `tokenCount` or `passwordPolicy` do not match. Header
+ * names are matched exactly instead (`redactHeaders`).
+ */
 export function isSecretKey(secrets: ReadonlySet<string>, key: string): boolean {
-  return secrets.size > 0 && secrets.has(normaliseKey(key));
+  if (secrets.size === 0) {
+    return false;
+  }
+  const name = normaliseKey(key);
+  // Exact hits are the common case; the suffix loop runs over a short list.
+  if (secrets.has(name)) {
+    return true;
+  }
+  for (const secret of secrets) {
+    if (name.length > secret.length && name.endsWith(secret)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**
@@ -79,7 +100,8 @@ export function namesSecret(object: { readonly [key: string]: unknown }, secrets
 
 /**
  * A new, frozen map with lower-case keys; values of the named headers (any
- * case) become `replacement`, the others are cut to `maxValueLength`.
+ * case, exact name — no suffix match) become `replacement`, the others are
+ * cut to `maxValueLength`.
  */
 export function redactHeaders(
   headers: HeaderMap,
@@ -97,8 +119,8 @@ export function redactHeaders(
 }
 
 /**
- * Replaces the value of every object key in `keys` (compared with
- * `normaliseKey`, at any depth, inside arrays too) with `replacement`,
+ * Replaces the value of every object key in `keys` (matched by `isSecretKey`,
+ * at any depth, inside arrays too) with `replacement`,
  * whatever that value was — a nested `{ token: { … } }` goes whole. The
  * `value` of a named field that `namesSecret` matches goes too.
  *
@@ -151,8 +173,8 @@ export function redactJsonText(text: string, keys: readonly string[], replacemen
 const PARAM = /(^|[?#&;\s])([^=?#&;\s]+)=([^#&;\s]*)/g;
 
 /**
- * Replaces the values of secret parameters (names compared with
- * `normaliseKey`, after URL-decoding) with `replacement`: URL queries and
+ * Replaces the values of secret parameters (names matched by `isSecretKey`,
+ * after URL-decoding) with `replacement`: URL queries and
  * fragments (`wss://h/ws?access_token=…`), form bodies (`password=…&…`), and
  * URLs inside free text such as an error message.
  *

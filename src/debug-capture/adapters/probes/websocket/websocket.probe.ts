@@ -1,5 +1,6 @@
 import { Clock, Probe, Recorder, WebSocketEntry, WebSocketEvent } from '../../../core';
 import { bytesOf, toBase64, utf8Length } from './frame-data';
+import { outsideZones } from './outside-zones';
 
 /** The object whose `WebSocket` constructor the probe replaces — `globalThis` in the app, a plain object in specs. */
 export interface WebSocketHost {
@@ -39,7 +40,11 @@ function text(value: string): Payload {
  */
 export function installWebSocketProbe(recorder: Recorder, clock: Clock, host: WebSocketHost = globalThis): Probe {
   const Original = host.WebSocket;
-  let disposed = false;
+  /**
+   * Dropped on dispose: listeners on sockets that stay open, and our subclass
+   * left under someone else's, must not keep the recorder's buffer alive.
+   */
+  let sink: Recorder | null = recorder;
   let nextSocketId = 1;
   /** Kept off the socket itself so the app never sees a stray property on its objects. */
   const socketIds = new WeakMap<WebSocket, number>();
@@ -50,7 +55,7 @@ export function installWebSocketProbe(recorder: Recorder, clock: Clock, host: We
    * that are still open, and Blob reads still in flight.
    */
   function guard(work: () => void): void {
-    if (disposed) {
+    if (!sink) {
       return;
     }
     try {
@@ -61,7 +66,7 @@ export function installWebSocketProbe(recorder: Recorder, clock: Clock, host: We
   }
 
   function emit(socketId: number, url: string, event: WebSocketEvent, t: number, payload: Payload): void {
-    recorder.record({ kind: 'ws', t, socketId, url, event, ...payload });
+    sink?.record({ kind: 'ws', t, socketId, url, event, ...payload });
   }
 
   /**
@@ -95,21 +100,25 @@ export function installWebSocketProbe(recorder: Recorder, clock: Clock, host: We
       const lifecycle = (event: WebSocketEvent, payload: () => Payload) => () =>
         guard(() => emit(socketId, socket.url, event, clock.now(), payload()));
 
-      socket.addEventListener('open', lifecycle('open', () => NO_PAYLOAD));
-      socket.addEventListener('error', lifecycle('error', () => NO_PAYLOAD));
-      socket.addEventListener('message', (event: MessageEvent<unknown>) =>
-        guard(() => recordFrame(socket, socketId, 'receive', event.data)),
-      );
-      socket.addEventListener('close', (event: CloseEvent) =>
-        guard(() =>
-          emit(socketId, socket.url, 'close', clock.now(), {
-            opcode: null,
-            bytes: null,
-            data: event.reason || null,
-            code: event.code,
-          }),
-        ),
-      );
+      // Outside the app's zone: under zone.js each listener would otherwise be
+      // one more task in Angular's zone — a change detection pass per frame.
+      outsideZones(() => {
+        socket.addEventListener('open', lifecycle('open', () => NO_PAYLOAD));
+        socket.addEventListener('error', lifecycle('error', () => NO_PAYLOAD));
+        socket.addEventListener('message', (event: MessageEvent<unknown>) =>
+          guard(() => recordFrame(socket, socketId, 'receive', event.data)),
+        );
+        socket.addEventListener('close', (event: CloseEvent) =>
+          guard(() =>
+            emit(socketId, socket.url, 'close', clock.now(), {
+              opcode: null,
+              bytes: null,
+              data: event.reason || null,
+              code: event.code,
+            }),
+          ),
+        );
+      });
     });
   }
 
@@ -140,12 +149,12 @@ export function installWebSocketProbe(recorder: Recorder, clock: Clock, host: We
   return {
     name: 'websocket',
     dispose(): void {
-      if (disposed) {
+      if (!sink) {
         return;
       }
-      disposed = true;
-      // If someone patched on top of us, leave their patch in place; the
-      // disposed flag already turns our subclass into a pass-through.
+      sink = null;
+      // If someone patched on top of us, leave their patch in place; with no
+      // recorder left, our subclass is already a pass-through.
       if (host.WebSocket === CapturingWebSocket) {
         host.WebSocket = Original;
       }

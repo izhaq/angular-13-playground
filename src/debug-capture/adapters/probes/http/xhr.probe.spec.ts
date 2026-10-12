@@ -43,6 +43,8 @@ const location = { href: 'http://app.test/base/page' };
  */
 function createFakeXhrClass() {
   return class FakeXhr extends EventTarget {
+    /** 0 UNSENT → 1 OPENED (open) → 4 DONE (respond / fail), like the real one. */
+    readyState = 0;
     status = 0;
     responseType: XMLHttpRequestResponseType = '';
     response: unknown = null;
@@ -57,6 +59,7 @@ function createFakeXhrClass() {
     }
 
     open(_method: string, _url: string | URL, _async?: boolean): unknown {
+      this.readyState = 1;
       return undefined;
     }
 
@@ -73,6 +76,7 @@ function createFakeXhrClass() {
     }
 
     respond(status: number, rawHeaders: string, text: string, response: unknown = text): void {
+      this.readyState = 4;
       this.status = status;
       this.rawHeaders = rawHeaders;
       this.text = text;
@@ -82,6 +86,7 @@ function createFakeXhrClass() {
     }
 
     fail(type: 'abort' | 'timeout' | 'error'): void {
+      this.readyState = 4;
       this.status = 0;
       this.dispatchEvent(new Event(type));
       this.dispatchEvent(new Event('loadend'));
@@ -102,6 +107,70 @@ function settled(xhr: XMLHttpRequest): Promise<void> {
 
 function jsonBlobUrl(text: string): string {
   return URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+}
+
+function textBlobUrl(text: string): string {
+  return URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+}
+
+/** Resolves a macrotask after the condition holds — lets every trailing XHR event run first. */
+async function until(condition: () => boolean): Promise<void> {
+  for (let i = 0; i < 200 && !condition(); i++) {
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  expect(condition()).withContext('condition never became true').toBeTrue();
+}
+
+/** The slice of zone.js (loaded by Karma) these specs use — read structurally, never imported. */
+interface ZoneTask {
+  type: string;
+  source: string;
+}
+interface ZoneDelegate {
+  invokeTask(target: unknown, task: ZoneTask, applyThis: unknown, applyArgs?: unknown[]): unknown;
+}
+interface TestZone {
+  run<T>(work: () => T): T;
+  fork(spec: {
+    name: string;
+    onInvokeTask(
+      delegate: ZoneDelegate,
+      current: TestZone,
+      target: TestZone,
+      task: ZoneTask,
+      applyThis: unknown,
+      applyArgs?: unknown[],
+    ): unknown;
+  }): TestZone;
+}
+
+/** A zone standing in for Angular's: NgZone runs change detection after every task it invokes. */
+function countingZone() {
+  const root = (globalThis as unknown as { Zone: { root: TestZone } }).Zone.root;
+  const events: string[] = [];
+  const zone = root.fork({
+    name: 'app',
+    onInvokeTask(delegate, _current, target, task, applyThis, applyArgs) {
+      if (task.type === 'eventTask') events.push(task.source);
+      return delegate.invokeTask(target, task, applyThis, applyArgs);
+    },
+  });
+  return { zone, events };
+}
+
+/** Records into a spy-free sink that lists every member the probe touches once `watch()` is called. */
+function watchedRecorder() {
+  const touched: PropertyKey[] = [];
+  let watching = false;
+  const base = fakeRecorder();
+  const recorder = new Proxy(base.recorder, {
+    get(target, key, receiver) {
+      if (watching) touched.push(key);
+      return Reflect.get(target, key, receiver);
+    },
+  });
+  return { recorder, base, touched, watch: () => (watching = true) };
 }
 
 describe('installXhrProbe', () => {
@@ -425,5 +494,205 @@ describe('installXhrProbe', () => {
     other.dispose();
     other.dispose();
     expect(Fake.prototype.send).toBe(original);
+  });
+
+  describe('a reused real XHR', () => {
+    let HostXhr: typeof XMLHttpRequest;
+    let probe: { dispose(): void };
+    let first: string;
+    let second: string;
+
+    beforeEach(() => {
+      HostXhr = class extends XMLHttpRequest {};
+      probe = installXhrProbe(rec.recorder, time.clock, hostFor(HostXhr));
+      first = textBlobUrl('FIRST');
+      second = textBlobUrl('SECOND');
+      blobUrls.push(first, second);
+    });
+
+    afterEach(() => probe.dispose());
+
+    const summary = () => rec.http().map((d) => [d.url, d.status, d.resBody, d.error]);
+
+    it('records both requests when the app re-opens inside its load handler', async () => {
+      const xhr = new HostXhr();
+      let loads = 0;
+      xhr.addEventListener('load', () => {
+        if (++loads > 1) return;
+        // Retry code: the first request's loadend has not fired yet.
+        xhr.open('GET', second);
+        xhr.send();
+      });
+      xhr.open('GET', first);
+      xhr.send();
+
+      await until(() => loads === 2);
+      expect(summary()).toEqual([
+        [first, 200, 'FIRST', null],
+        [second, 200, 'SECOND', null],
+      ]);
+      expect(rec.http()[0].resHeaders['content-type']).toBe('text/plain');
+    });
+
+    it('records an in-flight request replaced by open() as aborted', async () => {
+      const xhr = new HostXhr();
+      xhr.open('GET', first);
+      xhr.send();
+      // The original open() silently aborts the first request — no events at all.
+      xhr.open('GET', second);
+      const done = settled(xhr);
+      xhr.send();
+      await done;
+
+      expect(summary()).toEqual([
+        [first, null, null, 'abort'],
+        [second, 200, 'SECOND', null],
+      ]);
+    });
+
+    it('never records one request twice', async () => {
+      // 1. Re-opened inside the app's loadend handler, which runs before ours.
+      const a = new HostXhr();
+      let aEnds = 0;
+      a.addEventListener('loadend', () => {
+        if (++aEnds === 1) {
+          a.open('GET', second);
+          a.send();
+        }
+      });
+      a.open('GET', first);
+      a.send();
+      await until(() => aEnds === 2);
+
+      // 2. Retried inside the app's abort handler (it runs before ours, so the
+      //    probe has not seen the abort event when open() replaces the request).
+      const b = new HostXhr();
+      let bAborts = 0;
+      b.addEventListener('abort', () => {
+        if (++bAborts === 1) {
+          b.open('GET', second);
+          b.send();
+        }
+      });
+      b.open('GET', first);
+      b.send();
+      const bDone = new Promise<void>((resolve) => b.addEventListener('load', () => resolve()));
+      b.abort();
+      await bDone;
+
+      // 3. abort() inside the load handler resets the instance before loadend.
+      const c = new HostXhr();
+      c.addEventListener('load', () => c.abort());
+      c.open('GET', first);
+      const cDone = settled(c);
+      c.send();
+      await cDone;
+
+      await until(() => rec.http().length >= 5);
+      expect(summary()).toEqual([
+        [first, 200, 'FIRST', null],
+        [second, 200, 'SECOND', null],
+        [first, null, null, 'abort'],
+        [second, 200, 'SECOND', null],
+        [first, 200, 'FIRST', null],
+      ]);
+    });
+  });
+
+  it('keeps the failure kind when the app retries inside an earlier error or timeout listener', () => {
+    const probe = installXhrProbe(rec.recorder, time.clock, hostFor(Fake));
+    for (const [type, timeout] of [['timeout', 50], ['error', 0]] as const) {
+      const xhr = new Fake() as InstanceType<FakeXhrClass> & { timeout: number };
+      xhr.timeout = timeout;
+      let retried = false;
+      xhr.addEventListener(type, () => {
+        if (retried) return;
+        retried = true;
+        xhr.open('GET', '/retry');
+        xhr.send();
+      });
+      xhr.open('GET', `/${type}`);
+      xhr.send();
+      time.advance(60);
+      xhr.fail(type);
+      xhr.respond(200, '', 'ok');
+    }
+    expect(rec.http().map((d) => [d.url, d.status, d.error])).toEqual([
+      ['http://app.test/timeout', null, 'timeout'],
+      ['http://app.test/retry', 200, null],
+      ['http://app.test/error', null, 'network'],
+      ['http://app.test/retry', 200, null],
+    ]);
+    probe.dispose();
+  });
+
+  it('records nothing for a re-open whose original open() throws', () => {
+    const open = spyOn(Fake.prototype, 'open').and.callThrough();
+    const probe = installXhrProbe(rec.recorder, time.clock, hostFor(Fake));
+    const xhr = new Fake();
+    xhr.open('GET', '/first');
+    xhr.send();
+    // An invalid open() throws before it touches the request in flight.
+    const failure = new DOMException('bad method', 'SyntaxError');
+    open.and.throwError(failure);
+    expect(() => xhr.open('BAD METHOD', '/x')).toThrow(failure);
+    expect(rec.http()).toEqual([]);
+
+    xhr.respond(200, '', 'ok');
+    expect(rec.http().map((d) => [d.url, d.status])).toEqual([['http://app.test/first', 200]]);
+    probe.dispose();
+  });
+
+  it('probe listeners run outside the app\'s zone', async () => {
+    const HostXhr = class extends XMLHttpRequest {};
+    const probe = installXhrProbe(rec.recorder, time.clock, hostFor(HostXhr));
+    const url = jsonBlobUrl('{"a":1}');
+    blobUrls.push(url);
+    const app = countingZone();
+    let loaded = false;
+
+    app.zone.run(() => {
+      const xhr = new HostXhr();
+      xhr.addEventListener('load', () => (loaded = true));
+      xhr.open('GET', url);
+      xhr.send();
+    });
+
+    await rec.waitFor(1);
+    await until(() => loaded);
+    // Only the app's own listener ran as a task in the app's zone.
+    expect(app.events.length).withContext(app.events.join()).toBe(1);
+    expect(app.events[0]).toContain('load');
+    probe.dispose();
+  });
+
+  it('drops its recorder reference on dispose', () => {
+    const watched = watchedRecorder();
+    const probe = installXhrProbe(watched.recorder, time.clock, hostFor(Fake));
+    const xhr = new Fake();
+    xhr.open('GET', '/before');
+    xhr.send();
+    xhr.respond(200, '', 'ok');
+    expect(watched.base.http().length).toBe(1);
+
+    // A request in flight, and someone else's patch on top of ours that keeps
+    // our wrapper alive in their chain.
+    const inFlight = new Fake();
+    inFlight.open('GET', '/in-flight');
+    inFlight.send();
+    const ours = Fake.prototype.open;
+    Fake.prototype.open = function (this: InstanceType<FakeXhrClass>, method: string, url: string | URL) {
+      return ours.call(this, method, url);
+    };
+    probe.dispose();
+    watched.watch();
+
+    inFlight.respond(200, '', 'late');
+    const after = new Fake();
+    after.open('GET', '/after');
+    after.send();
+    after.respond(200, '', 'ok');
+    expect(watched.touched).toEqual([]);
+    expect(watched.base.http().length).toBe(1);
   });
 });

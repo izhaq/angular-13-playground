@@ -60,8 +60,12 @@ everything it needs from exactly one import path.
 ├──────────────────────────────────────────────────────────────────────────┤
 │ L6 angular    src/app/features/debug-capture/    DI token, ErrorHandler   │
 │                imports: src/debug-capture (L5) + @angular/*               │
+├──────────────────────────────────────────────────────────────────────────┤
+│ L6 react      src/debug-capture/react/           React error callbacks    │
+│                imports: src/debug-capture (L5) only — no packages         │
 └──────────────────────────────────────────────────────────────────────────┘
   consumers (src/main.ts, src/app/app.module.ts) import the L6 barrel only
+  the two L6 seams are siblings; the L5 barrel re-exports neither
 ```
 
 ### Import rules (enforced by `npm run lint:layers`, added in PR 1)
@@ -77,8 +81,9 @@ everything it needs from exactly one import path.
 5. `src/debug-capture/**` has **zero package imports** — no `@angular/*`, no
    `rxjs`, nothing from `node_modules`. That is what makes it portable.
 6. `src/app/features/debug-capture/**` may import `@angular/*` and `rxjs`.
-7. Anything else in `src/` may import only the two barrels
-   (`src/debug-capture` or `src/app/features/debug-capture`), never deeper.
+7. Anything else in `src/` may import only the L5 barrel or an L6 barrel
+   (`src/debug-capture`, `src/app/features/debug-capture` or
+   `src/debug-capture/react`), never deeper.
 
 Type-only imports, re-exports and dynamic `import()` all count.
 
@@ -105,7 +110,9 @@ Type-only imports, re-exports and dynamic `import()` all count.
 - **Time is a dependency.** Probes stamp `t` from an injected `Clock`; no
   inline `Date.now()` outside `core/clock.ts`.
 - **Nothing in `src/debug-capture/` calls `console.*`** (except the console
-  probe calling the originals). A debug tool that logs would record itself.
+  probe calling the originals, and the React adapter reproducing React's own
+  default `console.error` for caught errors). A debug tool that logs would
+  record itself.
 - **Lean.** This ships in the production bundle. Current initial total is
   800.5 kB against an 850 kB warning budget. Target: the whole layer under
   15 kB raw.
@@ -212,6 +219,7 @@ All PRs merged into `claude/air-gapped-debug-logging-zkn1nr` (merge commits).
 | 12 | confirmation-review fixes: stack leak, URL params, hot path | #44 |
 | 13 | stable wall-clock test guards | #45 |
 | 14 | this status update | — |
+| 15 | React adapter (L6 react, React-free) | — |
 
 (There is no PR 11 — the number was reserved for this closing update and
 re-used as 14 after PRs 12–13 were needed.)

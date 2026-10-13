@@ -138,7 +138,7 @@ installDebugCapture({
 ## How it is built
 
 Six layers. Each layer imports only the `index.ts` of the layer right above
-it.
+it. L6 has two sibling seams, one per framework; use the one you need.
 
 ```
 L1 contract   src/debug-capture/contract/        types and constants
@@ -147,11 +147,13 @@ L3 adapters   src/debug-capture/adapters/        probes (patch console, XHR, fet
 L4 install    src/debug-capture/install/         wires it all together; the only place real globals are picked
 L5 public     src/debug-capture/index.ts         the public API
 L6 angular    src/app/features/debug-capture/    Angular ErrorHandler + DI token (optional)
+L6 react      src/debug-capture/react/           React error callbacks (optional, no React import)
 ```
 
 The rest of the app imports only `src/app/features/debug-capture` (or
-`src/debug-capture` if it does not need Angular). Nothing under
-`src/debug-capture/` imports a package — no Angular, no rxjs.
+`src/debug-capture` if it does not need Angular, plus `src/debug-capture/react`
+in a React app). Nothing under `src/debug-capture/` imports a package — no
+Angular, no rxjs, not even React.
 
 `npm run lint:layers` checks these rules. Run it before you push.
 
@@ -174,6 +176,67 @@ The rest of the app imports only `src/app/features/debug-capture` (or
    providers, and add `provideDebugCapture()` to the root providers. Then
    errors Angular catches itself are recorded too (see `src/main.ts` and
    `src/app/app.module.ts`).
+4. React only, optional: see the next section. The `react/` folder comes
+   along with step 1.
+
+## Using it in a React app
+
+Console, window errors, unhandled rejections, XHR, `fetch` and WebSocket
+are captured with nothing React-specific — step 2 above is enough.
+
+What the adapter adds: errors **React handles itself** (a render that threw,
+an error boundary that caught something), with React's **component stack**
+— the list of components that tells you which one broke. They are recorded
+with `source: "react"`, and the component stack is added at the end of
+`stack`.
+
+It does not import React. It is a few plain functions with the same shape
+React calls (the "seam" — the one spot where the app hands errors over).
+After recording, they always do what React would have done anyway.
+
+Install capture **before** `createRoot`, so nothing is missed.
+
+**React 19** — pass the root error callbacks:
+
+```tsx
+import { installDebugCapture, isDebugRequested } from './debug-capture';
+import { createReactRootErrorOptions } from './debug-capture/react';
+
+const session = isDebugRequested() ? installDebugCapture() : null;
+createRoot(el, { ...createReactRootErrorOptions(session) }).render(<App />);
+```
+
+Already have your own `onUncaughtError` / `onCaughtError` /
+`onRecoverableError`? Pass them as the second argument:
+`createReactRootErrorOptions(session, { onCaughtError: myHandler })`. Yours
+is called instead of React's default, with the same arguments. When you pass
+none, React's default runs (`reportError` for uncaught and recoverable
+errors, `console.error` for caught ones).
+
+**React 18** — there are no root callbacks. Record from an error boundary:
+
+```tsx
+import { recordReactError } from './debug-capture/react';
+
+class ErrorBoundary extends React.Component<Props, State> {
+  componentDidCatch(error: unknown, info: React.ErrorInfo) {
+    recordReactError(session, error, info);
+  }
+  // ...render a fallback as usual
+}
+```
+
+With a `null` session (capture off) all of these just pass the error on.
+
+**You will see some errors twice.** That is on purpose, like the Angular
+seam:
+
+- an uncaught error is recorded as `react` **and** as `window` (React's
+  default `reportError` fires the window `error` event),
+- a caught error is recorded as `react` **and** as a `console.error` log
+  line (React's default logs it).
+
+The `react` entry is the one with the component stack.
 
 ## Known limitations
 

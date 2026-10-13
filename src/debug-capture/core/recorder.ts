@@ -9,9 +9,18 @@ import {
   Unsubscribe,
 } from '../contract';
 import { toJsonSafe } from './json-safe';
-import { looksLikeJsonContainer, matchesAny, redactHeaders, redactJsonText, redactParams } from './redact';
+import {
+  matchesAny,
+  redactFreeText,
+  redactHeaders,
+  redactJsonContainer,
+  redactFormParamsIn,
+  redactParamsIn,
+  redactStack,
+  secretNames,
+} from './redact';
 import { RingBuffer } from './ring-buffer';
-import { truncate } from './truncate';
+import { truncate, truncateThen } from './truncate';
 
 /**
  * The one place policy is applied. Probes hand over drafts as they saw them;
@@ -36,58 +45,62 @@ export function createRecorder(policy: CapturePolicy): Recorder {
   let evicted = 0;
   let failed = 0;
 
+  const secrets = secretNames(policy.redactJsonKeys);
+  const max = policy.maxBodyLength;
+  const hidden = policy.redactedValue;
+  const redactParams = (kept: string): string => redactParamsIn(kept, secrets, hidden);
+
   // A busy socket stores the same URL with every frame: redact it once.
   let lastUrl: string | undefined;
   let lastPolicedUrl = '';
 
   /**
-   * The URL as stored: secret query parameters redacted, then truncated.
+   * The URL as stored: truncated, then secret query parameters redacted.
    * `ignoreUrls` and `redactBodyUrls` still match the original.
    */
   function policedUrl(url: string): string {
     if (url !== lastUrl) {
-      lastPolicedUrl = truncate(redactParams(url, policy.redactJsonKeys, policy.redactedValue), policy.maxBodyLength);
+      lastPolicedUrl = truncateThen(url, max, redactParams);
       lastUrl = url;
     }
     return lastPolicedUrl;
   }
 
+  /** Listed header names, plus any whose name looks like a secret key (`x-access-token`). */
   function policedHeaders(headers: HeaderMap): HeaderMap {
-    return redactHeaders(headers, policy.redactHeaders, policy.redactedValue, policy.maxBodyLength);
+    return redactHeaders(headers, policy.redactHeaders, hidden, max, policy.redactJsonKeys);
   }
 
-  /** Body / frame text after policy: whole-body redaction wins over key redaction. */
-  function policedText(text: string, url: string, isJsonCandidate: boolean): string {
+  /** Frame text after policy: whole-body redaction wins over key redaction. */
+  function policedFrame(text: string, url: string, isJsonCandidate: boolean): string {
     if (matchesAny(url, policy.redactBodyUrls)) {
-      return policy.redactedValue;
+      return hidden;
     }
-    const redacted = isJsonCandidate ? redactJsonText(text, policy.redactJsonKeys, policy.redactedValue) : text;
-    return truncate(redacted, policy.maxBodyLength);
+    const json = isJsonCandidate ? redactJsonContainer(text, secrets, hidden, max) : undefined;
+    return truncate(json ?? text, max);
   }
 
   /**
-   * An HTTP body: JSON keys, or the parameters of a form body. A body with no
-   * content-type counts as a possible form: for a `URLSearchParams` body the
-   * browser adds the header only after the probe has seen the call.
+   * An HTTP body: JSON keys (and URLs inside JSON strings), or the parameters
+   * of a form body. A body with no content-type counts as a possible form:
+   * for a `URLSearchParams` body the browser adds the header only after the
+   * probe has seen the call. Form bodies are truncated before the parameter
+   * scan, so a huge one costs no more than a short one.
    */
   function policedBody(body: string | null, url: string, headers: HeaderMap): string | null {
     if (body === null) {
       return null;
     }
     if (matchesAny(url, policy.redactBodyUrls)) {
-      return policy.redactedValue;
+      return hidden;
     }
-    let redacted: string;
-    if (looksLikeJsonContainer(body)) {
-      redacted = redactJsonText(body, policy.redactJsonKeys, policy.redactedValue);
-    } else {
-      const type = contentType(headers);
-      redacted =
-        type === undefined || type.toLowerCase().indexOf('application/x-www-form-urlencoded') !== -1
-          ? redactParams(body, policy.redactJsonKeys, policy.redactedValue)
-          : body;
+    const json = redactJsonContainer(body, secrets, hidden, max);
+    if (json !== undefined) {
+      return truncate(json, max);
     }
-    return truncate(redacted, policy.maxBodyLength);
+    const type = contentType(headers);
+    const form = type === undefined || type.toLowerCase().indexOf('application/x-www-form-urlencoded') !== -1;
+    return form ? truncateThen(body, max, (kept) => redactFormParamsIn(kept, secrets, hidden)) : truncate(body, max);
   }
 
   /** Probes lower-case header names; look in any case anyway, a missed form type would leak. */
@@ -104,10 +117,19 @@ export function createRecorder(policy: CapturePolicy): Recorder {
     return undefined;
   }
 
-  /** An error message may be a stringified object (an unhandled rejection) or name a URL with a token. */
-  function policedMessage(message: string): string {
-    const json = redactJsonText(message, policy.redactJsonKeys, policy.redactedValue);
-    return truncate(redactParams(json, policy.redactJsonKeys, policy.redactedValue), policy.maxBodyLength);
+  /**
+   * An error message may be a stringified object (an unhandled rejection) or
+   * name a URL with a token; its stack repeats it, so the stack is redacted
+   * the same way.
+   */
+  function policedError(message: string, stack: string | null): { message: string; stack: string | null } {
+    const redacted = redactFreeText(message, secrets, hidden, max);
+    if (stack === null) {
+      return { message: redacted.text, stack: null };
+    }
+    const json = redacted.redactedJson;
+    const header = json === undefined ? stack : redactStack(stack, message, json);
+    return { message: redacted.text, stack: truncateThen(header, max, redactParams) };
   }
 
   /** Builds the stored entry field by field, so nothing a probe attached beyond the contract is kept. */
@@ -149,18 +171,13 @@ export function createRecorder(policy: CapturePolicy): Recorder {
           opcode: draft.opcode,
           bytes: draft.bytes,
           // Binary frames (base64) and close reasons are never JSON: truncate only.
-          data: draft.data === null ? null : policedText(draft.data, draft.url, draft.opcode === 'text'),
+          data: draft.data === null ? null : policedFrame(draft.data, draft.url, draft.opcode === 'text'),
           code: draft.code,
         };
-      case 'error':
-        return {
-          kind: 'error',
-          seq,
-          t: draft.t,
-          source: draft.source,
-          message: policedMessage(draft.message),
-          stack: draft.stack === null ? null : truncate(draft.stack, policy.maxBodyLength),
-        };
+      case 'error': {
+        const { message, stack } = policedError(draft.message, draft.stack);
+        return { kind: 'error', seq, t: draft.t, source: draft.source, message, stack };
+      }
       default: {
         const unknownDraft: never = draft;
         throw new TypeError(`Unknown draft kind: ${(unknownDraft as { kind?: unknown }).kind}`);

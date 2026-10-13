@@ -1,6 +1,14 @@
 import { CapturePolicy, JsonValue } from '../contract';
-import { isSecretKey, namesSecret, redactJsonText, redactParams, secretKeySet, setJsonKey } from './redact';
-import { truncate } from './truncate';
+import {
+  namesSecret,
+  redactJsonContainer,
+  redactParamsIn,
+  redactStack,
+  SecretNames,
+  secretNames,
+  setJsonKey,
+} from './redact';
+import { truncate, truncateThen } from './truncate';
 
 /** Arrays, objects, maps and sets keep this many items; the rest become a count. */
 const MAX_ITEMS = 100;
@@ -12,6 +20,15 @@ const MAX_ITEMS = 100;
  */
 export const MAX_CLONE_NODES = 1000;
 
+/**
+ * Listing an object's keys costs time even for the ones not kept: past
+ * `MAX_ITEMS`, every this many keys cost one value of the budget. One huge
+ * object still shows its first keys; the next one finds the budget spent and
+ * is never listed. (`for…in` with an early exit is no cheaper: the engine
+ * collects every key first.)
+ */
+const KEYS_PER_NODE = 10;
+
 /** What every value becomes once the budget is spent; each unfinished container ends with one. */
 const SPENT = '[…]';
 
@@ -19,6 +36,14 @@ const SPENT = '[…]';
 export type JsonSafePolicy = Pick<CapturePolicy, 'maxArgDepth' | 'maxBodyLength' | 'redactJsonKeys' | 'redactedValue'>;
 
 type JsonObject = { [key: string]: JsonValue };
+
+/** A finished clone, kept for the rest of one call along with what it cost. */
+interface Reusable {
+  readonly value: JsonValue;
+  readonly level: number;
+  readonly nodes: number;
+  readonly chars: number;
+}
 
 /**
  * Turns the arguments of one `console.log` call into `JsonValue`s, redacted,
@@ -32,13 +57,16 @@ type JsonObject = { [key: string]: JsonValue };
  * Redaction happens here, while cloning, rather than on the clone: a secret
  * property is never read (its getter never runs), a secret in a JSON string
  * is replaced before the string is truncated (a cut JSON string no longer
- * parses), and secrets cost none of the budget.
+ * parses), and secrets cost none of the budget. A logged `Error`'s stack is
+ * redacted like its message, since it repeats it.
  *
  * All arguments share one budget: `MAX_CLONE_NODES` values and
  * `maxBodyLength` characters of strings and keys. Past it every value becomes
  * `'[…]'` — so one log call costs bounded time and memory, whatever it was
- * given. `maxArgDepth` counts container levels: 0 keeps primitives but turns
- * an object or array into a placeholder.
+ * given. An object met again (not a cycle) reuses its frozen clone, still
+ * paying its cost, so a shared object is walked once. `maxArgDepth` counts
+ * container levels: 0 keeps primitives but turns an object or array into a
+ * placeholder.
  *
  * Never throws — a hostile getter, `toJSON` or Proxy becomes a
  * `[Thrown: …]` marker for that one value — so logging a weird object can
@@ -75,17 +103,19 @@ function tagOf(value: object): string {
 class Cloner {
   /** The objects on the current path — a repeat means a cycle, not just a shared reference. */
   private readonly ancestors = new Set<object>();
+  /** Finished clones, so an object shared by many paths is walked once. */
+  private readonly clones = new Map<object, Reusable>();
   private readonly maxDepth: number;
-  private readonly secrets: ReadonlySet<string>;
-  private readonly keys: readonly string[];
+  private readonly secrets: SecretNames;
   private readonly replacement: string;
   private nodesLeft = MAX_CLONE_NODES;
   private charsLeft: number;
+  /** `'[Circular]'` markers so far: a clone holding one depends on its path and is not reused. */
+  private circulars = 0;
 
   constructor(policy: JsonSafePolicy) {
     this.maxDepth = policy.maxArgDepth;
-    this.keys = policy.redactJsonKeys;
-    this.secrets = secretKeySet(policy.redactJsonKeys);
+    this.secrets = secretNames(policy.redactJsonKeys);
     this.replacement = policy.redactedValue;
     this.charsLeft = policy.maxBodyLength;
   }
@@ -101,7 +131,7 @@ class Cloner {
     this.nodesLeft--;
     switch (typeof value) {
       case 'string':
-        return this.text(this.redactText(value));
+        return this.freeText(value);
       case 'boolean':
         return value;
       case 'number':
@@ -127,32 +157,51 @@ class Cloner {
     }
   }
 
-  /** Charges `text` to the budget, truncated to what is left of it. */
-  private text(text: string): string {
+  /** Charges `text` to the budget, truncated to what is left of it; `redactKept` runs on the kept part. */
+  private text(text: string, redactKept?: (kept: string) => string): string {
     const left = this.charsLeft;
     if (text.length <= left) {
       this.charsLeft = left - text.length;
-      return text;
+      return redactKept === undefined ? text : redactKept(text);
     }
     if (left <= 0) {
       return SPENT;
     }
     this.charsLeft = 0;
-    return truncate(text, left);
+    return redactKept === undefined ? truncate(text, left) : truncateThen(text, left, redactKept);
   }
 
-  /** A string the app logged may itself be JSON or hold a URL with a token in it. */
-  private redactText(text: string): string {
-    return redactParams(redactJsonText(text, this.keys, this.replacement), this.keys, this.replacement);
+  private readonly redactParams = (kept: string): string => redactParamsIn(kept, this.secrets, this.replacement);
+
+  /**
+   * A string the app logged may itself be JSON, or hold a URL with a token in
+   * it. JSON is redacted whole, then charged; other text is cut to the budget
+   * first and only the kept part is scanned for URL parameters.
+   */
+  private freeText(text: string): string {
+    const json = redactJsonContainer(text, this.secrets, this.replacement, this.charsLeft);
+    return json === undefined ? this.text(text, this.redactParams) : this.text(json);
+  }
+
+  /** What a secret value is stored as. `null`, booleans and `undefined` carry no secret and stay. */
+  private hidden(value: unknown): JsonValue {
+    if (value === undefined) {
+      return '[undefined]';
+    }
+    return value === null || typeof value === 'boolean' ? value : this.replacement;
   }
 
   private cloneObject(value: object, level: number, allowToJson: boolean): JsonValue {
     if (this.ancestors.has(value)) {
+      this.circulars++;
       return '[Circular]';
     }
-    const leaf = this.describeLeaf(value);
-    if (leaf !== undefined) {
-      return leaf;
+    if (value instanceof Error) {
+      return this.cloneError(value);
+    }
+    const description = describe(value);
+    if (description !== undefined) {
+      return this.text(description);
     }
     if (level >= this.maxDepth) {
       return placeholder(value);
@@ -164,25 +213,57 @@ class Cloner {
       // joins the ancestors, so `toJSON() { return this; }` is not a cycle.
       return this.clone(toJson.call(value), level, false);
     }
+    return this.reuse(value, level) ?? this.cloneNew(value, level);
+  }
+
+  /**
+   * A clone made earlier in this call, if it would come out the same here
+   * (same level, no cycle markers) and the budget can pay for it again — so
+   * the output stays as bounded as if it were cloned anew.
+   */
+  private reuse(value: object, level: number): JsonValue | undefined {
+    const done = this.clones.get(value);
+    if (done === undefined || done.level !== level || done.nodes > this.nodesLeft || done.chars > this.charsLeft) {
+      return undefined;
+    }
+    this.nodesLeft -= done.nodes;
+    this.charsLeft -= done.chars;
+    return done.value;
+  }
+
+  private cloneNew(value: object, level: number): JsonValue {
+    const nodes = this.nodesLeft;
+    const chars = this.charsLeft;
+    const circulars = this.circulars;
+    let clone: JsonValue;
     this.ancestors.add(value);
     try {
-      return this.cloneContainer(value, level + 1);
+      clone = this.cloneContainer(value, level + 1);
     } finally {
       this.ancestors.delete(value);
     }
+    // Only a clone finished within budget is whole; once spent, the budget stays spent.
+    if (!this.spent && this.circulars === circulars) {
+      this.clones.set(value, { value: clone, level, nodes: nodes - this.nodesLeft, chars: chars - this.charsLeft });
+    }
+    return clone;
   }
 
-  /** Objects that become a fixed description whatever the depth — never walked. */
-  private describeLeaf(value: object): JsonValue | undefined {
-    if (value instanceof Error) {
-      return Object.freeze({
-        name: this.text(String(value.name)),
-        message: this.text(this.redactText(String(value.message))),
-        stack: typeof value.stack === 'string' ? this.text(value.stack) : null,
-      });
-    }
-    const description = describe(value);
-    return description === undefined ? undefined : this.text(description);
+  /** Name, message and stack. The stack starts with the message, so it is redacted the same way. */
+  private cloneError(error: Error): JsonValue {
+    const name = this.text(String(error.name));
+    const raw = String(error.message);
+    const json = redactJsonContainer(raw, this.secrets, this.replacement, this.charsLeft);
+    const message = json === undefined ? this.text(raw, this.redactParams) : this.text(json);
+    const stack = error.stack;
+    return Object.freeze({
+      name,
+      message,
+      stack:
+        typeof stack === 'string'
+          ? this.text(json === undefined ? stack : redactStack(stack, raw, json), this.redactParams)
+          : null,
+    });
   }
 
   private cloneContainer(value: object, next: number): JsonValue {
@@ -197,8 +278,8 @@ class Cloner {
         }
         const key = this.clone(k, next, true);
         // A Map keyed by header or field name: Angular's HttpHeaders keeps its values this way.
-        const secret = typeof k === 'string' && isSecretKey(this.secrets, k);
-        const item = secret ? this.replacement : this.clone(v, next, true);
+        const secret = typeof k === 'string' && this.secrets.matches(k);
+        const item = secret ? this.hidden(v) : this.clone(v, next, true);
         pairs.push(Object.freeze([key, item]));
         if (pairs.length === MAX_ITEMS) {
           break;
@@ -238,30 +319,36 @@ class Cloner {
     const keys = Object.keys(object);
     const out: JsonObject = {};
     const kept = Math.min(keys.length, MAX_ITEMS);
+    let cut = false;
     for (let i = 0; i < kept; i++) {
       const key = keys[i];
       // A key that does not fit whole is not kept: a cut key would read as a different one.
       if (this.spent || key.length > this.charsLeft) {
         this.charsLeft = 0;
         out['…'] = SPENT;
-        return Object.freeze(out);
+        cut = true;
+        break;
       }
       this.charsLeft -= key.length;
-      const item = this.isSecretProperty(object, key) ? this.redacted() : this.cloneProperty(object, key, next);
-      setJsonKey(out, key, item);
+      const secret = this.isSecretProperty(object, key);
+      setJsonKey(out, key, secret ? this.secretProperty(object, key) : this.cloneProperty(object, key, next));
+    }
+    if (!cut && keys.length > MAX_ITEMS) {
+      out['…'] = `…${keys.length - MAX_ITEMS} more`;
     }
     if (keys.length > MAX_ITEMS) {
-      out['…'] = `…${keys.length - MAX_ITEMS} more`;
+      // Charged after the kept keys, so one huge object still shows them.
+      this.nodesLeft -= Math.floor((keys.length - MAX_ITEMS) / KEYS_PER_NODE);
     }
     return Object.freeze(out);
   }
 
   /** Decided from the key alone, so the secret is never read. */
   private isSecretProperty(object: Record<string, unknown>, key: string): boolean {
-    if (isSecretKey(this.secrets, key)) {
+    if (this.secrets.matches(key)) {
       return true;
     }
-    if (key !== 'value' || this.secrets.size === 0) {
+    if (key !== 'value' || this.secrets.empty) {
       return false;
     }
     try {
@@ -272,9 +359,18 @@ class Cloner {
     }
   }
 
-  private redacted(): string {
+  /**
+   * A secret property's stored value. Looked at through its descriptor, so a
+   * getter never runs: only a plain `null`, boolean or `undefined` is kept.
+   */
+  private secretProperty(object: object, key: string): JsonValue {
     this.nodesLeft--;
-    return this.replacement;
+    try {
+      const descriptor = Object.getOwnPropertyDescriptor(object, key);
+      return descriptor !== undefined && 'value' in descriptor ? this.hidden(descriptor.value) : this.replacement;
+    } catch {
+      return this.replacement;
+    }
   }
 
   /** Reads one property in its own try, so one throwing getter costs only that property. */

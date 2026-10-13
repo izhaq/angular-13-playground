@@ -107,13 +107,21 @@ installDebugCapture({
   paging keys like `nextToken` are hidden too. Header names must match
   exactly.
 - The values of secret names are hidden in:
-  - JSON request / response bodies and JSON WebSocket text frames,
+  - JSON request / response bodies and JSON WebSocket text frames — including
+    URLs inside JSON strings (`{"next":"…?access_token=[redacted]"}`); the
+    other fields stay as they are,
   - logged objects, logged `Map`s (Angular's `HttpHeaders` keeps its values in
     one) and `{ name, value }` pairs (how `HttpHeaders` keeps pending changes),
   - logged strings and error messages that hold JSON or a URL,
+  - error stacks: they repeat the message, so they get the same redaction,
   - URL query parameters of requests and sockets
-    (`wss://h/ws?access_token=[redacted]&x=1`),
-  - form bodies (`application/x-www-form-urlencoded`, or no content type).
+    (`wss://h/ws?access_token=[redacted]&x=1`), also nested
+    (`?next=/cb?token=…`), encoded (`%3Ftoken%3D…`) or with brackets
+    (`user[password]=…`),
+  - form bodies (`application/x-www-form-urlencoded`, or no content type),
+  - headers whose name looks like a secret name (`x-access-token`).
+- A secret value that is `null` or `true` / `false` is kept: it hides nothing,
+  and `[redacted]` there would suggest a token was present.
 - `ignoreUrls` and `redactBodyUrls` match the **original** URL. Query
   redaction only changes what is stored.
 - One `console.log` call is bounded: at most 1000 values, and at most
@@ -172,8 +180,6 @@ The rest of the app imports only `src/app/features/debug-capture` (or
 - A request is recorded when it **finishes** (load, error, abort or timeout).
   A request that never finishes does not appear.
 - Sockets opened **before** capture starts are not recorded.
-- Streaming bodies (`text/event-stream`) and binary `fetch` bodies are not
-  read.
 - A page that loaded **before** the flag was set records nothing. Set the
   flag, then reload.
 - Some secrets are **not** redacted, because there are no keys to match:
@@ -184,8 +190,22 @@ The rest of the app imports only `src/app/features/debug-capture` (or
     are redacted),
   - secrets under a name that does not end with one in `redactJsonKeys`
     (for example `pin` — add it if your app uses it).
+  - OAuth `code` query parameters (the name is too generic); add `code` to
+    `redactJsonKeys` if needed.
   Use `redactBodyUrls` to hide whole bodies and frames for such endpoints.
+- Text `fetch` bodies are read up to 1,048,576 characters; after that the
+  capture stops and says so (streaming `text/event-stream` and binary bodies
+  are not read at all).
+- Binary WebSocket frames are base64-encoded before `sample()` runs, so
+  sampling saves memory but not that work. Text frames (this app's) are not
+  affected.
+- `recorder.onEntry()` listeners for network entries run **outside**
+  Angular's zone (so capture costs no change detection); a future on-screen
+  panel must re-enter the zone (`NgZone.run`) to update its view.
 - Logging an object runs its getters, at log time, to copy it.
+- Secret-name decisions are cached for up to 2000 distinct keys per policy.
+  Frames with more distinct keys than that (e.g. keyed by id) start the
+  cache over each time and lose that speed-up; redaction stays correct.
 
 ## Be careful with the files
 

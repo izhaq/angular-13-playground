@@ -447,6 +447,115 @@ describe('toJsonSafe', () => {
     });
   });
 
+  describe('confirmation review fixes', () => {
+    const R = '[redacted]';
+    const SECRETS: Partial<JsonSafePolicy> = {
+      redactJsonKeys: DEFAULT_CAPTURE_POLICY.redactJsonKeys,
+      redactedValue: R,
+    };
+    const FRAME = '    at f (https://h/main.js:1:2)';
+
+    it('redacts a logged Error stack like its message', () => {
+      const url = new Error('GET wss://h/ws?access_token=SECRET_A failed');
+      url.stack = `Error: GET wss://h/ws?access_token=SECRET_A failed\n${FRAME}`;
+      const json = new Error('{"password":"SECRET_B"}');
+      json.stack = `Error: {"password":"SECRET_B"}\n${FRAME}`;
+
+      const [a, b] = cloneArgs([url, json], SECRETS) as Array<{ message: string; stack: string }>;
+
+      expect(a.message).toBe(`GET wss://h/ws?access_token=${R} failed`);
+      expect(a.stack).toBe(`Error: GET wss://h/ws?access_token=${R} failed\n${FRAME}`);
+      expect(b.message).toBe('{"password":"[redacted]"}');
+      expect(b.stack).toBe(`Error: {"password":"[redacted]"}\n${FRAME}`);
+    });
+
+    it('keeps the other fields of a logged JSON string that holds a URL', () => {
+      expect(cloneArgs(['{"url":"https://h/x?token=abc","status":401,"detail":"boom"}'], SECRETS)).toEqual([
+        `{"url":"https://h/x?token=${R}","status":401,"detail":"boom"}`,
+      ]);
+    });
+
+    it('leaves null, boolean and undefined secret values as they are, without running getters', () => {
+      let reads = 0;
+      const value = {
+        token: null,
+        apiKey: true,
+        password: undefined,
+        secret: 's',
+        get accessToken(): null {
+          reads++;
+          return null;
+        },
+      };
+
+      expect(cloneArgs([value, new Map([['token', null]])], SECRETS)).toEqual([
+        { token: null, apiKey: true, password: '[undefined]', secret: R, accessToken: R },
+        { '[Map]': [['token', null]] },
+      ]);
+      expect(reads).toBe(0);
+    });
+
+    it('clones a 200k-key object shared by 100 rows in < 50 ms', () => {
+      const dict: Record<string, number> = {};
+      for (let i = 0; i < 200_000; i++) {
+        dict[`id${i}`] = i;
+      }
+      const rows = Array.from({ length: 100 }, (_, i) => ({ i, lookup: dict }));
+
+      const start = performance.now();
+      const result = cloneArgs([rows], { maxBodyLength: DEFAULT_CAPTURE_POLICY.maxBodyLength });
+      const elapsed = performance.now() - start;
+
+      expect(elapsed).toBeLessThan(50);
+      expect(JSON.stringify(result).length).toBeLessThanOrEqual(DEFAULT_CAPTURE_POLICY.maxBodyLength + 2048);
+    });
+
+    it('stops enumerating large objects once their keys use up the budget', () => {
+      const target: Record<string, number> = {};
+      for (let i = 0; i < 5000; i++) {
+        target[`k${i}`] = i;
+      }
+      let enumerations = 0;
+      const rows = Array.from({ length: 50 }, () => ({
+        big: new Proxy(target, {
+          ownKeys: (t): ArrayLike<string | symbol> => {
+            enumerations++;
+            return Reflect.ownKeys(t);
+          },
+        }),
+      }));
+
+      cloneArgs([rows]);
+
+      expect(enumerations).toBeLessThanOrEqual(2);
+    });
+
+    it('reuses a clone only where it would come out the same', () => {
+      const shared = { x: { y: 1 } };
+      expect(cloneArgs([{ a: shared, b: { c: shared } }], { maxArgDepth: 3 })).toEqual([
+        { a: { x: { y: 1 } }, b: { c: { x: '[Object]' } } },
+      ]);
+
+      const root: Record<string, unknown> = { name: 'r' };
+      const child = { parent: root };
+      root['child'] = child;
+      expect(cloneArgs([root, child])).toEqual([
+        { name: 'r', child: { parent: '[Circular]' } },
+        { parent: { name: 'r', child: '[Circular]' } },
+      ]);
+    });
+
+    it('still bounds a shared graph when clones are reused', () => {
+      const leaf = { v: 'x'.repeat(100) };
+      const rows = Array.from({ length: 1000 }, () => leaf);
+
+      const [result] = cloneArgs([rows], { maxBodyLength: 1000 }) as [readonly unknown[]];
+
+      expect(JSON.stringify(result).length).toBeLessThan(2000);
+      expect(result[result.length - 1]).toBe('[…]');
+    });
+  });
+
   it('freezes everything it builds', () => {
     const error = new Error('e');
     const [result, map, err] = cloneArgs([{ a: { b: [1, { c: 2 }] } }, new Map([['k', { v: 1 }]]), error]) as [

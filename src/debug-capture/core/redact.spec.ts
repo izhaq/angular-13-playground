@@ -27,7 +27,8 @@ describe('redact', () => {
     expect(redacted).toEqual({
       user: { name: 'op', Password: R },
       sessions: [{ token: R, id: 1 }, [{ deeper: { TOKEN: R } }]],
-      secret: R,
+      // null carries no secret: kept, so a reader does not think one was there.
+      secret: null,
     });
     // The input is not mutated.
     expect(value.user.Password).toBe('p1');
@@ -174,6 +175,77 @@ describe('redact', () => {
         'x-authorization-hint': 'kept',
       });
       expect(redactHeaders({ 'new-cookie': 'kept' }, ['cookie'], R)).toEqual({ 'new-cookie': 'kept' });
+    });
+  });
+
+  describe('URL parameters (confirmation review)', () => {
+    const keys = DEFAULT_CAPTURE_POLICY.redactJsonKeys;
+
+    it('treats ? as a separator, so a nested URL cannot hide a parameter', () => {
+      expect(redactParams('http://h/a?next=/cb?access_token=S6', keys, R)).toBe(
+        `http://h/a?next=/cb?access_token=${R}`,
+      );
+      expect(redactParams('http://h/a?redirect=https://x/y?token=S7&z=1', keys, R)).toBe(
+        `http://h/a?redirect=https://x/y?token=${R}&z=1`,
+      );
+      expect(redactParams('http://h/#/cb?access_token=S5', keys, R)).toBe(`http://h/#/cb?access_token=${R}`);
+    });
+
+    it('replaces a value whole when it percent-decodes to a secret parameter', () => {
+      expect(redactParams('http://h/a?returnUrl=%2Fp%3Ftoken%3DS8&x=1', keys, R)).toBe(`http://h/a?returnUrl=${R}&x=1`);
+      expect(redactParams('http://h/a?r=%252Fp%253Ftoken%253DS', keys, R)).toBe(`http://h/a?r=${R}`);
+      const harmless = 'http://h/a?q=100%25&p=%2Fpath%3Fx%3D1';
+      expect(redactParams(harmless, keys, R)).toBe(harmless);
+      // A malformed escape does not stop the check.
+      expect(redactParams('http://h/a?r=%3Ftoken%3DS%E', keys, R)).toBe(`http://h/a?r=${R}`);
+    });
+
+    it('matches bracketed names on any segment', () => {
+      expect(redactParams('http://h/a?access_token[]=S9', keys, R)).toBe(`http://h/a?access_token[]=${R}`);
+      expect(redactParams('user[password]=S&user[name]=op', keys, R)).toBe(`user[password]=${R}&user[name]=op`);
+      expect(redactParams('user%5Bpassword%5D=S', keys, R)).toBe(`user%5Bpassword%5D=${R}`);
+    });
+
+    it('ends a value at quotes and angle brackets', () => {
+      expect(redactParams('<a href="/x?token=S">t</a>', keys, R)).toBe(`<a href="/x?token=${R}">t</a>`);
+      expect(redactParams("go('/x?token=S')", keys, R)).toBe(`go('/x?token=${R}')`);
+    });
+
+    it('redacts signatures but not OAuth codes', () => {
+      expect(redactParams('http://h/a?X-Amz-Signature=S&code=C&state=x', keys, R)).toBe(
+        `http://h/a?X-Amz-Signature=${R}&code=C&state=x`,
+      );
+    });
+
+    it('redacts URL parameters inside JSON string values, keeping the other fields', () => {
+      expect(redactJsonText('{"url":"https://h/x?token=abc","status":401,"detail":"boom"}', keys, R)).toBe(
+        `{"url":"https://h/x?token=${R}","status":401,"detail":"boom"}`,
+      );
+      expect(redactJsonText('{"next":"https://h/x?access_token=S21"}', keys, R)).toBe(
+        `{"next":"https://h/x?access_token=${R}"}`,
+      );
+      const plain = '{"a": "x=1"}';
+      expect(redactJsonText(plain, keys, R)).toBe(plain);
+    });
+
+    it('leaves null and boolean secret values in JSON as they are', () => {
+      expect(redactJsonText('{"nextToken":null,"token":false,"secret":true,"password":0}', keys, R)).toBe(
+        `{"nextToken":null,"token":false,"secret":true,"password":"${R}"}`,
+      );
+    });
+
+    it('stays correct past the decision cache size', () => {
+      const body: Record<string, string> = {};
+      for (let i = 0; i < 2500; i++) {
+        body[`field${i}`] = 'x';
+        body[`field${i}Token`] = 'S';
+      }
+
+      const result = JSON.parse(redactJsonText(JSON.stringify(body), keys, R)) as Record<string, string>;
+
+      expect(result['field2499']).toBe('x');
+      expect(result['field2499Token']).toBe(R);
+      expect(Object.keys(result).filter((k) => result[k] === 'S')).toEqual([]);
     });
   });
 

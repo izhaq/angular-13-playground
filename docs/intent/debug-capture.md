@@ -112,40 +112,56 @@ Type-only imports, re-exports and dynamic `import()` all count.
   original URL; the stored URL is the redacted one.
 - **Default redactions:**
   - Headers: `authorization`, `proxy-authorization`, `cookie`, `set-cookie`,
-    `x-api-key`, `x-auth-token`, `x-csrf-token`, `x-xsrf-token`.
+    `x-api-key`, `x-auth-token`, `x-csrf-token`, `x-xsrf-token` — plus any
+    header whose name matches a secret name below (`x-access-token`,
+    `x-refresh-token`, `x-amz-signature`).
   - Secret names (`redactJsonKeys`): `password`, `passwd`, `secret`, `token`,
     `accesstoken`, `refreshtoken`, `apikey`, `authorization`, `clientsecret`,
     `idtoken`, `privatekey`, `sessionid`, `sessiontoken`, `csrftoken`,
-    `xsrftoken`.
+    `xsrftoken`, `signature`.
 - **Name matching ignores case, `_` and `-`** on both sides, so `accesstoken`
   matches `access_token`, `Access-Token` and `accessToken`.
 - **A key is secret when it ends with a secret name**: `password` also covers
   `newPassword`, `confirm_password` and `userPassword`; `apikey` covers
-  `x-api-key`. Names that only start with or contain one (`tokenCount`,
-  `passwordPolicy`, `secretary`) are kept. As a consequence pagination keys
-  such as `nextToken` are redacted too. Header names stay an exact match.
-- **Where secret names are looked for:**
-  - JSON request/response bodies and JSON WebSocket text frames (a leading
-    byte-order mark is fine);
-  - logged objects, at any depth, without reading the secret property;
-    logged `Map`s keyed by a secret name (Angular's `HttpHeaders` keeps its
-    values in a `Map`); `{ name, value }` / `{ param, value }` pairs naming a
-    secret (how `HttpHeaders` and `HttpParams` hold pending changes);
-  - logged strings, logged `Error` messages and `ErrorEntry.message` that hold
-    JSON (an unhandled rejection of a plain object is stored as its JSON) or
-    URL parameters — redacted before they are truncated;
-  - query and fragment parameters of HTTP and WebSocket URLs
-    (`wss://h/ws?access_token=[redacted]&x=1`), done on the raw string so the
-    rest of the URL stays byte for byte;
-  - form-encoded bodies: `application/x-www-form-urlencoded`, or a body with
-    no content-type (for a `URLSearchParams` body the browser adds the header
-    after the probe saw the call).
+  `x-api-key`; `signature` covers `X-Amz-Signature`. Names that only start
+  with or contain one (`tokenCount`, `passwordPolicy`, `secretary`) are kept.
+  As a consequence pagination keys such as `nextToken` are redacted too.
+- **A secret value that is `null` or a boolean is kept** (and `undefined` in
+  logged objects): it carries no secret, and `"[redacted]"` in its place would
+  make a reader think a token was there.
+- **What each part of an entry gets:**
+  - **JSON** (request/response bodies, JSON WebSocket text frames, logged
+    strings and error messages that are JSON; a leading byte-order mark is
+    fine): secret keys at any depth, `{ name, value }` / `{ param, value }`
+    pairs naming a secret, and URL parameters inside string values
+    (`{"next":"…?access_token=[redacted]"}`). The JSON is redacted whole,
+    then truncated; the other fields stay intact.
+  - **Logged objects**: as JSON, plus `Map`s keyed by a secret name (Angular's
+    `HttpHeaders` keeps its values in a `Map`; its pending changes are
+    `{ name, value }` pairs). The secret property is never read.
+  - **URLs** of HTTP and WebSocket entries: secret query and fragment
+    parameter values, on the raw string so the rest stays byte for byte. `?`
+    also separates parameters, so a nested URL (`?next=/cb?access_token=…`)
+    cannot hide one; names are percent-decoded and split at brackets
+    (`access_token[]`, `user[password]`); a value that percent-decodes to a
+    secret parameter (`returnUrl=%2Fp%3Ftoken%3D…`) is replaced whole.
+  - **Form bodies** (`application/x-www-form-urlencoded`, or no content-type:
+    for a `URLSearchParams` body the browser adds the header after the probe
+    saw the call), **non-JSON logged strings and error messages**: URL / form
+    parameters as above, scanned after truncation (a parameter cut by
+    truncation is gone anyway).
+  - **Stacks** (`ErrorEntry.stack`, logged `Error`s): a stack starts with the
+    message, so the raw message in it is replaced by the redacted one (when
+    the stack holds the message in another form, only its frame lines are
+    kept), then URL parameters are redacted after truncation.
 - This app's login request body `{ username, password, mode, position }` is
   covered by the `password` key.
 - **Not redacted** — there are no keys to match: non-JSON text frames such as
   socket.io `42["login",{…}]` or STOMP, NDJSON bodies, free text in error
   messages and stacks beyond JSON and URL parameters, and secrets under names
-  that do not end with a listed one. Use `redactBodyUrls` for such endpoints.
+  that do not end with a listed one. OAuth `code` parameters are not redacted
+  (the name is too generic); add `code` to `redactJsonKeys` if needed. Use
+  `redactBodyUrls` for such endpoints.
 - **Logged objects' getters run at log time** — copying an object means
   reading it. Secret properties are the exception: they are never read.
 - **Stored entries are deeply frozen** as they are built, so a listener on
@@ -168,7 +184,16 @@ Type-only imports, re-exports and dynamic `import()` all count.
   once per path — a 40-wide, 4-deep one took 490 ms and stored 33 MB. So all
   the arguments of one call share a budget of 1000 values
   (`MAX_CLONE_NODES`) and `maxBodyLength` characters of strings and keys;
-  past it, values become `"[…]"` and the entry still stores.
+  past it, values become `"[…]"` and the entry still stores. An object met
+  again in the same call reuses its clone (still paying its cost), and
+  listing more than 100 keys of an object costs one value per 10 keys — so
+  big dictionaries shared by many rows are walked once.
+- **Parameter redaction is bounded by `maxBodyLength`**, not by the input:
+  form bodies, messages and stacks are truncated first, and in JSON only the
+  string values that land inside the kept part are scanned. A 10 MB form body
+  costs about as much as a short one.
+- **Secret-name decisions are cached** per key (up to 2000 keys per policy),
+  so busy JSON frames pay one lookup per key.
 - **A socket's URL is redacted once**, not per frame: the recorder remembers
   the last URL it processed.
 - **Optional `sample()`** in the policy to drop drafts from chatty sockets —
@@ -195,6 +220,13 @@ Type-only imports, re-exports and dynamic `import()` all count.
 - Logging an object runs its getters at log time (except secret ones).
 - A log call past its budget keeps only its first 1000 values and
   `maxBodyLength` characters; the rest read `"[…]"`.
+- OAuth `code` parameters are not redacted (§4).
+- Text `fetch` bodies are read up to 1,048,576 characters; after that the
+  capture stops and says so.
+- Binary WebSocket frames are base64-encoded before `sample()` runs, so
+  sampling saves memory but not that work. Text frames are not affected.
+- `recorder.onEntry()` listeners for network entries run outside Angular's
+  zone; a future on-screen panel must re-enter it (`NgZone.run`).
 
 ---
 

@@ -75,6 +75,7 @@ L3 adapters   src/debug-capture/adapters/        the only impure code      impor
 L4 install    src/debug-capture/install/         composition root          imports: ../adapters
 L5 public     src/debug-capture/index.ts         export * from './install'
 L6 angular    src/app/features/debug-capture/    DI token, ErrorHandler    imports: L5 + @angular/*, rxjs
+L6 react      src/debug-capture/react/           React error callbacks     imports: L5 only, no packages
 consumers (src/main.ts, src/app/app.module.ts) import the L6 barrel only
 ```
 
@@ -89,7 +90,8 @@ Import rules:
    (`probes/http` must not import `probes/websocket`), no deep imports.
 5. `src/debug-capture/**` has zero package imports.
 6. `src/app/features/debug-capture/**` may import `@angular/*` and `rxjs`.
-7. Anything else in `src/` imports only the two barrels, never deeper.
+7. Anything else in `src/` imports only the L5 barrel or an L6 barrel
+   (`src/app/features/debug-capture`, `src/debug-capture/react`), never deeper.
 
 Type-only imports, re-exports and dynamic `import()` all count.
 
@@ -101,6 +103,29 @@ Type-only imports, re-exports and dynamic `import()` all count.
   do to my page?" reads one directory.
 - **Enforced, not hoped for.** A deep import compiles fine, so the rules are
   checked by `npm run lint:layers` (`scripts/check-debug-capture-layers.js`).
+
+### React
+
+In a React app the layer already captures everything that reaches the
+window and the network. What it misses is the Angular seam's job: errors
+React handles itself, with React's component stack. `src/debug-capture/react/`
+fills that gap.
+
+It is **React-shaped but React-free**: plain functions with exactly the
+callback signatures React calls (React 19 `createRoot` error options, React 18
+`componentDidCatch`). No `react` import, no new package.
+
+**Why:**
+- **This repo has no React** and must not get one; a React import would also
+  break rule 5 and the "copy one folder" portability.
+- **The signatures are all React needs.** React calls these callbacks as
+  plain functions; matching their shape (taken from `@types/react-dom` and
+  React's production build) is enough to plug in.
+- **Same guarantees as the Angular seam:** record guarded, then always call
+  the app's handler or React's own default, so the app behaves as before.
+- **Inside `src/debug-capture/`**, not beside the Angular seam, so copying
+  that one folder into a React project brings it along. The L5 barrel does
+  not re-export it; a React app imports `src/debug-capture/react` directly.
 
 ---
 
@@ -241,3 +266,4 @@ Type-only imports, re-exports and dynamic `import()` all count.
 | 5 | Ring buffer + truncation + JSON-safe clones | Memory stays bounded on long-running stations (§5) |
 | 6 | Production builds, behind `?debug=1` / `localStorage` flag | The stations that need it run production builds (§1) |
 | 7 | On-screen panel deferred | Separate decision; `onEntry()` keeps the door open (§1) |
+| 8 | React adapter without React (L6 react) | React-shaped functions are all React needs; no dependency (§3) |

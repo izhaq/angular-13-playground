@@ -16,7 +16,11 @@
  *   L4 install    src/debug-capture/install/       → adapters barrel
  *   L5 public     src/debug-capture/*.ts           → install barrel
  *   L6 angular    src/app/features/debug-capture/  → src/debug-capture + @angular/*, rxjs
- *   consumers     everything else in src/          → only the L5 or L6 barrel
+ *   L6 react      src/debug-capture/react/         → src/debug-capture (no packages, not even React)
+ *   consumers     everything else in src/          → only the L5 or an L6 barrel
+ *
+ * The two L6 seams are siblings: neither may import the other, and the L5
+ * barrel re-exports neither (L5 may not import a layer below).
  *
  * Inside L1–L6 a path import is allowed only when it is (a) in the importing
  * file's own directory, (b) from an `index.ts`, the `index.ts` of an immediate
@@ -59,10 +63,12 @@ const LAYERS = {
   install: { id: 'L4', barrel: `${CAPTURE_ROOT}/install/index.ts`, above: 'adapters' },
   public: { id: 'L5', barrel: `${CAPTURE_ROOT}/index.ts`, above: 'install' },
   angular: { id: 'L6', barrel: `${ANGULAR_ROOT}/index.ts`, above: 'public' },
+  // Inside src/debug-capture/ so copying that folder into a React app brings it along.
+  react: { id: 'L6', barrel: `${CAPTURE_ROOT}/react/index.ts`, above: 'public' },
 };
 
 /** What a consumer may import (rule 7). */
-const CONSUMER_BARRELS = [LAYERS.public.barrel, LAYERS.angular.barrel];
+const CONSUMER_BARRELS = [LAYERS.public.barrel, LAYERS.angular.barrel, LAYERS.react.barrel];
 
 /** Packages L6 may import (rule 6). Everything below L6 imports none (rule 5). */
 const ANGULAR_PACKAGES = [/^@angular\//, /^rxjs$/, /^rxjs\//];
@@ -76,7 +82,9 @@ function classify(file) {
   const rest = file.slice(CAPTURE_ROOT.length + 1);
   if (!rest.includes('/')) return 'public';
   const top = rest.split('/')[0];
-  return top === 'contract' || top === 'core' || top === 'adapters' || top === 'install' ? top : UNCLASSIFIED;
+  return top === 'contract' || top === 'core' || top === 'adapters' || top === 'install' || top === 'react'
+    ? top
+    : UNCLASSIFIED;
 }
 
 function isInside(file, dir) {
@@ -95,7 +103,7 @@ function isInside(file, dir) {
 function checkImport(from, specifier, exists) {
   const layer = classify(from);
   if (layer === UNCLASSIFIED) {
-    return `fits no layer — files under ${CAPTURE_ROOT}/ belong in contract/, core/, adapters/, install/ or directly in it`;
+    return `fits no layer — files under ${CAPTURE_ROOT}/ belong in contract/, core/, adapters/, install/, react/ or directly in it`;
   }
 
   const target = resolveSpecifier(from, specifier, exists);
@@ -104,7 +112,7 @@ function checkImport(from, specifier, exists) {
     if (target === null) return null; // a package, or a path outside the capture layers
     const reachesIn = isInside(target, CAPTURE_ROOT) || isInside(target, ANGULAR_ROOT);
     return reachesIn && !CONSUMER_BARRELS.includes(target)
-      ? `outside the debug-capture layers only ${CAPTURE_ROOT} or ${ANGULAR_ROOT} may be imported (rule 7)`
+      ? `outside the debug-capture layers only ${CONSUMER_BARRELS.map((b) => path.posix.dirname(b)).join(', ')} may be imported (rule 7)`
       : null;
   }
 
@@ -243,6 +251,8 @@ const VIRTUAL_FILES = new Set([
   'src/debug-capture/misc/stray.ts',
   'src/app/features/debug-capture/index.ts',
   'src/app/features/debug-capture/capture.token.ts',
+  'src/debug-capture/react/index.ts',
+  'src/debug-capture/react/react-error-handlers.ts',
 ]);
 
 /** [importing file, specifier, null when allowed | the rule the violation must cite]. */
@@ -287,6 +297,17 @@ const SELF_TEST_CASES = [
   ['src/app/app.module.ts', './features/debug-capture/capture.token', 'rule 7'],
   ['src/app/app.module.ts', '@angular/core', null],
   ['src/debug-capture/misc/stray.ts', '.', 'fits no layer'],
+  // L6 react: a sibling of the Angular seam, on the L5 barrel, with no packages.
+  ['src/debug-capture/react/react-error-handlers.ts', '..', null],
+  ['src/debug-capture/react/index.ts', './react-error-handlers', null],
+  ['src/debug-capture/react/react-error-handlers.ts', '../install', 'rule 4'],
+  ['src/debug-capture/react/react-error-handlers.ts', '../core', 'rule 4'],
+  ['src/debug-capture/react/react-error-handlers.ts', 'react', 'rule 5'],
+  ['src/debug-capture/react/react-error-handlers.ts', '../../app/features/debug-capture', 'rule 4'],
+  ['src/app/features/debug-capture/capture.token.ts', '../../../debug-capture/react', 'rule 4'],
+  ['src/debug-capture/index.ts', './react', 'rule 4'],
+  ['src/main.ts', './debug-capture/react', null],
+  ['src/main.ts', './debug-capture/react/react-error-handlers', 'rule 7'],
 ];
 
 const EXTRACT_CASES = [

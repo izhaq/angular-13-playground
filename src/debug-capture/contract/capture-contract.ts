@@ -132,8 +132,9 @@ export interface CapturePolicy {
    * (and `token` matches pagination keys like `nextToken`). Their values
    * are replaced by `redactedValue` anywhere inside JSON bodies, JSON text
    * frames, logged objects and Maps, JSON in logged strings and error
-   * messages, URL query parameters, and form-encoded bodies — e.g. the
-   * `password` in this app's login request.
+   * messages, URL parameters (in URLs, form bodies, free text, stacks and
+   * JSON strings), and header names that match — e.g. the `password` in
+   * this app's login request. `null` and boolean values are kept.
    */
   readonly redactJsonKeys: readonly string[];
   /** Requests/sockets whose URL matches: every body / frame is replaced whole. */
@@ -175,6 +176,7 @@ export const DEFAULT_CAPTURE_POLICY: CapturePolicy = Object.freeze({
     'sessiontoken',
     'csrftoken',
     'xsrftoken',
+    'signature',
   ]),
   redactBodyUrls: Object.freeze([]),
   redactedValue: '[redacted]',

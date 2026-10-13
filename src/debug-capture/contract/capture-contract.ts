@@ -85,8 +85,12 @@ export interface WebSocketEntry extends CaptureEntryBase {
 
 export interface ErrorEntry extends CaptureEntryBase {
   readonly kind: 'error';
-  /** `capture` = the debug-capture layer reporting its own failure (e.g. a probe that would not install). */
-  readonly source: 'window' | 'unhandledrejection' | 'angular' | 'capture';
+  /**
+   * `capture` = the debug-capture layer reporting its own failure (e.g. a probe that would not install).
+   * `react` = errors React handled itself (root error callbacks or an error
+   * boundary), with React's component stack appended to `stack`.
+   */
+  readonly source: 'window' | 'unhandledrejection' | 'angular' | 'react' | 'capture';
   readonly message: string;
   readonly stack: string | null;
 }

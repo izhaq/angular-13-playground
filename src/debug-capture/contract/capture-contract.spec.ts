@@ -4,6 +4,7 @@ import {
   DEFAULT_CAPTURE_POLICY,
   DEFAULT_SHORTCUTS,
   EntryDraft,
+  ErrorEntry,
   LOG_LEVELS,
 } from './capture-contract';
 
@@ -137,5 +138,13 @@ describe('capture contract', () => {
     };
 
     expect(drafts.map(kindOf)).toEqual(['log', 'http', 'ws', 'error']);
+  });
+
+  it('ErrorEntry source includes react', () => {
+    // Compile-time guard: the React adapter records errors React handled
+    // itself under this source; dropping it from the union fails to compile.
+    const sources: ErrorEntry['source'][] = ['window', 'unhandledrejection', 'angular', 'react', 'capture'];
+
+    expect(sources).toContain('react');
   });
 });

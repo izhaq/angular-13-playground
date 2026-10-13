@@ -338,7 +338,10 @@ describe('createRecorder', () => {
       recorder.record(logDraft(shared));
       const elapsed = performance.now() - start;
 
-      expect(elapsed).toBeLessThan(50);
+      // Wall-clock guard against the pre-fix blow-up (490 ms), not a benchmark:
+      // the limit sits several times above the cost measured on a loaded
+      // 4-CPU runner (≤ 1 ms) and several times below the regression.
+      expect(elapsed).toBeLessThan(100);
       expect(recorder.snapshot().length).toBe(1);
       const stored = JSON.stringify(recorder.snapshot()[0]);
       expect(stored.length).toBeLessThanOrEqual(DEFAULT_CAPTURE_POLICY.maxBodyLength + 2048);
@@ -652,7 +655,10 @@ describe('createRecorder', () => {
       recorder.record(errorDraft('angular', '{"password":"S"}', `Error: reformatted\n${line}\n${FRAME}`));
       const elapsed = performance.now() - start;
 
-      expect(elapsed).toBeLessThan(20);
+      // Wall-clock guard against the pre-fix blow-up (~1 s), not a benchmark:
+      // the limit sits several times above the cost measured on a loaded
+      // 4-CPU runner (< 1 ms) and several times below the regression.
+      expect(elapsed).toBeLessThan(100);
       expect((recorder.snapshot()[0] as ErrorEntry).stack).toBe(FRAME);
     });
 
@@ -680,7 +686,7 @@ describe('createRecorder', () => {
       expect(nested.url).toBe(`http://h/a?next=/cb?access_token=${R}&x=1`);
     });
 
-    it('param redaction of a 10 MB form body completes in < 50 ms', () => {
+    it('param redaction of 10 MB form bodies, log args and errors completes in bounded time', () => {
       const recorder = recorderWith();
       const body = 'k=v&'.repeat(2_500_000);
 
@@ -690,7 +696,10 @@ describe('createRecorder', () => {
       recorder.record(errorDraft('window', body, body));
       const elapsed = performance.now() - start;
 
-      expect(elapsed).toBeLessThan(50);
+      // Wall-clock guard against the pre-fix blow-up (~3.5 s), not a benchmark:
+      // the limit sits several times above the cost measured on a loaded
+      // 4-CPU runner (up to ~50 ms) and several times below the regression.
+      expect(elapsed).toBeLessThan(400);
       const [http] = recorder.snapshot() as [HttpEntry];
       expect(http.reqBody).toBe(truncatedForm(body, DEFAULT_CAPTURE_POLICY.maxBodyLength));
     });

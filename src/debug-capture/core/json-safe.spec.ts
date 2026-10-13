@@ -294,7 +294,10 @@ describe('toJsonSafe', () => {
       const result = cloneArgs([shared], { maxBodyLength: DEFAULT_CAPTURE_POLICY.maxBodyLength });
       const elapsed = performance.now() - start;
 
-      expect(elapsed).toBeLessThan(50);
+      // Wall-clock guard against the pre-fix blow-up (490 ms), not a benchmark:
+      // the limit sits several times above the cost measured on a loaded
+      // 4-CPU runner (≤ 1 ms) and several times below the regression.
+      expect(elapsed).toBeLessThan(100);
       expect(JSON.stringify(result).length).toBeLessThanOrEqual(DEFAULT_CAPTURE_POLICY.maxBodyLength + 2048);
       expect(JSON.stringify(result)).toContain('"[…]"');
     });
@@ -495,7 +498,7 @@ describe('toJsonSafe', () => {
       expect(reads).toBe(0);
     });
 
-    it('clones a 200k-key object shared by 100 rows in < 50 ms', () => {
+    it('clones a 200k-key object shared by 100 rows in bounded time', () => {
       const dict: Record<string, number> = {};
       for (let i = 0; i < 200_000; i++) {
         dict[`id${i}`] = i;
@@ -506,7 +509,10 @@ describe('toJsonSafe', () => {
       const result = cloneArgs([rows], { maxBodyLength: DEFAULT_CAPTURE_POLICY.maxBodyLength });
       const elapsed = performance.now() - start;
 
-      expect(elapsed).toBeLessThan(50);
+      // Wall-clock guard against the pre-fix blow-up (343 ms), not a benchmark:
+      // the limit sits several times above the cost measured on a loaded
+      // 4-CPU runner (~35 ms) and several times below the regression.
+      expect(elapsed).toBeLessThan(150);
       expect(JSON.stringify(result).length).toBeLessThanOrEqual(DEFAULT_CAPTURE_POLICY.maxBodyLength + 2048);
     });
 

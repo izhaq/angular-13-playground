@@ -1,6 +1,6 @@
 # Master Plan: Debug Capture (air-gapped logs + network recorder)
 
-**Status:** In progress. Started 2026-10-12.
+**Status:** Done 2026-10-13 — all PRs merged into the integration branch, reviewed and tested. Not merged to `main`.
 **Integration branch:** `claude/air-gapped-debug-logging-zkn1nr` — every PR in
 this plan targets it. Nothing here merges to `main` until the whole plan is
 done and reviewed.
@@ -195,13 +195,63 @@ PR 8 additionally runs `npx ng build` and reports the initial-total delta.
 
 ## Status
 
-| PR | State |
-|---|---|
-| 1 | planned |
-| 2 | planned |
-| 3 | planned |
-| 4 | planned |
-| 5 | planned |
-| 6 | planned |
-| 7 | planned |
-| 8 | planned |
+All PRs merged into `claude/air-gapped-debug-logging-zkn1nr` (merge commits).
+
+| PR | Scope | GitHub |
+|---|---|---|
+| 1 | contract, layer barrels, `lint:layers`, ADR | #34 |
+| 2 | core: recorder, policy, redaction, ring buffer, serializer | #40 |
+| 3 | probes: console, global errors | #38 |
+| 4 | probes: XHR, fetch | #39 |
+| 5 | probe: WebSocket | #37 |
+| 6 | sinks: download, clipboard | #36 |
+| 7 | Angular seam: token, ErrorHandler, providers | #35 |
+| 8 | install layer + `main.ts` / `AppModule` wiring, README | #41 |
+| 9 | review fixes — core: clone budget, redaction gaps, deep freeze | #43 |
+| 10 | review fixes — probes: reused XHR, zone cost, dispose, fetch bodies | #42 |
+| 12 | confirmation-review fixes: stack leak, URL params, hot path | #44 |
+| 13 | stable wall-clock test guards | #45 |
+| 14 | this status update | — |
+
+(There is no PR 11 — the number was reserved for this closing update and
+re-used as 14 after PRs 12–13 were needed.)
+
+### How it was verified
+
+- **Per PR:** the orchestrator re-ran both type-checks, `lint:layers`, the
+  PR's focused specs and the full suite on the pushed head, checked scope
+  (only owned paths changed) and read the diff before merging.
+- **Combined:** after each wave the merged branch was re-verified as a whole.
+- **Independent review:** a fresh-context reviewer read the whole layer after
+  wave 2 and found 2 blockers + 4 should-fix issues (fixed in PRs 9–10). A
+  second pass confirmed them fixed and found more (fixed in PR 12); it then
+  confirmed PR 12 and called it OK to merge.
+- **Real browser, end to end:** Playwright against the served app (Node
+  server for WebSocket traffic, zone.js loaded, real globals): 18/18 checks —
+  flag off leaves `fetch` / `XMLHttpRequest` / `WebSocket` native; flag on
+  captures HttpClient XHR, fetch, console and a real WebSocket round-trip, and
+  redacts the login password, a token in a WebSocket URL, a bearer token in a
+  logged `Map` and a suffix-matched `newPassword`.
+- **Final numbers:** 578 specs (285 before this feature), all green across
+  repeated runs; production initial bundle 829.64 kB (+29.1 kB raw, about
+  +9 kB transferred) — under the 850 kB warning.
+
+### Deviations from this plan
+
+- **Bundle:** the layer is ~29 kB raw, not the 15 kB target. Still inside the
+  budget; trimming it is a follow-up.
+- **Redaction grew** beyond the original contract defaults: keys are
+  normalised and matched by suffix, URL query parameters / form bodies /
+  stacks / Maps / `{name, value}` pairs are redacted, headers also match
+  secret names. See `docs/intent/debug-capture.md` §4.
+- **Rule (b)** of the import rules is limited to child barrels of the same
+  layer (as first written it let `src/debug-capture/index.ts` skip layers).
+
+### Follow-ups (not done)
+
+- On-screen panel (Network / Socket / Console) — the recorder's `onEntry()` is
+  the seam; listeners for network entries run outside Angular's zone.
+- Trim bundle weight (largest: `json-safe`, the XHR probe, the recorder).
+- Binary WebSocket frames are base64-encoded before `sample()` runs.
+- Not redacted by default: non-JSON text frames (socket.io, STOMP), NDJSON,
+  free-text error messages, OAuth `code` parameters (see README limitations).

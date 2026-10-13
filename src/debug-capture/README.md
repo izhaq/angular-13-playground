@@ -203,6 +203,9 @@ The rest of the app imports only `src/app/features/debug-capture` (or
   Angular's zone (so capture costs no change detection); a future on-screen
   panel must re-enter the zone (`NgZone.run`) to update its view.
 - Logging an object runs its getters, at log time, to copy it.
+- Secret-name decisions are cached for up to 2000 distinct keys per policy.
+  Frames with more distinct keys than that (e.g. keyed by id) start the
+  cache over each time and lose that speed-up; redaction stays correct.
 
 ## Be careful with the files
 

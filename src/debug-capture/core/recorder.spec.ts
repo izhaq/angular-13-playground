@@ -643,6 +643,43 @@ describe('createRecorder', () => {
       expect(kept).toEqual(['S12', 'S15', 'S16', 'S17']);
     });
 
+    it('stack frame detection stays fast on a long line full of @', () => {
+      const recorder = recorderWith();
+      const line = `${'a@'.repeat(20_000)}${'x'.repeat(40_000)}`;
+
+      const start = performance.now();
+      // A JSON message the stack does not repeat verbatim: the frame-line fallback runs.
+      recorder.record(errorDraft('angular', '{"password":"S"}', `Error: reformatted\n${line}\n${FRAME}`));
+      const elapsed = performance.now() - start;
+
+      expect(elapsed).toBeLessThan(20);
+      expect((recorder.snapshot()[0] as ErrorEntry).stack).toBe(FRAME);
+    });
+
+    it('ends a form body value only at &', () => {
+      const recorder = recorderWith();
+      const form = 'user=op&password=pa?ss"word&x=1';
+
+      const reqHeaders = { 'content-type': 'application/x-www-form-urlencoded' };
+      recorder.record(httpDraft({ method: 'post', reqHeaders, reqBody: form }));
+      recorder.record(httpDraft({ method: 'post', reqBody: form }));
+
+      const [declared, implicit] = recorder.snapshot() as [HttpEntry, HttpEntry];
+      expect(declared.reqBody).toBe(`user=op&password=${R}&x=1`);
+      expect(implicit.reqBody).toBe(`user=op&password=${R}&x=1`);
+    });
+
+    it('keeps a ? inside a URL query value unless a parameter follows it', () => {
+      const recorder = recorderWith();
+
+      recorder.record(httpDraft({ url: 'http://h/a?token=ab?cd&x=1' }));
+      recorder.record(httpDraft({ url: 'http://h/a?next=/cb?access_token=S6&x=1' }));
+
+      const [plain, nested] = recorder.snapshot() as [HttpEntry, HttpEntry];
+      expect(plain.url).toBe(`http://h/a?token=${R}&x=1`);
+      expect(nested.url).toBe(`http://h/a?next=/cb?access_token=${R}&x=1`);
+    });
+
     it('param redaction of a 10 MB form body completes in < 50 ms', () => {
       const recorder = recorderWith();
       const body = 'k=v&'.repeat(2_500_000);

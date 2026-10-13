@@ -239,13 +239,19 @@ export function redactJsonContainer(
 }
 
 /**
- * `name=value` parameters: a separator (`?`, `#`, `&`, `;`, whitespace or the
- * start of the text), a name, `=`, and a value. `?` is a separator too, so a
- * nested URL (`?next=/cb?access_token=…`) cannot hide a parameter inside a
- * value. A value ends at a separator, a quote or an angle bracket (`href="…"`),
- * but takes `:` and `/`, so a secret that contains them is never partly kept.
+ * `name=value` parameters in URLs and free text: a separator (`?`, `#`, `&`,
+ * `;`, whitespace or the start of the text), a name, `=`, and a value. A
+ * value ends at a separator, a quote or an angle bracket (`href="…"`), but
+ * takes `:` and `/`, so a secret that contains them is never partly kept. A
+ * `?` ends it only when a parameter follows (`?next=/cb?access_token=…`):
+ * otherwise `?token=ab?cd` would keep `?cd`.
  */
-const PARAM = /(^|[?#&;\s])([^=?#&;\s"'<>]+)=([^?#&;\s"'<>]*)/g;
+const PARAM = /(^|[?#&;\s])([^=?#&;\s"'<>]+)=((?:[^?#&;\s"'<>]|\?(?![^=?#&;\s"'<>]+=))*)/g;
+/**
+ * Form body parameters: separated by `&` only, so a value runs to the next
+ * `&` whatever it holds (`password=pa?ss"word` goes whole).
+ */
+const FORM_PARAM = /(^|&)([^=&]+)=([^&]*)/g;
 const PARAM_SEPARATORS = /[?#&;\s"'<>]/;
 /** How many times a value is percent-decoded looking for a hidden parameter. */
 const MAX_DECODE_DEPTH = 3;
@@ -269,10 +275,19 @@ export function redactParams(text: string, keys: readonly string[], replacement:
 }
 
 export function redactParamsIn(text: string, secrets: SecretNames, replacement: string): string {
+  return redactWith(PARAM, text, secrets, replacement);
+}
+
+/** `redactParamsIn` for an `application/x-www-form-urlencoded` body. */
+export function redactFormParamsIn(text: string, secrets: SecretNames, replacement: string): string {
+  return redactWith(FORM_PARAM, text, secrets, replacement);
+}
+
+function redactWith(pattern: RegExp, text: string, secrets: SecretNames, replacement: string): string {
   if (secrets.empty || text.indexOf('=') === -1) {
     return text;
   }
-  return text.replace(PARAM, (match: string, separator: string, name: string, value: string) =>
+  return text.replace(pattern, (match: string, separator: string, name: string, value: string) =>
     isSecretParam(name, secrets) || hidesSecret(value, secrets, 0) ? `${separator}${name}=${replacement}` : match,
   );
 }
@@ -325,7 +340,12 @@ function percentDecode(text: string): string {
 }
 
 /** A stack line that is a frame: `    at f (…)` (V8) or `f@https://…:1:2` (Firefox, Safari). */
-const FRAME_LINE = /^\s+at\s|@.*:\d+(:\d+)?\)?$/;
+const FRAME_LINE = /^\s+at\s|@[^@]*:\d+(:\d+)?\)?$/;
+/**
+ * Longer lines are never frames. Also keeps the frame check cheap on a
+ * hostile stack: `@[^@]*` tries one start per `@`, each scan ends at the next.
+ */
+const MAX_FRAME_LINE = 500;
 
 /**
  * An error stack starts with `${name}: ${message}` — so it repeats a secret
@@ -344,7 +364,7 @@ export function redactStack(stack: string, rawMessage: string, redactedMessage: 
   }
   return stack
     .split('\n')
-    .filter((line) => FRAME_LINE.test(line))
+    .filter((line) => line.length <= MAX_FRAME_LINE && FRAME_LINE.test(line))
     .join('\n');
 }
 

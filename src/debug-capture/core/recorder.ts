@@ -14,6 +14,7 @@ import {
   redactFreeText,
   redactHeaders,
   redactJsonContainer,
+  redactFormParamsIn,
   redactParamsIn,
   redactStack,
   secretNames,
@@ -99,7 +100,7 @@ export function createRecorder(policy: CapturePolicy): Recorder {
     }
     const type = contentType(headers);
     const form = type === undefined || type.toLowerCase().indexOf('application/x-www-form-urlencoded') !== -1;
-    return form ? truncateThen(body, max, redactParams) : truncate(body, max);
+    return form ? truncateThen(body, max, (kept) => redactFormParamsIn(kept, secrets, hidden)) : truncate(body, max);
   }
 
   /** Probes lower-case header names; look in any case anyway, a missed form type would leak. */

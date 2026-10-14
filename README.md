@@ -6,7 +6,9 @@ lives in its own repo.
 
 ## Running it
 
-You need three things running for the full app. Each one is its own terminal.
+**Login is switched off for now** (`authEnabled: false` in
+`src/environments/environment*.ts`): the app opens straight on the dashboard,
+and you only need two things running, each in its own terminal.
 
 ```bash
 npm install            # once
@@ -14,6 +16,9 @@ npm install            # once
 npm start              # the Angular app on http://localhost:4200
 npm run server:start   # the Node experiments service on :3000
 ```
+
+To bring login back, set `authEnabled: true` in both environment files and also
+run the auth service, below.
 
 **The auth service is not in this repo.** It lives at
 [github.com/izhaq/net-auth](https://github.com/izhaq/net-auth). Clone it

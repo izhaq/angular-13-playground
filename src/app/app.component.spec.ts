@@ -38,10 +38,19 @@ describe('AppComponent', () => {
 
   // The session chrome's behavior (show/hide, logout) is the auth feature's
   // own — see session-indicator.component.spec.ts. The shell only mounts it.
-  it('mounts the auth session indicator in the nav', () => {
+  it('mounts the auth session indicator in the nav when auth is enabled', () => {
     const fixture = TestBed.createComponent(AppComponent);
+    (fixture.componentInstance as { authEnabled: boolean }).authEnabled = true;
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('.app-nav auth-session-indicator')).toBeTruthy();
+  });
+
+  it('does not mount the auth session indicator when auth is off', () => {
+    const fixture = TestBed.createComponent(AppComponent);
+    (fixture.componentInstance as { authEnabled: boolean }).authEnabled = false;
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('auth-session-indicator')).toBeNull();
   });
 });

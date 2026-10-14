@@ -251,7 +251,8 @@ callback signatures React calls (React 19 `createRoot` error options, React 18
 - Binary WebSocket frames are base64-encoded before `sample()` runs, so
   sampling saves memory but not that work. Text frames are not affected.
 - `recorder.onEntry()` listeners for network entries run outside Angular's
-  zone; a future on-screen panel must re-enter it (`NgZone.run`).
+  zone. A framework-free panel stays outside it too; only an Angular-component
+  panel would need `NgZone.run`.
 
 ---
 

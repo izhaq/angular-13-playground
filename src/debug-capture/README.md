@@ -263,8 +263,9 @@ The `react` entry is the one with the component stack.
   sampling saves memory but not that work. Text frames (this app's) are not
   affected.
 - `recorder.onEntry()` listeners for network entries run **outside**
-  Angular's zone (so capture costs no change detection); a future on-screen
-  panel must re-enter the zone (`NgZone.run`) to update its view.
+  Angular's zone (so capture costs no change detection). A framework-free
+  on-screen panel should stay outside it too; only a panel built as an
+  Angular component would need `NgZone.run` to update its view.
 - Logging an object runs its getters, at log time, to copy it.
 - Secret-name decisions are cached for up to 2000 distinct keys per policy.
   Frames with more distinct keys than that (e.g. keyed by id) start the

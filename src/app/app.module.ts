@@ -1,7 +1,9 @@
+import { provideHttpClient } from '@angular/common/http';
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 
+import { environment } from '../environments/environment';
 import { AppComponent } from './app.component';
 import { AppRoutingModule } from './app-routing.module';
 import { DemoPageModule } from './demo/demo-page.module';
@@ -22,9 +24,11 @@ import { provideDebugCapture } from './features/debug-capture';
   ],
   // provideAuth() also provides the HttpClient (with the 401 interceptor
   // attached) — HttpClientModule is gone on purpose; re-importing it would
-  // drop the interceptor.
+  // drop the interceptor. With auth switched off (environment.authEnabled)
+  // the app gets a plain HttpClient instead: no startup session call, no
+  // 401 redirect to a login page that is not registered.
   providers: [
-    provideAuth(),
+    environment.authEnabled ? provideAuth() : provideHttpClient(),
     // Records errors Angular catches itself — only when main.ts started a capture.
     provideDebugCapture(),
   ],

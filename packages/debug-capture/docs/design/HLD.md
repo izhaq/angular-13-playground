@@ -702,7 +702,7 @@ illustration: **where it and this document differ, this document wins.**
 packages/debug-capture/                (becomes its own repository later — D-02)
   README.md · AGENTS.md · package.json · tsconfig*.json
   docs/  design/ (HLD, mockup) · specs/ (S-00…S-10) · research/ · v1/
-  scripts/  check-layers.js · contrast-check.js · …
+  scripts/  check-layers.mjs · contrast-check.mjs · build.mjs · size.mjs · …
   src/
     contract/ core/ adapters/ install/ index.ts   ← entry "debug-capture"         (from v1, L1–L5)
     angular/                                      ← entry "debug-capture/angular"  (L6)
@@ -828,13 +828,22 @@ interface DebugPanelHandle {
  *  `active` follows `on`; `session.dispose()` acts as `stop()`;
  *  `getActiveCaptureSession()` returns this wrapper. */
 interface CaptureController {
-  readonly session: CaptureSession;
+  readonly session: ControlledCaptureSession;  // a CaptureSession + recorder: LiveRecorder + policy (C-3)
   readonly on: boolean;
   start(): void;                           // reinstall probes + shortcuts on the same recorder
   stop(): void;                            // remove probes + shortcuts; buffer kept
   onChange(listener: (on: boolean) => void): Unsubscribe;
 }
 ```
+
+The exact contract types (S-00) live in `src/contract/capture-contract.ts`:
+`LiveRecorder` (the read side the panel uses: `onChange`, `pending`,
+`onPending`), `ProbeRecorder` (the write side only the probes use:
+`startPending`, `endPending`, `nextSocketId`), `ControlledCaptureSession`,
+`CaptureController`, `PendingRequest`, `PendingDraft`, `PendingEvent`,
+`RecorderChange`, `SinkOptions`, `IsProblemEntry`, `MAX_PENDING_REQUESTS`.
+Where this section and that file differ in detail, the file is the contract
+and this section is updated to match.
 
 ### 6.5 Changes v2 needs in the capture layer
 
@@ -958,7 +967,7 @@ v2 adopts the v2 rule set in `docs/research/practices-baseline.md` §3 (31
 | Format | Prettier, single quotes, 2 spaces | Proposed |
 | Layers | `check-layers.js` from v1, re-rooted for the package, plus P1–P5 | Proposed |
 | End-to-end, perf, hostile host | Playwright with the installed Chromium; hosts: Angular (this app), React 19, plain HTML | Proposed |
-| Contrast | `contrast-check.js` reads the token table and fails under 4.5:1 / 3:1 | Proposed |
+| Contrast | `contrast-check.mjs` reads the token table and fails under 4.5:1 / 3:1 | Proposed |
 | Size | A size check on the loader, the UI chunk and the core (`NFR-SIZE-01`) | Proposed |
 | `AGENTS.md` | At the package root; the single source for agent rules | Proposed |
 | CI | Once the repository's home is known (GitHub or Azure DevOps — `OPEN-06`) | Open |

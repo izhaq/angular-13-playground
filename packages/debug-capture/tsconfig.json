@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    "baseUrl": "./",
     "noEmit": true,
     "strict": true,
     "noImplicitOverride": true,
@@ -8,7 +7,6 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "forceConsistentCasingInFileNames": true,
-    "experimentalDecorators": true,
     "useDefineForClassFields": false,
     "importHelpers": false,
     "target": "ES2022",
@@ -17,5 +15,5 @@
     "lib": ["es2020", "dom"],
     "types": ["jasmine"]
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts", "test/unit/**/*.ts"]
 }

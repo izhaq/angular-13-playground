@@ -14,13 +14,7 @@ export type LogLevel = 'log' | 'info' | 'warn' | 'error' | 'debug';
 export const LOG_LEVELS: readonly LogLevel[] = Object.freeze(['log', 'info', 'warn', 'error', 'debug']);
 
 /** What survives JSON.stringify unchanged — the shape stored entries use. */
-export type JsonValue =
-  | string
-  | number
-  | boolean
-  | null
-  | readonly JsonValue[]
-  | { readonly [key: string]: JsonValue };
+export type JsonValue = string | number | boolean | null | readonly JsonValue[] | { readonly [key: string]: JsonValue };
 
 /** Header name → value. Keys are always lower-case. */
 export type HeaderMap = Readonly<Record<string, string>>;
@@ -61,6 +55,19 @@ export interface HttpEntry extends CaptureEntryBase {
   /** Response size in bytes when known. */
   readonly bytes: number | null;
   readonly error: 'abort' | 'timeout' | 'network' | null;
+  /**
+   * C-1 (HLD §6.5): the `PendingRequest.id` this request had while in flight,
+   * so the panel can swap the pending row for the finished one. Optional:
+   * v1 entries and files have none, and readers ignore unknown fields.
+   */
+  readonly requestId?: number;
+  /**
+   * C-7 (HLD §6.5): the fetch probe stopped reading the response early
+   * (1,048,576 chars), so `resBody` is not the whole body. Kept as a flag
+   * because a marker in the text would be cut off by `maxBodyLength`.
+   * Present and `true`, or absent — never `false`.
+   */
+  readonly resBodyCapped?: true;
 }
 
 export type WebSocketEvent = 'open' | 'send' | 'receive' | 'close' | 'error';
@@ -240,6 +247,11 @@ export interface CaptureFile {
   readonly userAgent: string;
   readonly stats: CaptureStats;
   readonly entries: readonly CaptureEntry[];
+  /**
+   * C-1 (HLD §6.5): requests still in flight at export time, oldest first.
+   * Optional, so `schemaVersion` stays 1 and v1 readers keep working.
+   */
+  readonly pending?: readonly PendingRequest[];
 }
 
 /** Chords like `ctrl+alt+shift+d`. Matched on `KeyboardEvent.code`, so keyboard layout does not matter. */
@@ -278,3 +290,156 @@ export interface CaptureSession {
   /** Disposes every probe and shortcut. Globals are genuinely restored. Idempotent. */
   dispose(): void;
 }
+
+// ---------------------------------------------------------------------------
+// v2 additions (HLD §6.4, §6.5). Types only and additive: v1 code keeps
+// compiling and the file format keeps `schemaVersion` 1. S-01 implements them.
+// ---------------------------------------------------------------------------
+
+/**
+ * C-1 — a request that has started but not finished, so the panel can show it
+ * as "pending" (`FR-HTTP-02`). Policed like an `HttpEntry` at start: requests
+ * matching `ignoreUrls` never appear, and the URL and headers are already
+ * redacted. `sample()` does not run here — it runs once, at completion, on
+ * the finished draft (v1's signature).
+ */
+export interface PendingRequest {
+  /** Recorder-assigned; equals `HttpEntry.requestId` of the finished entry. */
+  readonly id: number;
+  /** Start time, epoch milliseconds (from the injected Clock). */
+  readonly t: number;
+  readonly transport: 'xhr' | 'fetch';
+  /** Upper-case, like `HttpEntry.method`. */
+  readonly method: string;
+  /** Already policed: `ignoreUrls` applied, secret query parameters redacted. */
+  readonly url: string;
+  /** Already redacted, like `HttpEntry.reqHeaders`. */
+  readonly reqHeaders: HeaderMap;
+}
+
+/**
+ * C-1 — the live list changed. `end` fires when the request completes, and
+ * also when it is sampled out, fails while recording, is pushed out by the
+ * 200 cap, or is cut off by `stop()` / `dispose()` — so a listener never keeps
+ * a row that will not finish.
+ */
+export type PendingEvent =
+  { readonly type: 'start'; readonly request: PendingRequest } | { readonly type: 'end'; readonly id: number };
+
+/** C-1. A throwing listener is isolated, like `EntryListener`. */
+export type PendingListener = (event: PendingEvent) => void;
+
+/**
+ * C-6 — changes that are not a new entry: `cleared` after `clear()` (also from
+ * v1's clear shortcut), `stats` when only `dropped` / `failed` changed
+ * (`FR-BAR-03`, `FR-BAR-06`). Read the new numbers with `stats()`.
+ */
+export type RecorderChange = { readonly type: 'cleared' } | { readonly type: 'stats' };
+
+/** C-6. A throwing listener is isolated, like `EntryListener`. */
+export type RecorderChangeListener = (change: RecorderChange) => void;
+
+/**
+ * The v2 recorder: a v1 `Recorder` plus the live state the panel needs.
+ * S-01 makes `createRecorder()` return it. One recorder lives for the page's
+ * life (C-2, D-17), so `seq`, request ids and socket ids never restart.
+ */
+export interface LiveRecorder extends Recorder {
+  /** C-6: fires on `clear()` and on stats-only changes. */
+  onChange(listener: RecorderChangeListener): Unsubscribe;
+  /**
+   * C-1: requests in flight, oldest first, at most 200 (the oldest is dropped
+   * beyond that). A new array each call. `clear()` and `stop()` empty it.
+   */
+  pending(): readonly PendingRequest[];
+  /** C-1: `start` / `end` of each pending request. */
+  onPending(listener: PendingListener): Unsubscribe;
+}
+
+/** C-1: the most requests `LiveRecorder.pending()` holds; the oldest is dropped beyond it. */
+export const MAX_PENDING_REQUESTS = 200;
+
+/**
+ * C-1 — what a probe knows when a request starts, before the recorder polices
+ * it (`ignoreUrls`, URL and header redaction) and gives it an id.
+ */
+export type PendingDraft = Omit<PendingRequest, 'id'>;
+
+/**
+ * The write side of the v2 recorder, used only by the probes (L3). Kept apart
+ * from `LiveRecorder` so the read side the panel fakes in its specs never
+ * grows when probe needs change. S-01's recorder implements both.
+ */
+export interface ProbeRecorder extends Recorder {
+  /**
+   * C-1: a request started. Returns its id, or `null` when the policy ignores
+   * it (then nothing is shown, and the finished draft is recorded as in v1).
+   * The probe puts the id on the finished HTTP draft as `requestId`;
+   * `record()` of that draft ends the pending request (completed, sampled
+   * out or failed alike).
+   */
+  startPending(draft: PendingDraft): number | null;
+  /** C-1: the request will never be recorded (cut off by dispose). Idempotent. */
+  endPending(id: number): void;
+  /**
+   * C-2: the next WebSocket id. The counter lives in the recorder, not in a
+   * probe install, so ids never restart across stop/start.
+   */
+  nextSocketId(): number;
+}
+
+/**
+ * C-5 — where a sink puts its temporary node (the copy fallback's textarea,
+ * the download link). Default: `document.body`. The panel passes its shadow
+ * root, so a copy or download from the panel adds nothing to the host page
+ * (`ISO-04`). S-01 adds this as the last, optional parameter of `copyText`
+ * and `downloadText`.
+ */
+export interface SinkOptions {
+  readonly root?: Pick<ParentNode, 'appendChild'>;
+}
+
+/**
+ * C-2 + C-3 — the session a `CaptureController` hands out: one stable object
+ * for the page's life. Still a v1 `CaptureSession`, so the Angular and React
+ * seams keep working across stop/start. `active` follows `controller.on`;
+ * `dispose()` acts as `controller.stop()`; `getActiveCaptureSession()`
+ * returns this object.
+ */
+export interface ControlledCaptureSession extends CaptureSession {
+  readonly recorder: LiveRecorder;
+  /**
+   * C-3: the resolved policy, read-only — the panel shows `maxEntries` as the
+   * buffer capacity (`FR-BAR-06`) and marks values equal to `redactedValue`
+   * (`FR-HTTP-07`).
+   */
+  readonly policy: Readonly<CapturePolicy>;
+}
+
+/**
+ * C-2 — turns capture on and off without losing the buffer (`FR-ACT-09`).
+ * It owns one recorder for the page's life: `stop()` removes probes and
+ * shortcuts only; `start()` reinstalls them on the same recorder.
+ */
+export interface CaptureController {
+  /** The same object for the controller's whole life. */
+  readonly session: ControlledCaptureSession;
+  /** `true` while probes and shortcuts are installed. */
+  readonly on: boolean;
+  /** Reinstalls probes and shortcuts on the same recorder. No-op when on. */
+  start(): void;
+  /** Removes probes and shortcuts; the buffer is kept. No-op when off. */
+  stop(): void;
+  /** Called with the new `on` after each real change. */
+  onChange(listener: (on: boolean) => void): Unsubscribe;
+}
+
+/** C-2 — `createCaptureController(options)`; installs capture at once (HLD §6.6). */
+export type CreateCaptureController = (options?: DebugCaptureOptions) => CaptureController;
+
+/**
+ * C-8 — the problem rule (`FR-ACT-04`), one definition shared by the
+ * loader's badge and the panel model. S-01 implements it in core and exports
+ * `isProblemEntry` from L5.
+ */
+export type IsProblemEntry = (entry: CaptureEntry) => boolean;

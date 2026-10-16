@@ -28,3 +28,48 @@ export type MountPanelUi = (
   controller: CaptureController,
   options: MountPanelUiOptions,
 ) => PanelUiHandle;
+
+/**
+ * Placeholder UI (S02-15) so the whole lazy path is real and testable: a
+ * title and a close button inside the loader's panel root, plain DOM and
+ * text only. S-08 replaces it with the frame. It lands in its own chunk.
+ */
+export const mountPanelUi: MountPanelUi = (root, _controller, options) => {
+  const doc = options.document;
+  const frame = doc.createElement('div');
+  const title = doc.createElement('span');
+  title.textContent = 'Debug';
+  const close = doc.createElement('button');
+  close.type = 'button';
+  close.textContent = 'Close';
+  close.setAttribute('aria-label', 'Close debug panel');
+  frame.append(title, ' ', close);
+
+  const requestClose = (): void => {
+    try {
+      options.onRequestClose();
+    } catch {
+      // Never into the host (ISO-12).
+    }
+  };
+  // Escape is the panel's own: handled here; the loader's event wall keeps it from the host (ISO-08).
+  const onKey = (event: KeyboardEvent): void => {
+    if (event.key !== 'Escape') return;
+    event.preventDefault();
+    requestClose();
+  };
+  // On the panel root, not the frame: the loader focuses the root itself, and
+  // a key pressed there never passes through its children.
+  const parent = root.querySelector('.dcp-root') ?? root;
+  close.addEventListener('click', requestClose);
+  parent.addEventListener('keydown', onKey as EventListener);
+  parent.appendChild(frame);
+
+  return {
+    unmount(): void {
+      close.removeEventListener('click', requestClose);
+      parent.removeEventListener('keydown', onKey as EventListener);
+      frame.remove();
+    },
+  };
+};

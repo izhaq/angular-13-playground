@@ -146,6 +146,21 @@ export function hiddenValue<T>(value: T, replacement: string): T | string {
 }
 
 /**
+ * `scheme://user:password@host` → `scheme://<replacement>@host`. The whole
+ * user info goes, not only the password: a token is often sent as the user
+ * name (`https://<token>@host`). Done before truncation, so a cut can never
+ * leave part of it behind. Only the authority is looked at — an `@` in the
+ * path or query is kept; the last `@` before the path ends the user info, as
+ * in the URL parser. Linear: one scan of the authority.
+ */
+export function redactUserinfo(url: string, replacement: string): string {
+  // A function replacer: `replacement` is user-set and must not expand `$1` / `$&`.
+  return url.replace(USERINFO, (_match, scheme: string) => `${scheme}${replacement}@`);
+}
+
+const USERINFO = /^([a-z][a-z0-9+.-]*:\/\/)[^/?#\\]*@/i;
+
+/**
  * A new, frozen map with lower-case keys. A header's value becomes
  * `replacement` when its name is in `names` (any case, exact) or looks like
  * a secret key from `secretKeys` (`x-access-token` ends with `accesstoken`);

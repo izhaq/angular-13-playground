@@ -1,8 +1,9 @@
 # Debug Capture v2 — High-Level Design (HLD)
 
-**Status:** Draft 0.4 — for owner review. Written 2026-10-14; revised the same day after a
+**Status:** Draft 0.5 — for owner review. Written 2026-10-14; revised the same day after a
 fresh-context review (33 findings), a confirmation review (14 findings) and the
-mockup build (14 questions), all applied.
+mockup build (14 questions), all applied. 0.5 (2026-10-15): the P4 frame moves
+from S-02 to S-08, so wave 2 has no track waiting on another (§9).
 **Scope:** the whole of v2: the capture layer it inherits from v1, and the new
 on-screen **debug panel**.
 **This document is the source of truth.** Every v2 spec and plan is cut from
@@ -61,8 +62,8 @@ error).
   key `debug-capture` = `1`). With the flag off, nothing is patched or shown.
 - **Hosts.** Angular apps today (this repo: Angular 16). React apps next.
   Possibly plain pages.
-- **Browsers.** Chromium-based (Chrome / Edge). Exact versions on the
-  stations are not yet known — see `OPEN-01`.
+- **Browsers.** Chrome 146.0.7680.72 and later only; no Edge (`OPEN-01`,
+  answered by the owner).
 - **Rules of the place.** A security review approves third-party code (slow,
   sometimes no). Data may be sensitive. Files leave the machine only by an
   approved route (for example removable media).
@@ -259,7 +260,7 @@ must list the IDs they cover. Behaviour details are in §4, visual details in §
 | NFR-PERF-01 | **Closed:** only the loader runs — no rows in the DOM, no timers, no `requestAnimationFrame`, no observers, no `matchMedia` listeners; one `keydown` listener for the toggle. The launcher badge counter costs O(1) per entry and at most one rAF per frame when its number changes. | MUST |
 | NFR-PERF-02 | **Open:** first paint under 100 ms with 5,000 entries buffered, measured **warm** (UI chunk already loaded). The cold first open (chunk fetched from the host's server) is measured and reported, not gated. | MUST |
 | NFR-PERF-03 | **Live:** new entries are applied at most once per frame, within an 8 ms budget per frame; no long task over 50 ms caused by the panel, while 100 entries/second arrive. | MUST |
-| NFR-PERF-04 | **Scroll:** lists are virtualised — under 2,000 DOM nodes per tab **including the detail pane**, whatever the entry count; no long task over 50 ms while scrolling. | MUST |
+| NFR-PERF-04 | **Scroll:** lists are virtualised — under 2,000 DOM nodes per tab **including the detail pane**, whatever the entry count, for a panel up to **1,080 px** tall; taller (a maximised panel on a 4K screen) adds at most ~23 nodes per extra visible row, because every visible row is drawn (`D-22`). No long task over 50 ms while scrolling. | MUST |
 | NFR-PERF-05 | **Angular host:** the panel causes **0** change-detection cycles (verified with an `NgZone` counter). | MUST |
 | NFR-PERF-06 | **Memory:** the panel adds under 10 MB on top of the capture buffer with 5,000 entries. | SHOULD |
 | NFR-SIZE-01 | **Loader** (`debug-capture/panel`, loaded at start): ≤ **4 kB** min+gzip. **UI chunk** (loaded on first open): ≤ **25 kB** min+gzip; hosts that never open the panel load **0 bytes** of it. **Core:** within ± 2 kB of v1's size — the baseline is measured and recorded in S-00. | MUST |
@@ -850,7 +851,7 @@ and this section is updated to match.
 | ID | Change | Why | Effect on v1 file format |
 |---|---|---|---|
 | C-1 | **Pending requests.** Probes report a request when it **starts**. The recorder keeps a live list of `PendingRequest` (§6.4), **capped at 200** (oldest dropped). Each gets an `id`; the finished `HttpEntry` carries it as a new `requestId`. At start a pending request is filtered by `ignoreUrls` only and redacted; `sample()` still runs **once, at completion**, on the finished draft (v1's signature). Listeners get `pending-start` and `pending-end` — the end fires on completion **and** when the request is sampled out, fails while recording, is pushed out by the 200 cap, or is cut off by `stop()` / `dispose()`. `clear()` and `stop()` empty the list. The stored `HttpEntry` stays one per **completed** request. | `FR-HTTP-02` | Two **optional** fields: `pending` (list) in the file, `requestId` on HTTP entries. `schemaVersion` stays **1**; rule: readers ignore unknown fields. v1 readers keep working. |
-| C-2 | **Capture controller.** `createCaptureController(options)` → `CaptureController` (§6.4). It owns **one recorder for the page's life**: `stop()` removes probes and shortcuts only; `start()` reinstalls them on the **same** recorder (`installDebugCapture` gains a `recorder` option). `controller.session` is one stable wrapper whose `active` follows `on`, and `getActiveCaptureSession()` returns it, so the Angular and React seams (which hold the session and check `active`) keep working across stop/start. `seq` lives in the recorder; the WebSocket **socket-id counter moves from the probe install into the recorder** (today `let nextSocketId = 1` is per install — the contract comment changes too), so ids never restart. `session.dispose()` called directly acts as `stop()`. | `FR-ACT-09` | None |
+| C-2 | **Capture controller.** `createCaptureController(options)` → `CaptureController` (§6.4). It owns **one recorder for the page's life**: `stop()` removes probes and shortcuts only; `start()` reinstalls them on the **same** recorder. `installDebugCapture()` is a thin wrapper that creates a controller and returns its session (no `recorder` option: a recorder passed in could apply a different policy than `session.policy` shows — S-01 review). `controller.session` is one stable wrapper whose `active` follows `on`, and `getActiveCaptureSession()` returns it, so the Angular and React seams (which hold the session and check `active`) keep working across stop/start. `seq` lives in the recorder; the WebSocket **socket-id counter moves from the probe install into the recorder** (today `let nextSocketId = 1` is per install — the contract comment changes too), so ids never restart. `session.dispose()` called directly acts as `stop()`. | `FR-ACT-09` | None |
 | C-3 | **Policy.** The session exposes its resolved policy (read-only), so the panel can show `buffer 1,284 / 5,000` and mark values equal to `redactedValue`. | `FR-BAR-06`, `FR-HTTP-07` | None |
 | C-4 | **Angular seam without decorators.** `DebugCaptureErrorHandler` is provided with a factory instead of `@Injectable()`, so the package builds with plain `tsc` (no `ng-packagr`). | §7.2 build | None |
 | C-5 | **Copy and download without touching `<body>`.** `copyText` gets an option to place its fallback textarea inside a given root, and `downloadText` an option to place its temporary `<a>` there — the panel passes its shadow root, so no node is added to the host page. To be proven in a spike (`OPEN-04`). | `ISO-04`, research §3.4 | None |
@@ -897,7 +898,7 @@ has its evidence, severity and test). Short form:
 | ISO-02 | Lock the host element: `:host { all: initial !important; … }`, every `:host` declaration `!important`; `contain: strict`. |
 | ISO-03 | Set every inherited value on an inner root; **px** sizes; system fonts; `direction: ltr`. |
 | ISO-04 | CSP/Trusted-Types-safe DOM: `adoptedStyleSheets` only; `el.style.x =` only; no HTML strings; captured data as text only; no `href`/`src` from data. |
-| ISO-05 | Nothing global: `--dcp-` tokens on the inner root; no `@property`, `@font-face`, `part`, document stylesheets. |
+| ISO-05 | Nothing global: `--dcp-` tokens on the inner root; no `@property`, `@font-face`, `part`, document stylesheets. A host `@property` on a `--dcp-*` name is out of scope (D-23). |
 | ISO-06 | Hidden when printing. |
 | ISO-07 | Event wall on the **host element**: stop propagation of pointer, mouse, key, focus, input, clipboard, drag events (our global chords excepted). |
 | ISO-08 | Keys: three-modifier toggle on `event.code`; `preventDefault` only on exact match; `Escape` handled inside. |
@@ -1020,13 +1021,13 @@ Each spec lives in `docs/specs/<nn>-<slug>/` with `spec.md`, `plan.md` and a
 |---|---|---|
 | **S-00 Foundation** | Tooling (§7.2), `AGENTS.md`, layer checker for the package, size baseline. **Contracts fixed for the parallel wave:** `PanelDataSource`, `PanelDataEvent`, `PendingRequest`, `CaptureController`, `recorder.onChange`, `isProblemEntry` signature, `mountPanelUi`, panel options. Core change C-4, mockup | — |
 | **S-01 Core changes** | C-1 pending requests, C-2 controller (one recorder, stable session, socket ids), C-3 policy, C-5 copy/download spike, C-6 change events, C-7 capped-body flag, C-8 problem rule | S-00 |
-| **S-02 Panel shell** | P5 loader: element, mount, top layer, lockdown, event wall, zone, toggle, launcher (+ badge), lazy chunk load. P4 app frame: top tabs and Network sub-tab routing, open/close/resize/dock/maximize, scheduler, settings storage, banners. Hostile-host fixture | S-00 |
+| **S-02 Panel loader** | P5 loader: element, mount, top layer, lockdown, event wall, zone, toggle, launcher (+ badge), lazy chunk load, open/close and focus return. A placeholder P4 `mountPanelUi` (an empty panel root with a close button) so the lazy path is real end to end. Hostile-host fixture | S-00 |
 | **S-03 Panel model** | P1: local data source (incl. download/copy pass-through), store, batching contract, selectors, filters, formatting, cURL | S-00 |
 | **S-04 UI building blocks** | P2: safe DOM builder, virtual list (bidi-safe), JSON viewer (paged), split pane, tabs, chips, empty/no-match block, icons, theme sheet + contrast check | S-00 |
 | **S-05 Network › HTTP** | P3 list + detail sub-tabs + copy | S-02, S-03, S-04 (S-01 for pending) |
 | **S-06 Network › WebSocket** | P3 connections + messages + detail | S-02, S-03, S-04 |
 | **S-07 Console** | P3 list + detail + stacks | S-02, S-03, S-04 |
-| **S-08 Toolbar and status** | Pause/follow, clear, export/copy, capture on/off, buffer gauge, settings popover, states | S-02, S-03, S-04, S-01 |
+| **S-08 Frame, toolbar and status** | P4 app frame (replaces S-02's placeholder): title bar, top tabs and Network sub-tab routing, resize/dock/maximize, scheduler (rAF batching), settings storage, banners. Toolbar: pause/follow, clear, export/copy, capture on/off. Status bar, settings popover, states | S-02, S-03, S-04, S-01 |
 | **S-09 Accessibility** | Keyboard map, focus, forced colours, reduced motion | S-05 … S-08 |
 | **S-10 Integration and verification** | Angular + React + plain hosts, end-to-end, performance, security, packaging (`npm pack`), README | all |
 
@@ -1035,7 +1036,7 @@ Each spec lives in `docs/specs/<nn>-<slug>/` with `spec.md`, `plan.md` and a
 ```
 Wave 1:  S-00
 Wave 2:  S-01 ║ S-02 ║ S-03 ║ S-04            (parallel — they code against the S-00 contract)
-Wave 3:  S-05 ║ S-06 ║ S-07 ║ S-08            (parallel — one view each; they plug into the S-02 frame, no shared files)
+Wave 3:  S-05 ║ S-06 ║ S-07 ║ S-08            (parallel — one view each, plus the frame; a small contract PR first fixes the view interface the frame mounts)
 Wave 4:  S-09 ─► S-10                         (sequential — S-09 touches every view, after wave 3 is merged)
 ```
 
@@ -1051,9 +1052,10 @@ end to end that every `MUST` is covered.
 |---|---|
 | BR-01…07 | S-10 (verified end to end) |
 | FR-ACT-01, 02, 03, 04, 05, 06, 07 | S-02 (badge rule `isProblemEntry` from S-01) |
-| FR-ACT-08 | S-02 |
-| FR-ACT-09 | S-01 (controller) + S-02 (banner in the frame) + S-08 (the switch) |
-| FR-WIN-01…07 | S-02 |
+| FR-ACT-08 | S-08 (settings storage) |
+| FR-ACT-09 | S-01 (controller) + S-08 (banner and switch) |
+| FR-WIN-01, 05 | S-02 (overlay, close) |
+| FR-WIN-02, 03, 04, 06, 07 | S-08 (dock, resize, maximize, tabs, host-modal banner) |
 | FR-HTTP-01…07 | S-05 (pending rows need S-01; cURL builder from S-03) |
 | FR-WS-01…05 | S-06 |
 | FR-CON-01…05 | S-07 |
@@ -1064,7 +1066,7 @@ end to end that every `MUST` is covered.
 | FR-COM-05 | S-09 |
 | NFR-ISO-01 | S-02 (fixture and shell rules) + every view spec for its own rules |
 | NFR-PERF-01, 05 | S-02 |
-| NFR-PERF-02, 03, 04, 06 | S-02 (scheduler) + S-03 + S-04 (built), S-10 (measured) |
+| NFR-PERF-02, 03, 04, 06 | S-08 (scheduler) + S-03 + S-04 (built), S-10 (measured) |
 | NFR-SIZE-01 | S-00 (baseline and check), S-10 (final) |
 | NFR-SEC-01…04 | S-04 (safe builder), S-05 (cURL, copy), S-08 (export), S-10 (CSP page) |
 | NFR-REL-01 | S-02 + every spec (lint rule, guard) |
@@ -1104,6 +1106,8 @@ owner confirms or changes it before the spec that depends on it starts.
 | D-19 | **Pause** freezes rendering only; Clear and evictions still apply; export always takes the whole buffer. | Proposed |
 | D-20 | **Not remembered:** capture on/off and filter search text. Remembered: settings, size, dock, last tab, filter chips. | Proposed |
 | D-21 | A **problem** (badge, status bar) = error entry, HTTP 5xx or failed, WebSocket error. Not 4xx, not `console.error`. | Proposed |
+| D-22 | The 2,000-node budget holds up to a 1,080 px panel; above that the list draws every visible row (~23 nodes each) rather than leaving rows blank. Views keep rows lean (text cells, one icon). Found in the S-04 review. | Proposed |
+| D-23 | A host page that registers a `--dcp-*` name with `@property` is out of scope (research S4): the theme keeps CSS variables. Only the loader, which must always be visible, uses literal colours. | Decided |
 
 ---
 
@@ -1111,7 +1115,7 @@ owner confirms or changes it before the spec that depends on it starts.
 
 | ID | Question | Why it matters | Who |
 |---|---|---|---|
-| OPEN-01 | Which Chrome / Edge versions run on the stations? | Below 114 there is no top layer; the fallback has known limits (`NFR-COMP-01`). | Owner — pilot |
+| OPEN-01 | ~~Which Chrome / Edge versions run on the stations?~~ **Answered (owner, 2026-10-18): Chrome 146.0.7680.72 and later only; Edge is not supported.** | `NFR-COMP-01` can drop the pre-114 fallbacks (not done yet). | Owner — answered |
 | OPEN-02 | How strict is the host apps' CSP in production (Trusted Types, `style-src`)? | Confirms `NFR-SEC-02` matters in practice. | Owner — pilot |
 | OPEN-03 | What does `bdi_W` do for rules, lint, CI, agents, structure? | Updates §7. Needs a session that can reach it. | Owner |
 | OPEN-04 | Do the copy fallback and the download link work from inside the panel's shadow root in the station browser? | `C-5`; otherwise copy or download from the panel adds a node to `<body>` for a moment. | S-01 spike |

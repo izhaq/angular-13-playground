@@ -221,6 +221,7 @@ must list the IDs they cover. Behaviour details are in §4, visual details in §
 | FR-WS-03 | Filters: text search in message data, direction (All / Sent / Received), type (Text / Binary). | MUST |
 | FR-WS-04 | Selecting a message opens the detail with sub-tabs **Message** (JSON tree / Raw; binary as base64 and hex — a truncated base64 tail that does not decode is shown as `…` with the note *cut*) and **Info** (connection URL, socket id, state, close code/reason, counts). | MUST |
 | FR-WS-05 | An "all connections" choice shows every socket's messages together, with the socket id in a column. | SHOULD |
+| FR-WS-06 | The message detail has **Copy ▾**: Copy message (the data as stored: text as-is, binary as base64) and Copy URL — only on the user's action, inside the panel (`D-26`, `NFR-SEC-04`). | SHOULD |
 
 ### 3.6 Functional — Console
 
@@ -1070,7 +1071,7 @@ end to end that every `MUST` is covered.
 | NFR-PERF-01, 05 | S-02 |
 | NFR-PERF-02, 03, 04, 06 | S-08 (scheduler) + S-03 + S-04 (built), S-10 (measured) |
 | NFR-SIZE-01 | S-00 (baseline and check), S-10 (final) |
-| NFR-SEC-01…04 | S-04 (safe builder), S-05 (cURL, copy), S-08 (export), S-10 (CSP page) |
+| NFR-SEC-01…04 | S-04 (safe builder), S-05 (cURL, copy), S-06 (copy), S-08 (export), S-10 (CSP page) |
 | NFR-REL-01 | S-02 + every spec (lint rule, guard) |
 | NFR-A11Y-01 | S-04 (contrast), S-09 (the rest) |
 | NFR-I18N-01 | S-04 (bidi-safe cells) |
@@ -1112,6 +1113,7 @@ owner confirms or changes it before the spec that depends on it starts.
 | D-23 | A host page that registers a `--dcp-*` name with `@property` is out of scope (research S4): the theme keeps CSS variables. Only the loader, which must always be visible, uses literal colours. | Decided |
 | D-24 | The **Launcher Show / Hide** setting moves to 2.x: remembering "Hide" would make the always-loaded loader read storage at start (loader bytes, `NFR-SIZE-01`). In 2.0 a host turns the launcher off with the `launcher: false` option; the shortcut always works. | Decided |
 | D-25 | The **UI chunk** budget is **40 kB** min+gzip (was 25 kB). Measured before wave 3: 22.3 kB with only the model and the UI blocks (no views, no frame); wave 3 is estimated at +13–15 kB. The chunk loads once, on first open, from the local network; the host's start cost (the 4 kB loader) does not change. | Decided |
+| D-26 | The **WebSocket message detail has `Copy ▾`** (message, URL — `FR-WS-06`), as in the mockup (owner, 2026-10-22). Copy and export stay explicit user actions (`NFR-SEC-04`). | Decided |
 
 ---
 

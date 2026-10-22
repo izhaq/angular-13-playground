@@ -26,7 +26,6 @@ export const FRAME_CSS = [
   '.dcp-title>.dcp-icon{color:var(--dcp-accent)}',
   '.dcp-toolbar{display:flex;align-items:center;gap:4px;flex:none;margin-left:auto}',
   '.dcp-paused{font-family:var(--dcp-font-mono);font-size:var(--dcp-fs-meta);color:var(--dcp-warning)}',
-  '.dcp-btn[aria-pressed="true"]{background-color:var(--dcp-bg-selected);border-color:var(--dcp-accent)}',
   '.dcp-btn>.dcp-icon+.dcp-icon{margin-left:-2px}',
   '@container (max-width:720px){.dcp-toolbar .dcp-btn>span{display:none}' +
     '.dcp-toolbar .dcp-btn{min-width:var(--dcp-control-h);padding:0 4px}.dcp-paused{display:none}}',
@@ -36,9 +35,10 @@ export const FRAME_CSS = [
     'border-bottom:1px solid var(--dcp-divider);background-color:var(--dcp-bg-elevated);' +
     'box-shadow:inset 2px 0 0 var(--dcp-warning)}',
   '.dcp-banner__text{flex:1 1 auto;min-width:0}',
-  // Tab panels and the Network sub-tab bar.
+  // Tab panels; the Network sub-tabs open the view's filter bar (§5.2), or their own bar if it has none.
   '.dcp-body{position:relative;display:flex;flex-direction:column;flex:1 1 auto;min-width:0;min-height:0}',
   '.dcp-tabpanel{display:flex;flex-direction:column;flex:1 1 auto;min-width:0;min-height:0}',
+  '.dcp-filter-bar>.dcp-tabs{margin-left:-8px;border-right:1px solid var(--dcp-divider)}',
   '.dcp-subbar{display:flex;align-items:stretch;flex:none;height:var(--dcp-bar-h);padding:0 4px;' +
     'border-bottom:1px solid var(--dcp-divider);background-color:var(--dcp-bg-elevated)}',
   // Settings popover: one row per setting.

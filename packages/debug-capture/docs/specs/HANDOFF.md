@@ -1,4 +1,4 @@
-# Handoff — debug-capture v2, wave 3 (written 2026-10-19)
+# Handoff — debug-capture v2, wave 3 (updated 2026-10-22)
 
 You are the new **orchestrator** for debug-capture v2 (GitHub Copilot in agent
 mode, on the owner's **Windows laptop** — see §10 for setup). Waves 1 and 2 are done and
@@ -11,6 +11,113 @@ Read it first; open other files only when a step needs them, by line range or gr
 you too; read it): short, simple words, as if to a junior
 developer; main point first; small tables over long text. Ask before anything hard
 to undo. Never merge into the integration branch yourself.
+
+## 0. Start here
+
+**Status (keep this section current — update it before you stop):**
+
+- **Step 0 (plan and specs): done** on the wave branch `claude/dc-v2-wave3`:
+  #77 (plan `wave-3.md` + specs S-05…S-08), #78 (spec notes; **D-24**: no Launcher
+  Show/Hide setting in 2.0), #79 (**D-25**: UI chunk budget **40 kB**; loader stays
+  4 kB).
+- **Step 1, the contract PR: merged** — C3-1…C3-6, **PR #81** into the wave
+  branch. The names every track codes against are in `wave-3.md` "Names fixed now"
+  (view types in `src/panel/ui/view-contract.ts`; HTTP sort rules; virtual list
+  `sortable` / `onSort` / `setSort` / `follow` / `setNewCount`; `panelRoot`). HLD
+  D-20 now says the HTTP sort is not remembered.
+- **Step 2, S-08 frame: merged** — **PR #83** (finished by Claude after a Copilot
+  WIP). Frame, toolbar (Capture next to Pause), status bar, settings + storage,
+  dock / resize / maximize, once-per-frame scheduler, banners. Fresh-context review
+  done, fixes confirmed. Read `src/panel/app/frame.ts` to see how views are mounted
+  (`ViewDeps`: `store`, `source`, `root`, `requestFrame`, `schedule`, `report`).
+- **Fullscreen (D-15, updated):** Chrome blocks clicks and focus outside a fullscreen
+  element (it matches `:modal`). The panel is drawn on top and live; a banner says it
+  cannot be used until fullscreen ends.
+- **Follow button ("↓ N new") is the views' job** (S05-15, S06-10, S07-09), not the
+  frame's.
+- **Step 3, S-05 HTTP view: merged** — **PR #84** (three commits on
+  `claude/dc-v2-w3-05-http`: list, filters, detail). Read `src/panel/views/http/`
+  as the pattern for S-06 / S-07: a `fakes.spec.ts` stage (real store, real theme,
+  fake source), the view renders only in `update(state)`, every P2 block gets
+  `onError: report`, the follow count by `seq` / pending id. The store keeps a
+  selected entry that left the buffer (`selection.<view>.removed === true`), so a
+  view can show its "removed" note from that instead of `onSelectionLost` (S05-12).
+  **Its `cleanup()` must destroy each view** (fixed after #84): views left alive slowed
+  later timing specs (the virtual-list frame-budget spec failed at 9.6 ms on Linux).
+- **S-07 Console: merged (#87)** — 1076 unit specs, 28 e2e on the wave branch; panel-ui
+  35,824 / 40,960 B.
+- **S-06 WebSocket: merged (#89)** — all four tracks are done. Wave branch: **1109** unit specs
+  (floor 1109), **30** e2e (floor 30); loader **4,084 / 4,096 B**, panel-ui **38,587 / 40,960 B**
+  (2.4 kB left).
+- **Step 3, the whole-wave review: done.** One fresh reviewer on the wave diff, focused on the
+  seams: 0 blockers, 0 majors, 8 minors, 3 nits. All fixed in **PR #90**
+  (`claude/dc-v2-w3-review-fixes` → wave branch): Escape reads the store; pressed button look in
+  P2; the Network sub-tabs sit in the view's filter bar (HLD §5.2, owner); the status bar counts
+  entries (HLD §4.9 text, owner); a reload e2e for settings; docs match the code. Checks on the
+  #90 head: **1115** unit specs (floor 1115), **31** e2e (floor 31); loader **4,084 / 4,096 B**,
+  panel-ui **38,674 / 40,960 B** (2.2 kB left).
+- **Next: step 4.** After the owner's "go": merge #90 into `claude/dc-v2-wave3` (merge commit),
+  re-run `npm run check` on the wave branch, then open one PR `claude/dc-v2-wave3` →
+  `claude/air-gapped-debug-logging-zkn1nr` for the owner (**do not merge it**).
+- **Known limits to name in the wave PR:** fullscreen and a host modal dialog — the panel is drawn
+  on top and live but cannot be clicked (Chrome rule, `D-15`; the 2.x separate window is the real
+  fix); a modal dialog inside a host's shadow root is not seen (ISO-21); the loader has 12 B left;
+  in a narrow right dock the HTTP filter bar clips its last chips.
+- Last known checks on `claude/dc-v2-w3-05-http` (#84 head): green — **1043** unit
+  specs (floor 1043), **26** e2e (floor 26); loader **4,084 / 4,096 B (12 B left)**,
+  panel-ui **34,043 / 40,960 B** (~6.9 kB left for two views: about 3 WS,
+  2 Console — report your growth in the PR).
+- **Flaky once:** `panel-hostile-host` "ISO-20 … the next open mounts it again"
+  timed out in `browserContext.newPage` (before the test body) on one slow run
+  (2 min); the re-run passed in 42 s. If it repeats, look at the machine first.
+- The hostile host uses the real `createCaptureController` (`test/hostile-host/controller.mjs`).
+  A view's e2e makes real traffic with `page.evaluate` (fetch / XHR / WebSocket /
+  console) and finds rows inside the shadow root.
+- `wave-3.md` is your main guide; its status table must be kept current.
+- **Windows tip:** a terminal opened by the IDE may not have the user variable
+  `CHROME_BIN`; Karma then tries the blocked `chrome.exe` (`spawn EPERM`). Set
+  it in the command: `$env:CHROME_BIN = [Environment]::GetEnvironmentVariable('CHROME_BIN','User')`.
+
+**Setup (Windows, PowerShell; details in §10):**
+
+```powershell
+git config core.autocrlf false
+git fetch origin
+git switch claude/dc-v2-wave3
+git pull
+cd packages/debug-capture
+npm ci
+npx playwright install chromium   # once per machine; if it fails, stop and tell the owner
+npm run check
+```
+
+**Owner's answers (already settled — don't ask again):**
+
+- **Browser:** tests use Playwright's Chromium. Do **not** point `CHROME_BIN` at the
+  laptop's Chrome 155. Stations run Chrome 146.0.7680.72+: never use web features
+  newer than Chrome 146.
+- **PRs:** use `gh` (`gh pr create`, `gh pr merge <n> --merge`), merge commits only.
+  You merge track PRs into `claude/dc-v2-wave3` after `npm run check` passes and you
+  read the diff. Only the owner merges into `claude/air-gapped-debug-logging-zkn1nr`.
+- **Commits:** conventional commits, scope `debug-capture v2`
+  (`feat(debug-capture v2): view interface and stub views`). No trailer lines. Never
+  an AI model name in commits or PRs.
+- **Budgets:** UI chunk 40 kB (`D-25`). The **loader has 12 B left** (4,084 /
+  4,096 B since S-08) — ask the owner before raising its 4 kB budget (R2).
+
+**Your first reply to the owner:**
+
+1. Did `npm run check` pass on `claude/dc-v2-wave3`? Test counts and the size table,
+   or the exact error.
+2. Your plan for the next step in the status above, in a few lines.
+3. Anything in the docs that looks unclear or contradictory.
+
+Then **wait for the owner's "go"** before writing code, and ask for a "go" before
+each later step. Order after the contract: S-08 frame → S-05 HTTP → S-06 WebSocket →
+S-07 Console (at most two at a time).
+
+**Before you stop** (budget, end of day, or done): push your work, update this §0
+and the `wave-3.md` status table, so the next agent can start from here.
 
 ---
 
@@ -73,7 +180,8 @@ Everything below is merged into it (as of `4ebda8a`).
 |---|---|---|---|
 | 1 | S-00 Foundation | #59 | Merged |
 | 2 | S-01 core changes, S-02 loader, S-03 model, S-04 UI blocks | #60–#68, wave PR #70 | Merged |
-| after | Review notes, D-23, Chrome 146+, wave-3 decisions | #69, #71, #72, #73 | Merged |
+| after | Review notes, D-23, Chrome 146+, wave-3 decisions, handoff, Copilot / Windows setup | #69, #71–#76 | Merged |
+| 3 (in progress) | Wave branch `claude/dc-v2-wave3`: plan + specs, D-24, D-25; contract, S-08, S-05 | #77–#79, #81, #83, #84 | Merged into the wave branch; current step in §0 |
 
 **Numbers** (`npm run check`, green): **935** unit specs (floor 935), **19** e2e
 (floor 19).
@@ -82,7 +190,7 @@ Everything below is merged into it (as of `4ebda8a`).
 |---|---|---|---|
 | core | 11,743 B | 12,368 B | 625 B |
 | panel-loader | 4,041 B | 4,096 B | **55 B** |
-| panel-ui (lazy chunk) | 22,695 B | 25,600 B | **~2.9 kB** — see risk R1 |
+| panel-ui (lazy chunk) | 22,695 B | 40,960 B (`D-25`) | ~18 kB for wave 3 (estimate needs 13–15 kB) |
 
 **Reviews done:** S-00 ×2, S-01 + confirmation, S-02 isolation + fixes, S-04 +
 confirmation, one whole-wave review (no blockers).
@@ -110,7 +218,7 @@ real-app listeners, a zone.js page; it drives a **fake controller**,
 
 | State | Decisions |
 |---|---|
-| **Decided** (all of them, owner 2026-10-19) | D-01 … D-23. D-15 and D-18 were changed by the owner; D-05…D-11, D-16, D-17, D-21, D-22 were already built and accepted as built. |
+| **Decided** (all of them, owner 2026-10-19 / 2026-10-22) | D-01 … D-26. D-15 and D-18 were changed by the owner; D-05…D-11, D-16, D-17, D-21, D-22 were already built and accepted as built; D-24 (no Launcher setting in 2.0) and D-25 (UI chunk 40 kB) were added during wave-3 planning; D-26 (WebSocket detail Copy ▾) during S-06. |
 
 **Owner changes that wave 3 must implement:**
 - **D-18 / FR-HTTP-01:** the HTTP list is in **start order** like DevTools; a pending
@@ -118,9 +226,11 @@ real-app listeners, a zone.js page; it drives a **fake controller**,
   click a header → ascending → descending → back to start order, with `aria-sort`.
   Filters and search apply on top. The model does **not** do this yet (R3).
 - **D-15 / FR-WIN-07:** when the page goes **fullscreen**, the launcher and panel are
-  raised back on top (shown again in the top layer) and stay usable. A host **modal
-  dialog** makes the panel unclickable (browser rule), so a banner says so (§4.11).
-  Needs a loader change (R2).
+  raised back on top (shown again in the top layer) and stay **live**, but Chrome
+  blocks clicks and focus outside the fullscreen element (like a modal dialog), so a
+  banner says the panel cannot be used until fullscreen ends; the shortcut still
+  opens and closes it. A host **modal dialog** gets the same banner (§4.11). Built
+  in S-08.
 - **D-19:** Pause freezes the view only. **Capture on/off** (FR-ACT-09) is the "stop
   recording" switch, like DevTools' record button, and sits **next to Pause** in the
   toolbar.
@@ -205,21 +315,19 @@ Fix these **before** the tracks start, so they can work in parallel:
 
 ## 6. Risks — raise them early
 
-- **R1 — the UI chunk budget is likely too small.** The lazy chunk is already
-  22,695 / 25,600 B with only the placeholder UI. Its entry `src/panel/app/index.ts`
-  does `export * from '../views'`, which re-exports P2 + P1, so the model and UI
-  blocks are probably already counted. That leaves ~**2.9 kB** for three views and
-  the frame. In step 1, measure (`npm run build && npm run size`, look at what is in
-  the chunk), then give the owner the number and ask for a budget decision
-  (NFR-SIZE-01) **before** the tracks start.
+- **R1 — UI chunk budget: decided.** Measured at 22.3 kB with only the model and the
+  UI blocks (all real panel code; the capture layer is in the shared chunk). The owner
+  raised the budget to **40 kB** (`D-25`); wave 3 is estimated at +13–15 kB. Each
+  track reports its growth in its PR.
 - **R2 — the loader has 55 B left.** The fullscreen re-raise (a `fullscreenchange`
   listener, also while closed — update S02-07) and `panelRoot` both touch it. Expect
   to trim or ask the owner to raise the 4 kB budget.
 - **R3 — HTTP order.** `selectors.ts` `httpRows` still lists finished rows by `seq`
   with pending rows last. D-18 needs start order + sorting (step 1, item 4).
-- **R4 — prove fullscreen.** A Playwright test on the hostile host: after
-  `element.requestFullscreen()` the launcher and panel are on top and clickable; with
-  a modal `<dialog>` the banner shows.
+- **R4 — prove fullscreen: done in S-08.** A Playwright test on the hostile host: after
+  `element.requestFullscreen()` the launcher and panel are drawn on top and the banner
+  shows; after fullscreen the panel is clickable again; a modal `<dialog>` shows the
+  banner too.
 
 ## 7. Small leftovers from wave 2 (fix when you touch the file)
 

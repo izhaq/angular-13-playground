@@ -721,6 +721,9 @@ describe('panel loader (S-02)', () => {
       expect(root).toBe(h.shadow());
       expect(controller).toBe(h.controller);
       expect(options.document).toBe(document);
+      // C3-2: the UI builds in the loader's own panel root, never one found by class.
+      expect(options.panelRoot).toBe(h.root() as HTMLElement);
+      expect(options.panelRoot.parentNode).toBe(h.shadow());
       expect(options.storageKey).toBe('debug-capture:panel');
       expect(options.defaultDock).toBe('bottom');
       expect(custom.ui.lastOptions().storageKey).toBeFalse();
@@ -917,6 +920,34 @@ describe('panel loader (S-02)', () => {
       const other = hostInput();
       h.handle.close();
       expect(document.activeElement).toBe(other);
+    });
+
+    it('fullscreen: the panel is shown on top again and focus stays where it was (D-15, S08-13)', async () => {
+      const h = install();
+      pressToggle(hostInput());
+      await settle();
+      expect(h.shadow().activeElement).toBe(h.root());
+
+      document.dispatchEvent(new Event('fullscreenchange'));
+      // After the next frame: a focus fix-up from the brief hide would show by then.
+      await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
+      expect((h.host() as HTMLElement).matches(':popover-open')).toBeTrue();
+      expect(h.shadow().activeElement).withContext('focus inside the panel').toBe(h.root());
+
+      pressToggle(h.root() as HTMLElement);
+      const input = hostInput();
+      document.dispatchEvent(new Event('fullscreenchange'));
+      await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
+      expect((h.host() as HTMLElement).matches(':popover-open')).toBeTrue();
+      expect(document.activeElement).withContext('focus on the page').toBe(input);
+    });
+
+    it('fullscreen does not put back an element the host removed (ISO-20)', () => {
+      const h = install();
+      const host = h.host() as HTMLElement;
+      host.remove();
+      document.dispatchEvent(new Event('fullscreenchange'));
+      expect(host.isConnected).toBeFalse();
     });
 
     it('a slow chunk does not take focus the user moved to the host page meanwhile', async () => {

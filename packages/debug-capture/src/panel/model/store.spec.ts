@@ -162,18 +162,19 @@ describe('buffer mirror (S03-03)', () => {
 });
 
 describe('HTTP list (S03-04)', () => {
-  it('completion order, then pending rows in start order', () => {
+  it('start order (D-18): finished and pending rows by start time, whatever the completion order', () => {
     const store = storeWith({ entries: [httpEntry(2), httpEntry(1 + 2, { t: 1 })], pending: [pendingRequest(7)] });
     store.apply([{ type: 'pending-start', request: pendingRequest(8) }, entry(httpEntry(5, { t: 0 }))]);
-    expect(httpKeys(selectHttpRows(store.getState()))).toEqual(['#2', '#3', '#5', 'p7', 'p8']);
+    // t: #5 0, #3 1, p7 507, p8 508, #2 1002.
+    expect(httpKeys(selectHttpRows(store.getState()))).toEqual(['#5', '#3', 'p7', 'p8', '#2']);
   });
 
-  it('pending-end removes the pending row; the finished entry is appended and replaces nothing else', () => {
+  it('pending-end removes the pending row; the finished entry takes its place by start time and replaces nothing else', () => {
     const store = storeWith({ entries: [httpEntry(1)], pending: [pendingRequest(7), pendingRequest(8)] });
-    store.apply([entry(httpEntry(2, { requestId: 7 }))]);
-    expect(httpKeys(selectHttpRows(store.getState()))).toEqual(['#1', '#2', 'p7', 'p8']);
+    store.apply([entry(httpEntry(2, { t: 507, requestId: 7 }))]);
+    expect(httpKeys(selectHttpRows(store.getState()))).toEqual(['#2', 'p7', 'p8', '#1']);
     store.apply([{ type: 'pending-end', id: 7 }]);
-    expect(httpKeys(selectHttpRows(store.getState()))).toEqual(['#1', '#2', 'p8']);
+    expect(httpKeys(selectHttpRows(store.getState()))).toEqual(['#2', 'p8', '#1']);
   });
 
   it('a duplicate pending-start and an unknown pending-end change nothing', () => {
@@ -285,6 +286,57 @@ describe('pause (S03-09)', () => {
     expect(state.pending).toBe(frozen.pending);
     expect(state.newSincePause).toBe(2);
     expect(state.buffer.used).toBe(3);
+  });
+
+  it('a request already on screen updates in place when it finishes while paused', () => {
+    const pending = pendingRequest(5);
+    const store = storeWith({ entries: [logEntry(1)], pending: [pending] });
+    store.select('http', pending);
+    store.pause();
+    const finished = httpEntry(2, { requestId: 5, t: pending.t, status: 201 });
+    store.apply([
+      { type: 'pending-end', id: 5 },
+      entry(finished),
+      entry(logEntry(3)),
+      { type: 'pending-start', request: pendingRequest(9) },
+    ]);
+    const state = store.getState();
+    expect(seqs(state.entries)).toEqual([1, 2]);
+    expect(state.pending).toEqual([]);
+    expect(state.selection.http).toEqual({ row: finished, removed: false });
+    expect(httpKeys(selectHttpRows(state))).toEqual(['#2']);
+    expect(state.newSincePause).toBe(1);
+    expect(state.buffer.used).toBe(3);
+  });
+
+  it('a request that starts while paused stays hidden until resume', () => {
+    const store = storeWith({ entries: [logEntry(1)] });
+    store.pause();
+    const frozen = store.getState();
+    const started = pendingRequest(8);
+    store.apply([
+      { type: 'pending-start', request: started },
+      { type: 'pending-end', id: 8 },
+      entry(httpEntry(2, { requestId: 8, t: started.t })),
+    ]);
+    expect(store.getState().entries).toBe(frozen.entries);
+    expect(store.getState().pending).toBe(frozen.pending);
+    expect(store.getState().newSincePause).toBe(1);
+    store.resume();
+    expect(seqs(store.getState().entries)).toEqual([1, 2]);
+    expect(store.getState().pending).toEqual([]);
+  });
+
+  it('an updated row still disappears if the buffer evicts it while paused', () => {
+    const pending = pendingRequest(5);
+    const store = storeWith({ entries: [logEntry(1)], pending: [pending], capacity: 2 });
+    store.pause();
+    store.apply([{ type: 'pending-end', id: 5 }, entry(httpEntry(2, { requestId: 5, t: pending.t }))]);
+    expect(seqs(store.getState().entries)).toEqual([1, 2]);
+    store.apply([entry(logEntry(3))]);
+    expect(seqs(store.getState().entries)).toEqual([2]);
+    store.apply([entry(logEntry(4))]);
+    expect(store.getState().entries).toEqual([]);
   });
 
   it('evicted rows still disappear while paused; newSincePause is capped at capacity', () => {

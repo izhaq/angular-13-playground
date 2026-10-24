@@ -40,7 +40,7 @@ error).
   research (`docs/research/host-impact-edge-cases.md`).
 - **It costs almost nothing until used.** At start the page loads only a
   small **loader** (≤ 4 kB: launcher, toggle shortcut, problems badge). The
-  panel UI (≤ 25 kB) loads on first open.
+  panel UI (≤ 40 kB) loads on first open.
 - **It is a package.** v2 lives in `packages/debug-capture/` with entry points
   `core`, `angular`, `react` and `panel`, ready to become its own repository.
 - **Delivery.** 11 specs (S-00 … S-10), built in waves by parallel agents,
@@ -147,6 +147,7 @@ error).
   is handled in 2.0, `D-15`).
 - Export of the **current view** only (filtered).
 - Column choice (column sorting is in 2.0, `D-18`).
+- A **Launcher Show / Hide** setting (`D-24`); in 2.0 the host option `launcher: false`.
 - A **Problems** quick view (all failures across tabs).
 - Hebrew UI text (the UI is English in 2.0; data is bidi-safe — `NFR-I18N-01`).
 
@@ -179,7 +180,7 @@ must list the IDs they cover. Behaviour details are in §4, visual details in §
 |---|---|---|
 | FR-ACT-01 | The host installs the panel with one call after creating the capture controller: `installDebugPanel(controller, options?)` (§6.6). With the flag off the host has no controller and passes `null`: the call does nothing and returns an inert handle. | MUST |
 | FR-ACT-02 | The panel **UI** is **loaded on first open** (dynamic import), not at app start. Before that only the **loader** exists: launcher, toggle shortcut and badge counter (§6.1). | MUST |
-| FR-ACT-03 | A **launcher** — a small button in a screen corner — opens the panel. It can be turned off (`launcher: false` option, or in Settings). | MUST |
+| FR-ACT-03 | A **launcher** — a small button in a screen corner — opens the panel. It can be turned off with the `launcher: false` option (a Settings switch is 2.x, `D-24`). | MUST |
 | FR-ACT-04 | The launcher shows how many **new problems** happened since the panel was last closed. A **problem** is: an `ErrorEntry`; an HTTP entry with `status ≥ 500` or `error ≠ null`; a WebSocket `error` event. Not counted: 4xx, and `console.error` lines (Angular and React errors already make an `ErrorEntry`; counting both would count twice). Opening the panel and **Clear** reset the badge. | SHOULD |
 | FR-ACT-05 | A **toggle shortcut** opens and closes the panel: `Ctrl+Alt+Shift+P` (configurable), matched on `KeyboardEvent.code`, like v1's shortcuts. | MUST |
 | FR-ACT-06 | The panel never opens by itself. It opens only on a user click or key. `handle.open()` exists only for a host's own user action (a menu item, a button). | MUST |
@@ -197,7 +198,7 @@ must list the IDs they cover. Behaviour details are in §4, visual details in §
 | FR-WIN-04 | **Maximize** to fill the window, and back. | SHOULD |
 | FR-WIN-05 | **Close** button, the toggle shortcut, and `Escape` (when no menu, popover or detail view is open — §4.12) close the panel. | MUST |
 | FR-WIN-06 | Two top tabs: **Network** and **Console**. Network has two sub-tabs: **HTTP** and **WebSocket**. | MUST |
-| FR-WIN-07 | **Fullscreen:** when the page enters fullscreen, the panel and the launcher are raised back on top of it (shown again in the top layer), so they float over the fullscreen app and stay usable (`D-15`). **Modal dialog:** the browser makes everything outside the dialog unclickable, so the panel stays visible but says so in a banner (`ISO-21`). | SHOULD |
+| FR-WIN-07 | **Fullscreen:** when the page enters fullscreen, the launcher and the panel are raised back on top of it (shown again in the top layer), so they stay **visible and live** over the fullscreen app (`D-15`). Chrome makes everything outside a fullscreen element unclickable and unfocusable, as it does for a modal dialog (the fullscreen element matches `:modal`; proven in the S-08 e2e on Chromium 141), so while fullscreen the panel is for watching: the toggle shortcut still opens and closes it, a banner says it cannot be used, and it works again when fullscreen ends. **Modal dialog:** the same — visible, not usable, banner (`ISO-21`). | SHOULD |
 
 ### 3.4 Functional — Network › HTTP
 
@@ -220,6 +221,7 @@ must list the IDs they cover. Behaviour details are in §4, visual details in §
 | FR-WS-03 | Filters: text search in message data, direction (All / Sent / Received), type (Text / Binary). | MUST |
 | FR-WS-04 | Selecting a message opens the detail with sub-tabs **Message** (JSON tree / Raw; binary as base64 and hex — a truncated base64 tail that does not decode is shown as `…` with the note *cut*) and **Info** (connection URL, socket id, state, close code/reason, counts). | MUST |
 | FR-WS-05 | An "all connections" choice shows every socket's messages together, with the socket id in a column. | SHOULD |
+| FR-WS-06 | The message detail has **Copy ▾**: Copy message (the data as stored: text as-is, binary as base64) and Copy URL — only on the user's action, inside the panel (`D-26`, `NFR-SEC-04`). | SHOULD |
 
 ### 3.6 Functional — Console
 
@@ -264,7 +266,7 @@ must list the IDs they cover. Behaviour details are in §4, visual details in §
 | NFR-PERF-04 | **Scroll:** lists are virtualised — under 2,000 DOM nodes per tab **including the detail pane**, whatever the entry count, for a panel up to **1,080 px** tall; taller (a maximised panel on a 4K screen) adds at most ~23 nodes per extra visible row, because every visible row is drawn (`D-22`). No long task over 50 ms while scrolling. | MUST |
 | NFR-PERF-05 | **Angular host:** the panel causes **0** change-detection cycles (verified with an `NgZone` counter). | MUST |
 | NFR-PERF-06 | **Memory:** the panel adds under 10 MB on top of the capture buffer with 5,000 entries. | SHOULD |
-| NFR-SIZE-01 | **Loader** (`debug-capture/panel`, loaded at start): ≤ **4 kB** min+gzip. **UI chunk** (loaded on first open): ≤ **25 kB** min+gzip; hosts that never open the panel load **0 bytes** of it. **Core:** within ± 2 kB of v1's size — the baseline is measured and recorded in S-00. | MUST |
+| NFR-SIZE-01 | **Loader** (`debug-capture/panel`, loaded at start): ≤ **4 kB** min+gzip. **UI chunk** (loaded on first open): ≤ **40 kB** min+gzip (raised from 25 kB, `D-25`); hosts that never open the panel load **0 bytes** of it. **Core:** within ± 2 kB of v1's size — the baseline is measured and recorded in S-00. | MUST |
 | NFR-SEC-01 | No `innerHTML` / `outerHTML` / `insertAdjacentHTML`, no `eval` / `new Function`, no inline handlers. Captured data enters the DOM only as text. No `href` / `src` built from captured data. | MUST |
 | NFR-SEC-02 | Works under a strict CSP (`default-src 'self'`, no `'unsafe-inline'`) and Trusted Types (`require-trusted-types-for 'script'`) with no violations. | MUST |
 | NFR-SEC-03 | The panel never makes network requests and never reads anything the recorder did not store (it sees only redacted data). | MUST |
@@ -350,8 +352,10 @@ createCaptureController()  ──►  installDebugPanel(controller)   (loader)
 - **Pause:** freezes **rendering only**. The toolbar shows `Paused · 37 new`
   (the number is capped at the buffer capacity). Capture is not affected.
   **Clear** and **evictions** still apply at once while paused: rows that left
-  the buffer disappear from the frozen view. Resume applies everything that
-  waited.
+  the buffer disappear from the frozen view. A pending HTTP row that was
+  already on screen updates in place when that request finishes (same row,
+  highlight kept); it is not counted in `N new`. A request that starts while
+  paused stays hidden until Resume. Resume applies everything that waited.
 - **Buffer limits:** the capture buffer holds `maxEntries` (default 5,000).
   When it is full, the oldest entries drop out of the lists too; the status
   bar shows the evicted count. A selected entry that drops out keeps its
@@ -441,9 +445,10 @@ a close `✕`. `↑` / `↓` in the list moves the selection and updates the det
   buffer, always. The file is v1's format, `schemaVersion` 1, with two new
   optional fields (`pending`, `requestId` — `C-1`, §6.5).
 - **Problems** count: the rule in `FR-ACT-04`, over the buffer.
-- **`N / M shown`**: N = rows the current list shows after filters; M = rows
-  that list has before filters (not the whole buffer — that is the `buffer`
-  figure).
+- **`N / M shown`**: N = entries the current list shows after filters; M =
+  entries that list has before filters (not the whole buffer — that is the
+  `buffer` figure). A Console run of repeats (one row with a count, S07-05)
+  counts each of its entries (`FR-BAR-06`).
 - **v1 shortcuts** (`D` / `C` / `X`) belong to capture: while capture is off
   they do nothing; the panel's toolbar still exports and clears.
 
@@ -457,7 +462,6 @@ A popover under the gear button.
 | Dock | Bottom · Right | Bottom |
 | Text size | Small 11 px · Normal 12 px · Large 14 px (meta text 10 / 11 / 13 px) | Normal |
 | Time | Clock · Relative | Clock |
-| Launcher | Show · Hide | Show |
 | Capture | On · Off (`FR-ACT-09`) — **not remembered**; every reload starts On | On |
 
 Remembered in `localStorage` under `debug-capture:panel`: settings (except
@@ -474,7 +478,7 @@ storage is blocked the panel uses defaults and works the same.
 | Capture off | Banner on top: "Capture is off — nothing new is recorded." **Turn on**. |
 | Paused | Toolbar: `Paused · N new` and **Resume**. |
 | Entry removed | Detail: "This entry was removed from the buffer." |
-| Host modal dialog | Banner: "The page has a dialog open. The panel may not respond until it closes." (Fullscreen needs no banner: the panel is raised on top, `FR-WIN-07`.) |
+| Host modal dialog or fullscreen | Banner: "The page has a dialog open or is fullscreen. The panel can be seen but not used until it closes." Chrome blocks clicks and focus outside a modal dialog or a fullscreen element; the panel is still drawn on top and live (`FR-WIN-07`, `D-15`, `ISO-21`). |
 | Panel failure | Status bar shows `panel error` with a count; the panel keeps working (`NFR-REL-01`). |
 
 ### 4.12 Keyboard
@@ -720,7 +724,7 @@ packages/debug-capture/                (becomes its own repository later — D-0
   `@angular/core` is a **peer** dependency of `debug-capture/angular` only.
 - `debug-capture/panel` is the **loader** (≤ 4 kB): `installDebugPanel`, the
   custom element and its host lockdown, launcher, badge counter, toggle
-  shortcut. It loads the **UI chunk** (≤ 25 kB) with one dynamic `import()` on
+  shortcut. It loads the **UI chunk** (≤ 40 kB) with one dynamic `import()` on
   first open (`FR-ACT-02`, `NFR-SIZE-01`).
 - `debug-capture` (core) never imports `debug-capture/panel`, so the core does
   not grow.
@@ -916,7 +920,7 @@ has its evidence, severity and test). Short form:
 | ISO-18 | Bidi-safe data cells. |
 | ISO-19 | Drag/resize with pointer capture on our element; no document-level move listeners. |
 | ISO-20 | Survive removal: clean up on disconnect, remount on next open; no MutationObserver fights. |
-| ISO-21 | Document the limits (host modal, `inert`, fullscreen, host capture-phase listeners). |
+| ISO-21 | Document the limits (host modal **and fullscreen** — Chrome makes the panel unclickable and unfocusable while either is open, `D-15`; `inert`; host capture-phase listeners). |
 | ISO-22 | A "hostile host" fixture; every rule tested against it. |
 
 ### 6.8 Security design
@@ -1070,7 +1074,7 @@ end to end that every `MUST` is covered.
 | NFR-PERF-01, 05 | S-02 |
 | NFR-PERF-02, 03, 04, 06 | S-08 (scheduler) + S-03 + S-04 (built), S-10 (measured) |
 | NFR-SIZE-01 | S-00 (baseline and check), S-10 (final) |
-| NFR-SEC-01…04 | S-04 (safe builder), S-05 (cURL, copy), S-08 (export), S-10 (CSP page) |
+| NFR-SEC-01…04 | S-04 (safe builder), S-05 (cURL, copy), S-06 (copy), S-08 (export), S-10 (CSP page) |
 | NFR-REL-01 | S-02 + every spec (lint rule, guard) |
 | NFR-A11Y-01 | S-04 (contrast), S-09 (the rest) |
 | NFR-I18N-01 | S-04 (bidi-safe cells) |
@@ -1096,20 +1100,23 @@ owner confirms or changes it before the spec that depends on it starts.
 | D-07 | The launcher's problems badge is the one allowed cost while closed (O(1) per entry, ≤ 1 rAF per frame). | Decided |
 | D-08 | Test runner: Karma + Jasmine + esbuild (keeps all v1 specs). | Decided |
 | D-09 | Build with plain `tsc`; drop the Angular decorator (C-4). | Decided |
-| D-10 | Split the panel into a **loader** (≤ 4 kB, at start: launcher, shortcut, badge) and a **UI chunk** (≤ 25 kB, dynamic `import()` on first open). | Decided |
+| D-10 | Split the panel into a **loader** (≤ 4 kB, at start: launcher, shortcut, badge) and a **UI chunk** (≤ 40 kB since `D-25`, dynamic `import()` on first open). | Decided |
 | D-11 | Element name `debug-capture-panel-v2`; if taken, reuse the existing definition if it is ours, otherwise do nothing and stay silent. | Decided |
 | D-12 | **Clear** clears the capture buffer (not just the view), like v1's shortcut. | Decided |
 | D-13 | Theme **Auto** by default (dark/light by OS); colours as in §5.4. | Decided |
 | D-14 | UI in English; data bidi-safe. Hebrew UI later if needed. | Decided |
-| D-15 | **Fullscreen:** the panel and launcher are raised back on top, so they float over the fullscreen app and stay usable. **Host modal dialog:** the panel stays visible but is not clickable (browser rule), so a banner says so; the separate window (2.x) is the real fix for modals. | Decided |
+| D-15 | **Fullscreen:** the panel and launcher are raised back on top, so they stay visible and live over the fullscreen app (you can watch it beside the app). Chrome makes everything outside a fullscreen element unclickable and unfocusable, as it does for a modal dialog (the fullscreen element matches `:modal`; proven in the S-08 e2e on Chromium 141): while fullscreen the panel can be seen and toggled by the shortcut, not clicked; a banner says so. **Host modal dialog:** the same. The separate window (2.x) is the real fix for both. | Decided |
 | D-16 | The panel never blocks the host's capture-phase listeners (doing so breaks the panel's own handlers). | Decided |
 | D-17 | **One recorder for the page's life**: capture off/on removes and reinstalls probes on the same recorder (C-2). | Decided |
 | D-18 | HTTP list in **start order**, like DevTools; a pending row keeps its place and updates when the request finishes. **Column sorting** by clicking a header (asc / desc / off), plus filters and search. | Decided |
-| D-19 | **Pause** freezes rendering only; Clear and evictions still apply; export always takes the whole buffer. To stop recording, use the **Capture on/off** switch (`FR-ACT-09`, like DevTools' record button), placed next to Pause in the toolbar. | Decided |
-| D-20 | **Not remembered:** capture on/off and filter search text. Remembered: settings, size, dock, last tab, filter chips. | Decided |
+| D-19 | **Pause** freezes rendering only; Clear and evictions still apply; a pending HTTP row already on screen updates in place when it finishes. Export always takes the whole buffer. To stop recording, use the **Capture on/off** switch (`FR-ACT-09`, like DevTools' record button), placed next to Pause in the toolbar. | Decided |
+| D-20 | **Not remembered:** capture on/off and filter search text. Remembered: settings, size, dock, last tab, filter chips. The HTTP column sort (`D-18`) is not remembered either: it resets on reload, like the search text. | Decided |
 | D-21 | A **problem** (badge, status bar) = error entry, HTTP 5xx or failed, WebSocket error. Not 4xx, not `console.error`. | Decided |
 | D-22 | The 2,000-node budget holds up to a 1,080 px panel; above that the list draws every visible row (~23 nodes each) rather than leaving rows blank. Views keep rows lean (text cells, one icon). Found in the S-04 review. | Decided |
 | D-23 | A host page that registers a `--dcp-*` name with `@property` is out of scope (research S4): the theme keeps CSS variables. Only the loader, which must always be visible, uses literal colours. | Decided |
+| D-24 | The **Launcher Show / Hide** setting moves to 2.x: remembering "Hide" would make the always-loaded loader read storage at start (loader bytes, `NFR-SIZE-01`). In 2.0 a host turns the launcher off with the `launcher: false` option; the shortcut always works. | Decided |
+| D-25 | The **UI chunk** budget is **40 kB** min+gzip (was 25 kB). Measured before wave 3: 22,695 B with only the model and the UI blocks (no views, no frame); wave 3 is estimated at +13–15 kB. The chunk loads once, on first open, from the local network; the host's start cost (the 4 kB loader) does not change. | Decided |
+| D-26 | The **WebSocket message detail has `Copy ▾`** (message, URL — `FR-WS-06`), as in the mockup (owner, 2026-10-22). Copy and export stay explicit user actions (`NFR-SEC-04`). | Decided |
 
 ---
 

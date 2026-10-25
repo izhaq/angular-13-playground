@@ -11,8 +11,10 @@ commit messages or PR text. (Same rule as `CLAUDE.md`.)
 
 Most work in this repo is the debug-capture v2 package. Before any work there:
 
-1. Read `packages/debug-capture/docs/specs/HANDOFF.md` — current state, the next
-   wave's plan, risks, working rules and Windows setup.
+1. Read `packages/debug-capture/docs/specs/HANDOFF.md` if it exists — current state,
+   the next step's plan, working rules and Windows setup. There is only ever **one**
+   handoff file: rewrite it for the next step, and delete it in the PR that finishes the
+   last open step (no old waves' plans or status in it).
 2. Follow `packages/debug-capture/AGENTS.md` — the coding, layer, isolation, test,
    git and review rules. Its rules win over general habits.
 3. The design source of truth is `packages/debug-capture/docs/design/HLD.md`.

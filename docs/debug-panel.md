@@ -42,6 +42,18 @@ Press the same keys again, or `Escape`, to close it.
 - **Console** — logs, warnings, errors, and errors Angular caught.
 - **Export** (toolbar) — **Download all (JSON)** saves everything to one file.
   Send that file to a developer. It can be read without the panel.
+- **Note** (toolbar) — write a short note (a title and some text), for example
+  "clicked Save now". It shows in **Console** and in the exported file, at that
+  moment, so a developer can see what you did when.
+- **Settings** (gear) — besides theme, dock, text size and time:
+  - **Buffer** — how many entries are kept: 1,000 · 5,000 (default) · 10,000 ·
+    50,000 · **No limit**. When it is full, the oldest entries are dropped.
+    No limit keeps everything, but the page may get slow and use a lot of memory.
+  - **DBG button** — show or hide the corner button. The shortcut always works.
+  - Both are remembered in this browser.
+- **Warnings** — a banner when the buffer is almost full (with **Download all**
+  and **Raise the limit**), and one each time the recorded data passes another
+  25 MB. Click **Dismiss** to hide it; it comes back at the next step.
 
 Passwords, tokens and auth headers are hidden before anything is stored. Still,
 treat an exported file as sensitive.
@@ -57,8 +69,8 @@ Only **five things**. Nothing else in the app knows the panel exists.
 
 | # | File | What it is |
 | --- | --- | --- |
-| 1 | `vendor/debug-capture-2.0.0-alpha.1.tgz` | The package itself, as one file. This is the file you carry into the air-gapped network. |
-| 2 | `package.json` | One line in `dependencies`: `"debug-capture": "file:vendor/debug-capture-2.0.0-alpha.1.tgz"`. `npm install` reads the package from that file — no internet needed. (`package-lock.json` changes with it.) |
+| 1 | `vendor/debug-capture-2.1.0-alpha.0.tgz` | The package itself, as one file. This is the file you carry into the air-gapped network. |
+| 2 | `package.json` | One line in `dependencies`: `"debug-capture": "file:vendor/debug-capture-2.1.0-alpha.0.tgz"`. `npm install` reads the package from that file — no internet needed. (`package-lock.json` changes with it.) |
 | 3 | `src/app/features/debug-panel/` | The only code that imports the package: `startDebugPanel()` and `provideDebugPanel()`, plus a small spec. |
 | 4 | `src/main.ts` | Calls `startDebugPanel()` **before** Angular starts, and passes its result to `platformBrowserDynamic(…)`. |
 | 5 | `src/app/app.module.ts` | Adds `provideDebugPanel()` to `providers`. |
@@ -71,7 +83,7 @@ Why each piece:
 - **`provideDebugPanel()`** replaces Angular's error handler with one that also
   records the error. It still prints the error to the console, like before.
 - **The panel's UI is loaded only on first open.** At start-up the app loads only
-  a small part (about 4 kB, gzipped). The rest (about 33 kB) loads when someone
+  a small part (about 5 kB, gzipped). The rest (about 40 kB) loads when someone
   opens the panel.
 
 > The old recorder (v1) is still in the repo, in `src/debug-capture/` and
@@ -87,14 +99,14 @@ Works with Angular 16 to 20. You need Node 20.19+, 22.13+ or 24+.
 
 ### Step 1 — Put the package file in the app
 
-Copy `debug-capture-2.0.0-alpha.1.tgz` into a `vendor/` folder at the root of
+Copy `debug-capture-2.1.0-alpha.0.tgz` into a `vendor/` folder at the root of
 the app (next to `package.json`).
 
 ```
 my-app/
   package.json
   vendor/
-    debug-capture-2.0.0-alpha.1.tgz
+    debug-capture-2.1.0-alpha.0.tgz
   src/
 ```
 
@@ -103,13 +115,13 @@ my-app/
 From the app's root folder:
 
 ```bash
-npm install ./vendor/debug-capture-2.0.0-alpha.1.tgz
+npm install ./vendor/debug-capture-2.1.0-alpha.0.tgz
 ```
 
 Check `package.json`. You should now see this line in `dependencies`:
 
 ```json
-"debug-capture": "file:vendor/debug-capture-2.0.0-alpha.1.tgz"
+"debug-capture": "file:vendor/debug-capture-2.1.0-alpha.0.tgz"
 ```
 
 Commit the `.tgz` file, `package.json` and `package-lock.json` together. From
@@ -237,7 +249,7 @@ The panel touches the app in only a few places, so removing it is quick:
 
    ```bash
    npm uninstall debug-capture
-   rm vendor/debug-capture-2.0.0-alpha.1.tgz
+   rm vendor/debug-capture-2.1.0-alpha.0.tgz
    ```
 
 5. Build to check nothing else used it: `npm run build`.

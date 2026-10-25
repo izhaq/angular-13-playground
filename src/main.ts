@@ -2,21 +2,17 @@ import { enableProdMode } from '@angular/core';
 import { platformBrowserDynamic } from '@angular/platform-browser-dynamic';
 
 import { AppModule } from './app/app.module';
-import {
-  installDebugCapture,
-  isDebugRequested,
-  provideDebugCaptureSession,
-} from './app/features/debug-capture';
+import { startDebugPanel } from './app/features/debug-panel';
 import { environment } from './environments/environment';
 
 if (environment.production) {
   enableProdMode();
 }
 
-// Installed before bootstrap so startup requests are captured, and so the
-// capture survives a bootstrap failure (export still works by shortcut).
-const debugCapture = isDebugRequested() ? installDebugCapture() : null;
+// Debug panel: started before bootstrap so startup requests are captured, and
+// so it still works if bootstrap fails. Off unless the URL has ?debug=1.
+const debugPanelProviders = startDebugPanel();
 
-platformBrowserDynamic([provideDebugCaptureSession(debugCapture)])
+platformBrowserDynamic(debugPanelProviders)
   .bootstrapModule(AppModule)
   .catch(err => console.error(err));

@@ -9,7 +9,7 @@ import { AppRoutingModule } from './app-routing.module';
 import { DemoPageModule } from './demo/demo-page.module';
 import { provideAuth } from './features/auth/auth.providers';
 import { SessionIndicatorComponent } from './features/auth/session-indicator/session-indicator.component';
-import { provideDebugCapture } from './features/debug-capture';
+import { provideDebugPanel } from './features/debug-panel';
 
 @NgModule({
   declarations: [AppComponent],
@@ -29,8 +29,8 @@ import { provideDebugCapture } from './features/debug-capture';
   // 401 redirect to a login page that is not registered.
   providers: [
     environment.authEnabled ? provideAuth() : provideHttpClient(),
-    // Records errors Angular catches itself — only when main.ts started a capture.
-    provideDebugCapture(),
+    // Debug panel: records errors Angular catches itself — only when main.ts started a capture.
+    provideDebugPanel(),
   ],
   bootstrap: [AppComponent],
 })

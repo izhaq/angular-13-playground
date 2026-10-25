@@ -160,6 +160,16 @@ export const createHttpView: CreateView = (deps) => {
     },
     onError: report,
   });
+  // First paint, before the frame's update: a restored filter must not say
+  // "nothing yet" while rows are only hidden (S09-05). `rows` stays `[]` so
+  // the first update still fills the list once it can be measured.
+  const paintLists = (state: PanelState, next: readonly HttpRow[]): void => {
+    const total = selectListCounts(state, 'http').total;
+    empty.element.hidden = total > 0;
+    noMatch.element.hidden = total === 0 || next.length > 0;
+    list.element.hidden = next.length === 0;
+  };
+  paintLists(last, selectHttpRows(last));
   dom.append(pane, [empty.element, noMatch.element]);
 
   return {
@@ -172,10 +182,7 @@ export const createHttpView: CreateView = (deps) => {
       if (changed) {
         rows = next;
         // States first: the list measures its height in `setItems`, so the blocks beside it must be settled.
-        const total = selectListCounts(state, 'http').total;
-        empty.element.hidden = total > 0;
-        noMatch.element.hidden = total === 0 || rows.length > 0;
-        list.element.hidden = rows.length === 0;
+        paintLists(state, rows);
         list.setItems(rows);
         countNew();
       }

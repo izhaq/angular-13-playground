@@ -41,7 +41,9 @@ Press the same keys again, or `Escape`, to close it.
 - **Network › WebSocket** — every connection and its messages.
 - **Console** — logs, warnings, errors, and errors Angular caught.
 - **Export** (toolbar) — **Download all (JSON)** saves everything to one file.
-  Send that file to a developer. It can be read without the panel.
+  Send that file to a developer. It can be read without the panel. Each entry
+  starts with `sequence` (its order) and `time` (the station's local time,
+  e.g. `2026-10-25T15:08:56.618+03:00`).
 - **Note** (toolbar) — write a short note (a title and some text), for example
   "clicked Save now". It shows in **Console** and in the exported file, at that
   moment, so a developer can see what you did when.
@@ -69,8 +71,8 @@ Only **five things**. Nothing else in the app knows the panel exists.
 
 | # | File | What it is |
 | --- | --- | --- |
-| 1 | `vendor/debug-capture-2.1.0-alpha.1.tgz` | The package itself, as one file. This is the file you carry into the air-gapped network. |
-| 2 | `package.json` | One line in `dependencies`: `"debug-capture": "file:vendor/debug-capture-2.1.0-alpha.1.tgz"`. `npm install` reads the package from that file — no internet needed. (`package-lock.json` changes with it.) |
+| 1 | `vendor/debug-capture-2.1.0-alpha.2.tgz` | The package itself, as one file. This is the file you carry into the air-gapped network. |
+| 2 | `package.json` | One line in `dependencies`: `"debug-capture": "file:vendor/debug-capture-2.1.0-alpha.2.tgz"`. `npm install` reads the package from that file — no internet needed. (`package-lock.json` changes with it.) |
 | 3 | `src/app/features/debug-panel/` | The only code that imports the package: `startDebugPanel()` and `provideDebugPanel()`, plus a small spec. |
 | 4 | `src/main.ts` | Calls `startDebugPanel()` **before** Angular starts, and passes its result to `platformBrowserDynamic(…)`. |
 | 5 | `src/app/app.module.ts` | Adds `provideDebugPanel()` to `providers`. |
@@ -99,14 +101,14 @@ Works with Angular 16 to 20. You need Node 20.19+, 22.13+ or 24+.
 
 ### Step 1 — Put the package file in the app
 
-Copy `debug-capture-2.1.0-alpha.1.tgz` into a `vendor/` folder at the root of
+Copy `debug-capture-2.1.0-alpha.2.tgz` into a `vendor/` folder at the root of
 the app (next to `package.json`).
 
 ```
 my-app/
   package.json
   vendor/
-    debug-capture-2.1.0-alpha.1.tgz
+    debug-capture-2.1.0-alpha.2.tgz
   src/
 ```
 
@@ -115,13 +117,13 @@ my-app/
 From the app's root folder:
 
 ```bash
-npm install ./vendor/debug-capture-2.1.0-alpha.1.tgz
+npm install ./vendor/debug-capture-2.1.0-alpha.2.tgz
 ```
 
 Check `package.json`. You should now see this line in `dependencies`:
 
 ```json
-"debug-capture": "file:vendor/debug-capture-2.1.0-alpha.1.tgz"
+"debug-capture": "file:vendor/debug-capture-2.1.0-alpha.2.tgz"
 ```
 
 Commit the `.tgz` file, `package.json` and `package-lock.json` together. From
@@ -249,7 +251,7 @@ The panel touches the app in only a few places, so removing it is quick:
 
    ```bash
    npm uninstall debug-capture
-   rm vendor/debug-capture-2.1.0-alpha.1.tgz
+   rm vendor/debug-capture-2.1.0-alpha.2.tgz
    ```
 
 5. Build to check nothing else used it: `npm run build`.

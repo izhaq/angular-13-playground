@@ -27,7 +27,7 @@
     "@angular/platform-browser-dynamic": "^16.2.12",
     "@angular/router": "^16.2.12",
     "cors": "^2.8.6",
-    "debug-capture": "file:vendor/debug-capture-2.1.0-alpha.1.tgz",
+    "debug-capture": "file:vendor/debug-capture-2.1.0-alpha.2.tgz",
     "express": "^4.22.1",
     "rxjs": "~7.5.0",
     "tslib": "^2.3.0",

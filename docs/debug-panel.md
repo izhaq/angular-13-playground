@@ -30,7 +30,7 @@ is shown.
 The shortcut gives **no visible sign**: recording starts, the panel stays closed
 and the DBG button stays hidden. Use `?debug=1` when you need the very first
 requests of a fresh browser; after the shortcut, every reload records from the
-start too.
+start too. With `?debug=1` the **DBG** button shows in a corner.
 
 **Open the panel:** press **`Ctrl+Alt+Shift+P`**. Press it again, or `Escape`,
 to close it. (To get a **DBG** button in the corner too: Settings › DBG button ›
@@ -67,8 +67,8 @@ The panel lists them too: **Settings › About**, with the package version.
   - **Buffer** — how many entries are kept: 1,000 · 5,000 (default) · 10,000 ·
     50,000 · **No limit**. When it is full, the oldest entries are dropped.
     No limit keeps everything, but the page may get slow and use a lot of memory.
-  - **DBG button** — show or hide the corner button (hidden at first). The
-    shortcut always works.
+  - **DBG button** — show or hide the corner button (hidden at first after the
+    shortcut, shown with `?debug=1`). The shortcut always works.
   - Both are remembered in this browser.
   - **About** — the package version and every shortcut.
 - **Warnings** — a banner when the buffer is almost full (with **Download all**
@@ -125,8 +125,8 @@ Only **five things**. Nothing else in the app knows the panel exists.
 
 | # | File | What it is |
 | --- | --- | --- |
-| 1 | `vendor/debug-capture-2.2.0-alpha.1.tgz` | The package itself, as one file. This is the file you carry into the air-gapped network. |
-| 2 | `package.json` | One line in `dependencies`: `"debug-capture": "file:vendor/debug-capture-2.2.0-alpha.1.tgz"`. `npm install` reads the package from that file — no internet needed. (`package-lock.json` changes with it.) |
+| 1 | `vendor/debug-capture-2.2.0-alpha.2.tgz` | The package itself, as one file. This is the file you carry into the air-gapped network. |
+| 2 | `package.json` | One line in `dependencies`: `"debug-capture": "file:vendor/debug-capture-2.2.0-alpha.2.tgz"`. `npm install` reads the package from that file — no internet needed. (`package-lock.json` changes with it.) |
 | 3 | `src/app/features/debug-panel/` | The only code that imports the package: `startDebugPanel()` and `provideDebugPanel()`, plus a small spec. |
 | 4 | `src/main.ts` | Calls `startDebugPanel()` **before** Angular starts, waits for its `ready`, and passes its `providers` to `platformBrowserDynamic(…)`. |
 | 5 | `src/app/app.module.ts` | Adds `provideDebugPanel()` to `providers`. |
@@ -160,14 +160,14 @@ Works with Angular 16 to 20. You need Node 20.19+, 22.13+ or 24+.
 
 ### Step 1 — Put the package file in the app
 
-Copy `debug-capture-2.2.0-alpha.1.tgz` into a `vendor/` folder at the root of
+Copy `debug-capture-2.2.0-alpha.2.tgz` into a `vendor/` folder at the root of
 the app (next to `package.json`).
 
 ```
 my-app/
   package.json
   vendor/
-    debug-capture-2.2.0-alpha.1.tgz
+    debug-capture-2.2.0-alpha.2.tgz
   src/
 ```
 
@@ -176,13 +176,13 @@ my-app/
 From the app's root folder:
 
 ```bash
-npm install ./vendor/debug-capture-2.2.0-alpha.1.tgz
+npm install ./vendor/debug-capture-2.2.0-alpha.2.tgz
 ```
 
 Check `package.json`. You should now see this line in `dependencies`:
 
 ```json
-"debug-capture": "file:vendor/debug-capture-2.2.0-alpha.1.tgz"
+"debug-capture": "file:vendor/debug-capture-2.2.0-alpha.2.tgz"
 ```
 
 Commit the `.tgz` file, `package.json` and `package-lock.json` together. From
@@ -318,7 +318,7 @@ The panel touches the app in only a few places, so removing it is quick:
 
    ```bash
    npm uninstall debug-capture
-   rm vendor/debug-capture-2.2.0-alpha.1.tgz
+   rm vendor/debug-capture-2.2.0-alpha.2.tgz
    ```
 
 5. Build to check nothing else used it: `npm run build`.
@@ -328,10 +328,12 @@ The panel touches the app in only a few places, so removing it is quick:
 ## 6. Questions and problems
 
 **I turned it on but there is no DBG button.**
-That is on purpose: it runs with no visible sign. Press `Ctrl+Alt+Shift+P` to
-open the panel, or show the button in Settings › DBG button. For `?debug=1`:
-reload the page after changing the URL (the flag is read once, at start), and
-check the address really has `?debug=1` (or `&debug=1` after other parameters).
+After the shortcut that is on purpose: it runs with no visible sign. Press
+`Ctrl+Alt+Shift+P` to open the panel, or show the button in Settings › DBG
+button. With `?debug=1` the button should show: reload the page after changing
+the URL (the flag is read once, at start), check the address really has
+`?debug=1` (or `&debug=1` after other parameters), and check Settings › DBG
+button is not on Hide (that choice is remembered).
 
 **Is it on or off right now?**
 Press `Ctrl+Alt+Shift+P`. If the panel opens, it is on. (Pressing

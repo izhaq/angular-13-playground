@@ -24,15 +24,31 @@ is shown.
 
 | Way | How | Lasts |
 | --- | --- | --- |
-| URL | Add `?debug=1` to the address, then press Enter | This page load only |
-| Browser | Open the console once and run `localStorage.setItem('debug-capture', '1')`, then reload | Every load in this browser, until you remove it |
+| Shortcut | Press **`Ctrl+Alt+Shift+A`** anywhere in the app | This browser, from now on — every later load starts recording with the page, until you press it again |
+| URL | Add `?debug=1` to the address, then press Enter | This page load only, recorded from its very start |
 
-**Open the panel** — pick one:
+The shortcut gives **no visible sign**: recording starts, the panel stays closed
+and the DBG button stays hidden. Use `?debug=1` when you need the very first
+requests of a fresh browser; after the shortcut, every reload records from the
+start too.
 
-- Press **`Ctrl+Alt+Shift+P`**, or
-- click the small **DBG** button in the corner of the screen.
+**Open the panel:** press **`Ctrl+Alt+Shift+P`**. Press it again, or `Escape`,
+to close it. (To get a **DBG** button in the corner too: Settings › DBG button ›
+Show.)
 
-Press the same keys again, or `Escape`, to close it.
+**All shortcuts** — they work with the panel **closed**:
+
+| Keys | What it does |
+| --- | --- |
+| `Ctrl+Alt+Shift+A` | Turn the tool on (remembered). Press again: off for good |
+| `Ctrl+Alt+Shift+P` | Open / close the panel |
+| `Ctrl+Alt+Shift+S` | Recording on / off (works while it is off) |
+| `Ctrl+Alt+Shift+M` | Add a note "Mark" at this moment (also while recording is off) |
+| `Ctrl+Alt+Shift+D` | Save everything as a JSON file (see [Save to a fixed folder](#save-to-a-fixed-folder)) |
+| `Ctrl+Alt+Shift+C` | Copy everything (JSON) to the clipboard |
+| `Ctrl+Alt+Shift+X` | Clear what was recorded |
+
+The panel lists them too: **Settings › About**, with the package version.
 
 **Inside the panel:**
 
@@ -51,8 +67,10 @@ Press the same keys again, or `Escape`, to close it.
   - **Buffer** — how many entries are kept: 1,000 · 5,000 (default) · 10,000 ·
     50,000 · **No limit**. When it is full, the oldest entries are dropped.
     No limit keeps everything, but the page may get slow and use a lot of memory.
-  - **DBG button** — show or hide the corner button. The shortcut always works.
+  - **DBG button** — show or hide the corner button (hidden at first). The
+    shortcut always works.
   - Both are remembered in this browser.
+  - **About** — the package version and every shortcut.
 - **Warnings** — a banner when the buffer is almost full (with **Download all**
   and **Raise the limit**), and one each time the recorded data passes another
   25 MB. Click **Dismiss** to hide it; it comes back at the next step.
@@ -60,8 +78,44 @@ Press the same keys again, or `Escape`, to close it.
 Passwords, tokens and auth headers are hidden before anything is stored. Still,
 treat an exported file as sensitive.
 
-**Turn it off:** remove `?debug=1` from the URL, or run
-`localStorage.removeItem('debug-capture')`, then reload.
+**Turn it off:** press **`Ctrl+Alt+Shift+A`** again. Recording stops, the panel
+goes away, and the browser forgets it (the next load starts off). On a
+`?debug=1` page it turns off that page; remove `?debug=1` from the URL so the
+next load stays off.
+
+### Save to a fixed folder
+
+`Ctrl+Alt+Shift+D` saves the file through Chrome's normal download. To have it
+land in one fixed folder on every station, **with no "Save as" dialog**, IT sets
+these Chrome policies once per station. No change to the app is needed.
+
+| Policy | Value | Why |
+| --- | --- | --- |
+| `DownloadDirectory` | the folder, e.g. `D:\debug-captures` | every download goes there |
+| `PromptForDownloadLocation` | `false` (disabled) | no dialog |
+| `DownloadRestrictions` | `0`, or not set | downloads are allowed |
+| `AutomaticDownloadsAllowedForUrls` | the app's address, e.g. `https://app.local` | no "download multiple files?" question on the second save |
+
+- **Windows:** Group Policy › Administrative Templates › Google Chrome (the
+  Chrome ADMX templates), or the registry under
+  `HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Google\Chrome`.
+- **Linux:** a JSON file in `/etc/opt/chrome/policies/managed/`, for example
+  `debug-capture.json`:
+
+  ```json
+  {
+    "DownloadDirectory": "/var/debug-captures",
+    "PromptForDownloadLocation": false,
+    "AutomaticDownloadsAllowedForUrls": ["https://app.local"]
+  }
+  ```
+
+Then open `chrome://policy` on the station and check the values are there.
+
+Good to know: `DownloadDirectory` applies to **every** download in that Chrome,
+not only this tool's files, and the user cannot change it. To only *suggest* the
+folder, use `DefaultDownloadDirectory` instead. The files are named
+`debug-capture-<date>-<time>.json`, so they never overwrite each other.
 
 ---
 
@@ -71,22 +125,27 @@ Only **five things**. Nothing else in the app knows the panel exists.
 
 | # | File | What it is |
 | --- | --- | --- |
-| 1 | `vendor/debug-capture-2.1.0-alpha.2.tgz` | The package itself, as one file. This is the file you carry into the air-gapped network. |
-| 2 | `package.json` | One line in `dependencies`: `"debug-capture": "file:vendor/debug-capture-2.1.0-alpha.2.tgz"`. `npm install` reads the package from that file — no internet needed. (`package-lock.json` changes with it.) |
+| 1 | `vendor/debug-capture-2.2.0-alpha.1.tgz` | The package itself, as one file. This is the file you carry into the air-gapped network. |
+| 2 | `package.json` | One line in `dependencies`: `"debug-capture": "file:vendor/debug-capture-2.2.0-alpha.1.tgz"`. `npm install` reads the package from that file — no internet needed. (`package-lock.json` changes with it.) |
 | 3 | `src/app/features/debug-panel/` | The only code that imports the package: `startDebugPanel()` and `provideDebugPanel()`, plus a small spec. |
-| 4 | `src/main.ts` | Calls `startDebugPanel()` **before** Angular starts, and passes its result to `platformBrowserDynamic(…)`. |
+| 4 | `src/main.ts` | Calls `startDebugPanel()` **before** Angular starts, waits for its `ready`, and passes its `providers` to `platformBrowserDynamic(…)`. |
 | 5 | `src/app/app.module.ts` | Adds `provideDebugPanel()` to `providers`. |
 
 Why each piece:
 
-- **`startDebugPanel()` runs before Angular starts.** So the very first requests
-  the app makes are recorded too. It also means the panel still works if Angular
-  fails to start — which is exactly when you need it most.
+- **`startDebugPanel()` runs before Angular starts, and Angular waits for its
+  `ready`.** So when the page starts switched on (`?debug=1`, or the shortcut
+  was pressed before), the very first requests are recorded too. When it is
+  off, `ready` is done at once: no delay. It also means the shortcut still works
+  if Angular fails to start — which is exactly when you need it most.
 - **`provideDebugPanel()`** replaces Angular's error handler with one that also
-  records the error. It still prints the error to the console, like before.
-- **The panel's UI is loaded only on first open.** At start-up the app loads only
-  a small part (about 5 kB, gzipped). The rest (about 40 kB) loads when someone
-  opens the panel.
+  records the error. It still prints the error to the console, like before. It
+  finds the recording even when it was switched on after Angular started.
+- **Almost nothing loads until it is turned on.** At start-up the app has only
+  a tiny piece (about 1 kB, gzipped): one key listener. Recording and the panel
+  loader (about 15 kB) load when it is turned on; the panel's screens (about
+  40 kB) the first time someone opens it. (Measured in this app: the start
+  bundle shrank by about 13 kB gzipped compared with 2.1.)
 
 > The old recorder (v1) is still in the repo, in `src/debug-capture/` and
 > `src/app/features/debug-capture/`, but the app no longer uses it. It can be
@@ -101,14 +160,14 @@ Works with Angular 16 to 20. You need Node 20.19+, 22.13+ or 24+.
 
 ### Step 1 — Put the package file in the app
 
-Copy `debug-capture-2.1.0-alpha.2.tgz` into a `vendor/` folder at the root of
+Copy `debug-capture-2.2.0-alpha.1.tgz` into a `vendor/` folder at the root of
 the app (next to `package.json`).
 
 ```
 my-app/
   package.json
   vendor/
-    debug-capture-2.1.0-alpha.2.tgz
+    debug-capture-2.2.0-alpha.1.tgz
   src/
 ```
 
@@ -117,13 +176,13 @@ my-app/
 From the app's root folder:
 
 ```bash
-npm install ./vendor/debug-capture-2.1.0-alpha.2.tgz
+npm install ./vendor/debug-capture-2.2.0-alpha.1.tgz
 ```
 
 Check `package.json`. You should now see this line in `dependencies`:
 
 ```json
-"debug-capture": "file:vendor/debug-capture-2.1.0-alpha.2.tgz"
+"debug-capture": "file:vendor/debug-capture-2.2.0-alpha.1.tgz"
 ```
 
 Commit the `.tgz` file, `package.json` and `package-lock.json` together. From
@@ -134,17 +193,20 @@ now on a plain `npm install` (or `npm ci`) installs the panel from the file.
 Copy the folder `src/app/features/debug-panel/` from this repo into the same
 place in your app. It has three files:
 
-- `debug-panel.ts` — the code (about 20 lines),
+- `debug-panel.ts` — the code (about 30 lines),
 - `index.ts` — exports the two functions,
 - `debug-panel.spec.ts` — a small test (optional).
 
 This is what `debug-panel.ts` does:
 
 ```ts
-export function startDebugPanel(): StaticProvider[] {
-  const controller = isDebugRequested() ? createCaptureController() : null; // on only with the flag
-  installDebugPanel(controller); // the DBG button and the shortcut
-  return [provideDebugCaptureSession(controller?.session ?? null)];
+export function startDebugPanel(): DebugPanelStart {
+  const activation = installDebugActivation(); // the shortcut and the flags; loads the rest when on
+  return {
+    providers: [provideDebugCaptureSession(() => activation.session)], // read on each error
+    ready: activation.ready, // done once a page that starts switched on is recording
+    activation,
+  };
 }
 
 export function provideDebugPanel(): Provider[] {
@@ -154,29 +216,32 @@ export function provideDebugPanel(): Provider[] {
 
 ### Step 4 — Call it in `main.ts`
 
-Add the import, call `startDebugPanel()` **before** bootstrap, and pass the
-result to `platformBrowserDynamic`:
+Add the import, call `startDebugPanel()` **before** bootstrap, start Angular
+after its `ready`, and pass its `providers` to `platformBrowserDynamic`:
 
 ```ts
 import { startDebugPanel } from './app/features/debug-panel';
 
-const debugPanelProviders = startDebugPanel();
+const debugPanel = startDebugPanel();
 
-platformBrowserDynamic(debugPanelProviders)
-  .bootstrapModule(AppModule)
+debugPanel.ready
+  .then(() => platformBrowserDynamic(debugPanel.providers).bootstrapModule(AppModule))
   .catch(err => console.error(err));
 ```
 
 If your `platformBrowserDynamic([...])` already has providers, add them
-together: `platformBrowserDynamic([...yourProviders, ...debugPanelProviders])`.
+together: `platformBrowserDynamic([...yourProviders, ...debugPanel.providers])`.
 
 **Standalone app** (`bootstrapApplication` instead of an `AppModule`)? Then put
 both in the app's providers:
 
 ```ts
-bootstrapApplication(AppComponent, {
-  providers: [...startDebugPanel(), provideDebugPanel() /* , your providers */],
-});
+const debugPanel = startDebugPanel();
+debugPanel.ready.then(() =>
+  bootstrapApplication(AppComponent, {
+    providers: [...debugPanel.providers, provideDebugPanel() /* , your providers */],
+  }),
+);
 ```
 
 ### Step 5 — Add the error handler in `app.module.ts`
@@ -204,9 +269,11 @@ npm run build
 npm start
 ```
 
-1. Open the app **without** `?debug=1`. There must be no DBG button.
-2. Open it **with** `?debug=1`. The DBG button shows in a corner.
+1. Open the app. Nothing shows, and `Ctrl+Alt+Shift+P` does nothing (it is off).
+2. Press `Ctrl+Alt+Shift+A`. Still nothing shows — that is right.
 3. Press `Ctrl+Alt+Shift+P`. The panel opens and shows the app's requests.
+4. Reload. Press `Ctrl+Alt+Shift+P`: the requests from the start of the page are there.
+5. Press `Ctrl+Alt+Shift+A` to turn it off again. Also try `?debug=1` once.
 
 Done.
 
@@ -241,9 +308,9 @@ npm pack           # writes debug-capture-<version>.tgz here
 The panel touches the app in only a few places, so removing it is quick:
 
 1. In `src/main.ts`, delete the `startDebugPanel` import and the
-   `const debugPanelProviders = startDebugPanel();` line, and change
-   `platformBrowserDynamic(debugPanelProviders)` back to
-   `platformBrowserDynamic()`.
+   `const debugPanel = startDebugPanel();` line, and change
+   `debugPanel.ready.then(() => platformBrowserDynamic(debugPanel.providers).bootstrapModule(AppModule))`
+   back to `platformBrowserDynamic().bootstrapModule(AppModule)`.
 2. In `src/app/app.module.ts`, delete the `provideDebugPanel` import and the
    `provideDebugPanel(),` line in `providers`.
 3. Delete the folder `src/app/features/debug-panel/`.
@@ -251,7 +318,7 @@ The panel touches the app in only a few places, so removing it is quick:
 
    ```bash
    npm uninstall debug-capture
-   rm vendor/debug-capture-2.1.0-alpha.2.tgz
+   rm vendor/debug-capture-2.2.0-alpha.1.tgz
    ```
 
 5. Build to check nothing else used it: `npm run build`.
@@ -260,10 +327,20 @@ The panel touches the app in only a few places, so removing it is quick:
 
 ## 6. Questions and problems
 
-**I added `?debug=1` but there is no DBG button.**
-Reload the page after changing the URL. The flag is read once, when the app
-starts. Also check the address really has `?debug=1` (or `&debug=1` if there
-are other parameters already).
+**I turned it on but there is no DBG button.**
+That is on purpose: it runs with no visible sign. Press `Ctrl+Alt+Shift+P` to
+open the panel, or show the button in Settings › DBG button. For `?debug=1`:
+reload the page after changing the URL (the flag is read once, at start), and
+check the address really has `?debug=1` (or `&debug=1` after other parameters).
+
+**Is it on or off right now?**
+Press `Ctrl+Alt+Shift+P`. If the panel opens, it is on. (Pressing
+`Ctrl+Alt+Shift+A` to check would switch it.)
+
+**Can anyone at the station turn it on?**
+Yes — anyone who knows the shortcut. That is a known, open question (HLD
+`OPEN-05`). A developer can change the shortcut in code, or turn the shortcut
+off and keep only `?debug=1`.
 
 **The shortcut does nothing.**
 Click inside the page first, so it has keyboard focus. The keys are matched by
@@ -275,8 +352,8 @@ outside that dialog. Leave fullscreen or close the dialog; the panel says so in 
 banner.
 
 **Does it slow the app down when it is off?**
-No. With the flag off, nothing is patched or recorded. The app downloads about
-4–5 kB (gzipped) more at start-up; that is all.
+No. Nothing is patched or recorded. At start-up the app runs one key listener
+and reads one browser setting; that is all.
 
 **Does it send data anywhere?**
 No. The panel never makes network requests. Copy and export happen only when

@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { DEBUG_CAPTURE_SESSION, DebugCaptureErrorHandler } from 'debug-capture/angular';
 import { PANEL_ELEMENT_NAME } from 'debug-capture/panel';
 
-import { provideDebugPanel, startDebugPanel } from './debug-panel';
+import { debugMessage, provideDebugPanel, startDebugPanel } from './debug-panel';
 
 /**
  * The test page has no `?debug=1`, no storage flag and nobody presses the
@@ -36,5 +36,16 @@ describe('debug panel (off by default)', () => {
     const logged = spyOn(console, 'error');
     handler.handleError(new Error('boom'));
     expect(logged).toHaveBeenCalled();
+  });
+
+  it('debugMessage() forwards to the activation handle, and is safe to call any time', () => {
+    expect(() => debugMessage('before-start')).not.toThrow();
+    const start = startDebugPanel();
+    const message = spyOn(start.activation, 'message');
+
+    debugMessage('order-saved', { id: 42 }, 'warn');
+
+    expect(message).toHaveBeenCalledOnceWith('order-saved', { id: 42 }, 'warn');
+    start.activation.dispose();
   });
 });

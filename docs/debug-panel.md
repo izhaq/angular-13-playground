@@ -117,6 +117,27 @@ not only this tool's files, and the user cannot change it. To only *suggest* the
 folder, use `DefaultDownloadDirectory` instead. The files are named
 `debug-capture-<date>-<time>.json`, so they never overwrite each other.
 
+### Send the app's own messages (for developers)
+
+Code in the app can add its own messages to the recording — a short type name,
+any data, and a level:
+
+```ts
+import { debugMessage } from '../features/debug-panel'; // the path from your file
+
+debugMessage('order-saved', { id: order.id, total: order.total });
+debugMessage('payment-failed', { code: err.code }, 'error'); // 'info' (default), 'warn' or 'error'
+```
+
+- They show in the panel's **Console** with the word `app`; the **App** chip
+  shows only them. Click one to see its data as a tree.
+- They are saved in the exported file (`"kind": "app"`, `type`, `level`, `data`).
+- An `'error'` message counts as a problem (red badge on the DBG button).
+- The data is copied when you call, and passwords or tokens in it are hidden,
+  like everything else.
+- While the panel is off, `debugMessage()` does nothing and costs nothing, so it
+  can stay in the code.
+
 ---
 
 ## 2. What was added to this app
@@ -125,9 +146,9 @@ Only **five things**. Nothing else in the app knows the panel exists.
 
 | # | File | What it is |
 | --- | --- | --- |
-| 1 | `vendor/debug-capture-2.2.0-alpha.2.tgz` | The package itself, as one file. This is the file you carry into the air-gapped network. |
-| 2 | `package.json` | One line in `dependencies`: `"debug-capture": "file:vendor/debug-capture-2.2.0-alpha.2.tgz"`. `npm install` reads the package from that file — no internet needed. (`package-lock.json` changes with it.) |
-| 3 | `src/app/features/debug-panel/` | The only code that imports the package: `startDebugPanel()` and `provideDebugPanel()`, plus a small spec. |
+| 1 | `vendor/debug-capture-2.3.0-alpha.1.tgz` | The package itself, as one file. This is the file you carry into the air-gapped network. |
+| 2 | `package.json` | One line in `dependencies`: `"debug-capture": "file:vendor/debug-capture-2.3.0-alpha.1.tgz"`. `npm install` reads the package from that file — no internet needed. (`package-lock.json` changes with it.) |
+| 3 | `src/app/features/debug-panel/` | The only code that imports the package: `startDebugPanel()`, `provideDebugPanel()` and `debugMessage()`, plus a small spec. |
 | 4 | `src/main.ts` | Calls `startDebugPanel()` **before** Angular starts, waits for its `ready`, and passes its `providers` to `platformBrowserDynamic(…)`. |
 | 5 | `src/app/app.module.ts` | Adds `provideDebugPanel()` to `providers`. |
 
@@ -160,14 +181,14 @@ Works with Angular 16 to 20. You need Node 20.19+, 22.13+ or 24+.
 
 ### Step 1 — Put the package file in the app
 
-Copy `debug-capture-2.2.0-alpha.2.tgz` into a `vendor/` folder at the root of
+Copy `debug-capture-2.3.0-alpha.1.tgz` into a `vendor/` folder at the root of
 the app (next to `package.json`).
 
 ```
 my-app/
   package.json
   vendor/
-    debug-capture-2.2.0-alpha.2.tgz
+    debug-capture-2.3.0-alpha.1.tgz
   src/
 ```
 
@@ -176,13 +197,13 @@ my-app/
 From the app's root folder:
 
 ```bash
-npm install ./vendor/debug-capture-2.2.0-alpha.2.tgz
+npm install ./vendor/debug-capture-2.3.0-alpha.1.tgz
 ```
 
 Check `package.json`. You should now see this line in `dependencies`:
 
 ```json
-"debug-capture": "file:vendor/debug-capture-2.2.0-alpha.2.tgz"
+"debug-capture": "file:vendor/debug-capture-2.3.0-alpha.1.tgz"
 ```
 
 Commit the `.tgz` file, `package.json` and `package-lock.json` together. From
@@ -318,7 +339,7 @@ The panel touches the app in only a few places, so removing it is quick:
 
    ```bash
    npm uninstall debug-capture
-   rm vendor/debug-capture-2.2.0-alpha.2.tgz
+   rm vendor/debug-capture-2.3.0-alpha.1.tgz
    ```
 
 5. Build to check nothing else used it: `npm run build`.

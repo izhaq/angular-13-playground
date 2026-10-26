@@ -1,4 +1,5 @@
 import { Provider, StaticProvider } from '@angular/core';
+import type { AppMessageLevel } from 'debug-capture';
 import { DebugActivationHandle, installDebugActivation } from 'debug-capture/activate';
 import { provideDebugCapture, provideDebugCaptureSession } from 'debug-capture/angular';
 
@@ -30,12 +31,26 @@ export interface DebugPanelStart {
  */
 export function startDebugPanel(): DebugPanelStart {
   const activation = installDebugActivation();
+  current = activation;
   return {
     // A getter: the session may start after bootstrap (the shortcut).
     providers: [provideDebugCaptureSession(() => activation.session)],
     ready: activation.ready,
     activation,
   };
+}
+
+/** The handle `startDebugPanel()` made; `debugMessage()` sends through it. */
+let current: DebugActivationHandle | null = null;
+
+/**
+ * Sends the app's own message to the debug panel: a short type name, any data,
+ * and a level (`'info'` by default, `'warn'` or `'error'` — an error counts as
+ * a problem). Saved with everything else and in the exported file. Safe to
+ * call any time: while the panel is off it is dropped and costs nothing.
+ */
+export function debugMessage(type: string, data?: unknown, level?: AppMessageLevel): void {
+  current?.message(type, data, level);
 }
 
 /** In AppModule `providers`: errors Angular catches itself are recorded too. Harmless when it is off. */

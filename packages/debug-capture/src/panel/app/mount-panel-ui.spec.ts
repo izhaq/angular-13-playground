@@ -16,6 +16,8 @@ function emptyController(): { controller: CaptureController; listeners: () => nu
     clear: () => undefined,
     stats: () => ({ recorded: 0, dropped: 0, evicted: 0, failed: 0 }),
     pending: () => [],
+    usage: () => ({ entries: 0, capacity: 5000, bytes: 0, problems: 0 }),
+    setCapacity: () => undefined,
     onEntry: add(sets[0] as Set<unknown>),
     onPending: add(sets[1] as Set<unknown>),
     onChange: add(sets[2] as Set<unknown>),
@@ -62,7 +64,17 @@ describe('mountPanelUi (P4 entry, real window)', () => {
   afterEach(() => host.remove());
 
   const mount = (controller: CaptureController) =>
-    mountPanelUi(shadow, controller, { document, panelRoot, storageKey: false, defaultDock: 'bottom', onRequestClose });
+    mountPanelUi(shadow, controller, {
+      document,
+      panelRoot,
+      storageKey: false,
+      defaultDock: 'bottom',
+      onRequestClose,
+      launcher: true,
+      setLauncher: () => undefined,
+      warnings: () => ({ nearFull: false, memoryBytes: 0 }),
+      dismissWarning: () => undefined,
+    });
 
   it('builds the frame in the panelRoot it is given, never in one found by class (C3-2), and renders on a real frame', async () => {
     const decoy = document.createElement('div');

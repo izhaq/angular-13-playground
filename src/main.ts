@@ -9,10 +9,11 @@ if (environment.production) {
   enableProdMode();
 }
 
-// Debug panel: started before bootstrap so startup requests are captured, and
-// so it still works if bootstrap fails. Off unless the URL has ?debug=1.
-const debugPanelProviders = startDebugPanel();
+// Debug panel: started before bootstrap, and bootstrap waits for it, so a page
+// that starts switched on records its first requests too; it also works if
+// bootstrap fails. Off unless ?debug=1 or Ctrl+Alt+Shift+A turned it on.
+const debugPanel = startDebugPanel();
 
-platformBrowserDynamic(debugPanelProviders)
-  .bootstrapModule(AppModule)
+debugPanel.ready
+  .then(() => platformBrowserDynamic(debugPanel.providers).bootstrapModule(AppModule))
   .catch(err => console.error(err));

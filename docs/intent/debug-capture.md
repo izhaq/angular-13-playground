@@ -1,5 +1,7 @@
 # Debug Capture — Intent and Decision Record
 
+> **Historical (v1).** The v1 recorder described here was removed from this app on 2026-10-28; it lives on, rewritten, as the package [`izhaq/debug-capture`](https://github.com/izhaq/debug-capture).
+
 **Status:** Accepted 2026-10-12.
 **For:** Engineering — anyone changing, reviewing or lifting `src/debug-capture/`
 into another project.

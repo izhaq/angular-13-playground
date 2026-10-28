@@ -1,3 +1,0 @@
-# Keep LF everywhere: Prettier and the check scripts expect it (also on Windows).
-* text=auto eol=lf
-*.png binary

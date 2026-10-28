@@ -51,11 +51,13 @@ npm run server:prod    # run the compiled Node service
 ## Debugging without DevTools
 
 Some stations have no browser DevTools. For those, the app has an on-screen
-**debug panel**: add `?debug=1` to the URL, reload, and press
-`Ctrl+Alt+Shift+P` (or click the **DBG** button in the corner). It shows the
-app's REST calls, WebSocket traffic, console output and errors live, and
-**Export › Download all (JSON)** saves them as one file. Passwords and tokens
-are hidden, but treat the file as sensitive. It is off unless the flag is set.
+**debug panel** (the package [`debug-capture`](https://github.com/izhaq/debug-capture),
+installed from `vendor/`): add `?debug=1` to the URL and reload, or press
+`Ctrl+Alt+Shift+A` (remembered in this browser); then press `Ctrl+Alt+Shift+P`
+to open it. It shows the app's REST calls, WebSocket traffic, console output
+and errors live, and **Export › Download all (JSON)** saves them as one file.
+Passwords and tokens are hidden, but treat the file as sensitive. It is off
+until one of those turns it on.
 
 How to use it, what was added to the app, how to add it to another app, and how
 to remove it: [`docs/debug-panel.md`](docs/debug-panel.md).

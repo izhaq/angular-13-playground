@@ -168,10 +168,10 @@ Why each piece:
   40 kB) the first time someone opens it. (Measured in this app: the start
   bundle shrank by about 13 kB gzipped compared with 2.1.)
 
-> The old recorder (v1) is still in the repo, in `src/debug-capture/` and
-> `src/app/features/debug-capture/`, but the app no longer uses it. It can be
-> deleted later in its own change. Do not wire both: the new one refuses to
-> start while another capture is running.
+> The package's source lives in its own repository,
+> [`izhaq/debug-capture`](https://github.com/izhaq/debug-capture). This app only
+> holds the packed file in `vendor/`. (The old v1 recorder that used to sit in
+> `src/debug-capture/` has been removed.)
 
 ---
 
@@ -312,15 +312,10 @@ Done.
 3. Run the app's checks and do Step 6 above.
 4. Commit the new `.tgz`, `package.json` and `package-lock.json` together.
 
-**Where does a new `.tgz` come from?** From the package source in
-`packages/debug-capture/` (in this repo for now):
-
-```bash
-cd packages/debug-capture
-npm ci
-npm run check      # every test must pass
-npm pack           # writes debug-capture-<version>.tgz here
-```
+**Where does a new `.tgz` come from?** From the package's own repository,
+[`izhaq/debug-capture`](https://github.com/izhaq/debug-capture): download it from
+its **Releases** page, or build it there (`npm ci`, `npm run check`, `npm pack`).
+Its README and release notes say what changed and how to update a host app.
 
 ---
 
@@ -386,4 +381,4 @@ someone clicks.
 Chrome 146 or newer.
 
 **More detail** (all options, the keyboard map, the file format): see
-[`packages/debug-capture/README.md`](../packages/debug-capture/README.md).
+the package's README, in [`izhaq/debug-capture`](https://github.com/izhaq/debug-capture).

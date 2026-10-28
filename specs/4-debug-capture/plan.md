@@ -1,5 +1,7 @@
 # Master Plan: Debug Capture (air-gapped logs + network recorder)
 
+> **Historical (v1).** This plan built the v1 recorder in `src/debug-capture/`, removed from this app on 2026-10-28. Its successor is the package [`izhaq/debug-capture`](https://github.com/izhaq/debug-capture).
+
 **Status:** Done 2026-10-13 — all PRs merged into the integration branch, reviewed and tested. Not merged to `main`.
 **Integration branch:** `claude/air-gapped-debug-logging-zkn1nr` — every PR in
 this plan targets it. Nothing here merges to `main` until the whole plan is

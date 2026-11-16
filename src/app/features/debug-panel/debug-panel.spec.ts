@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { DEBUG_CAPTURE_SESSION, DebugCaptureErrorHandler } from 'debug-capture/angular';
 import { PANEL_ELEMENT_NAME } from 'debug-capture/panel';
 
-import { debugMessage, provideDebugPanel, startDebugPanel } from './debug-panel';
+import { debugMessage, provideDebugPanel, saveDebugCapture, startDebugPanel } from './debug-panel';
 
 /**
  * The test page has no `?debug=1`, no storage flag and nobody presses the
@@ -22,7 +22,15 @@ describe('debug panel (off by default)', () => {
     expect(typeof provider.useValue).toBe('function');
     expect((provider.useValue as () => unknown)()).toBeNull();
     expect(start.activation.active).toBeFalse();
+    expect(start.mode).toBe('panel'); // the default build: option A, with the panel
     expect(document.querySelector(PANEL_ELEMENT_NAME)).toBeNull();
+    start.activation.dispose();
+  });
+
+  it('saveDebugCapture() does nothing while the tool is off, and never throws', () => {
+    expect(() => saveDebugCapture()).not.toThrow();
+    const start = startDebugPanel();
+    expect(() => saveDebugCapture()).not.toThrow();
     start.activation.dispose();
   });
 

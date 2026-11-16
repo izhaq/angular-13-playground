@@ -144,6 +144,27 @@ app.get('/api/rare-config', (_req, res) => {
 // WS /api/system-experiments/ws). Self-contained — does not touch the routes above.
 registerSystemExperimentsRoutes(app, server);
 
+// Feature flags for the app. `debugPanel` is the backend flag the
+// `panel-flag` build reads (src/app/features/debug-panel/activation.flag.ts):
+// true shows the debug panel, false keeps it off. Start the server with
+// DEBUG_PANEL=off to begin with false; PUT { "debugPanel": true|false } to
+// flip it while running (it applies at the next reload of the app).
+const features = { debugPanel: process.env['DEBUG_PANEL'] !== 'off' };
+
+app.get('/api/features', (_req, res) => {
+  res.json(features);
+});
+
+app.put('/api/features', (req, res) => {
+  const value = (req.body as { debugPanel?: unknown } | undefined)?.debugPanel;
+  if (typeof value !== 'boolean') {
+    res.status(400).json({ error: 'expected { "debugPanel": true | false }' });
+    return;
+  }
+  features.debugPanel = value;
+  res.json(features);
+});
+
 app.get('/api/health', (_req, res) => {
   res.json({
     status: 'ok',
@@ -176,6 +197,7 @@ server.listen(PORT, () => {
 ║   API:   GET  /api/system-experiments/get                ║
 ║   API:   WS   /api/system-experiments/ws                 ║
 ║   API:   GET  /api/health                                ║
+║   API:   GET  /api/features   (PUT to change)            ║
 ╚══════════════════════════════════════════════════════════╝
   `);
 });

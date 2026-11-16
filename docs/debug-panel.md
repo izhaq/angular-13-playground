@@ -7,6 +7,7 @@ for stations that have no browser DevTools (air-gapped networks).
 This page explains, step by step:
 
 1. [How to use it](#1-how-to-use-it)
+   - [Ways to ship the panel (2.5)](#ways-to-ship-the-panel-25)
 2. [What was added to this app](#2-what-was-added-to-this-app)
 3. [How to add it to another Angular app](#3-how-to-add-it-to-another-angular-app)
 4. [How to update it to a new version](#4-how-to-update-it-to-a-new-version)
@@ -138,6 +139,39 @@ debugMessage('payment-failed', { code: err.code }, 'error'); // 'info' (default)
 - While the panel is off, `debugMessage()` does nothing and costs nothing, so it
   can stay in the code.
 
+### Ways to ship the panel (2.5)
+
+The app can be built four ways. In all of them recording and saving work the same
+(`Ctrl+Alt+Shift+D` saves a file, `Ctrl+Alt+Shift+S` stops / starts recording);
+only the panel changes. One file differs per build —
+`src/app/features/debug-panel/activation.ts` — and `angular.json` swaps it.
+
+| Option | Run it | Build it | The panel |
+| --- | --- | --- | --- |
+| **A. With the panel** (default) | `ng serve` | `ng build` | opens with `Ctrl+Alt+Shift+P` |
+| **B. Headless** | `ng serve --configuration headless` | `ng build --configuration production,headless` | none — and **no panel code** in the build |
+| **C. Backend flag** | `ng serve --configuration panel-flag` | `ng build --configuration production,panel-flag` | only if the server says `debugPanel: true` |
+| **D. Per build** | — | B for customers, A for us: the two build lines above | B's build has none, A's has it |
+
+For **C**, the flag comes from this app's own server (`npm run server:start`):
+
+```bash
+DEBUG_PANEL=off npm run server:start          # start with the panel off (default: on)
+curl -X PUT localhost:3000/api/features \
+  -H 'content-type: application/json' -d '{"debugPanel":true}'   # turn it on; reload the app
+```
+
+The app asks `GET /api/features` each time the tool is switched on, after
+recording has started (so start-up is never held up). An error or no answer
+means **no panel**. A change applies at the next reload.
+
+In every option the app can also save from its own code:
+`saveDebugCapture()` from `src/app/features/debug-panel` (does nothing while off).
+
+The files: `activation.ts` (A), `activation.headless.ts` (B), `activation.flag.ts` (C).
+The package's guide to the same options, for any Angular or React app:
+[`docs/panel-options.md` in izhaq/debug-capture](https://github.com/izhaq/debug-capture/blob/main/docs/panel-options.md).
+
 ---
 
 ## 2. What was added to this app
@@ -146,9 +180,9 @@ Only **five things**. Nothing else in the app knows the panel exists.
 
 | # | File | What it is |
 | --- | --- | --- |
-| 1 | `vendor/debug-capture-2.3.0-alpha.1.tgz` | The package itself, as one file. This is the file you carry into the air-gapped network. |
-| 2 | `package.json` | One line in `dependencies`: `"debug-capture": "file:vendor/debug-capture-2.3.0-alpha.1.tgz"`. `npm install` reads the package from that file — no internet needed. (`package-lock.json` changes with it.) |
-| 3 | `src/app/features/debug-panel/` | The only code that imports the package: `startDebugPanel()`, `provideDebugPanel()` and `debugMessage()`, plus a small spec. |
+| 1 | `vendor/debug-capture-2.5.0.tgz` | The package itself, as one file. This is the file you carry into the air-gapped network. |
+| 2 | `package.json` | One line in `dependencies`: `"debug-capture": "file:vendor/debug-capture-2.5.0.tgz"`. `npm install` reads the package from that file — no internet needed. (`package-lock.json` changes with it.) |
+| 3 | `src/app/features/debug-panel/` | The only code that imports the package: `startDebugPanel()`, `provideDebugPanel()`, `debugMessage()` and `saveDebugCapture()`; the three `activation*.ts` files (one per way to ship it, 2.5); and their specs. |
 | 4 | `src/main.ts` | Calls `startDebugPanel()` **before** Angular starts, waits for its `ready`, and passes its `providers` to `platformBrowserDynamic(…)`. |
 | 5 | `src/app/app.module.ts` | Adds `provideDebugPanel()` to `providers`. |
 
@@ -181,14 +215,14 @@ Works with Angular 16 to 20. You need Node 20.19+, 22.13+ or 24+.
 
 ### Step 1 — Put the package file in the app
 
-Copy `debug-capture-2.3.0-alpha.1.tgz` into a `vendor/` folder at the root of
+Copy `debug-capture-2.5.0.tgz` into a `vendor/` folder at the root of
 the app (next to `package.json`).
 
 ```
 my-app/
   package.json
   vendor/
-    debug-capture-2.3.0-alpha.1.tgz
+    debug-capture-2.5.0.tgz
   src/
 ```
 
@@ -197,13 +231,13 @@ my-app/
 From the app's root folder:
 
 ```bash
-npm install ./vendor/debug-capture-2.3.0-alpha.1.tgz
+npm install ./vendor/debug-capture-2.5.0.tgz
 ```
 
 Check `package.json`. You should now see this line in `dependencies`:
 
 ```json
-"debug-capture": "file:vendor/debug-capture-2.3.0-alpha.1.tgz"
+"debug-capture": "file:vendor/debug-capture-2.5.0.tgz"
 ```
 
 Commit the `.tgz` file, `package.json` and `package-lock.json` together. From
@@ -334,7 +368,7 @@ The panel touches the app in only a few places, so removing it is quick:
 
    ```bash
    npm uninstall debug-capture
-   rm vendor/debug-capture-2.3.0-alpha.1.tgz
+   rm vendor/debug-capture-2.5.0.tgz
    ```
 
 5. Build to check nothing else used it: `npm run build`.

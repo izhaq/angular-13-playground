@@ -70,6 +70,22 @@
               "extractLicenses": false,
               "sourceMap": true,
               "namedChunks": true
+            },
+            "headless": {
+              "fileReplacements": [
+                {
+                  "replace": "src/app/features/debug-panel/activation.ts",
+                  "with": "src/app/features/debug-panel/activation.headless.ts"
+                }
+              ]
+            },
+            "panel-flag": {
+              "fileReplacements": [
+                {
+                  "replace": "src/app/features/debug-panel/activation.ts",
+                  "with": "src/app/features/debug-panel/activation.flag.ts"
+                }
+              ]
             }
           },
           "defaultConfiguration": "production"
@@ -85,6 +101,12 @@
             },
             "development": {
               "browserTarget": "angular-13-playground:build:development"
+            },
+            "headless": {
+              "browserTarget": "angular-13-playground:build:development,headless"
+            },
+            "panel-flag": {
+              "browserTarget": "angular-13-playground:build:development,panel-flag"
             }
           },
           "defaultConfiguration": "development"

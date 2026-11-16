@@ -1,7 +1,10 @@
 import { Provider, StaticProvider } from '@angular/core';
 import type { AppMessageLevel } from 'debug-capture';
-import { DebugActivationHandle, installDebugActivation } from 'debug-capture/activate';
+import type { DebugActivationHandle } from 'debug-capture/activate';
 import { provideDebugCapture, provideDebugCaptureSession } from 'debug-capture/angular';
+
+import { DEBUG_PANEL_MODE, installActivation } from './activation';
+import type { DebugPanelMode } from './mode';
 
 /**
  * The on-screen debug panel (package `debug-capture`, v2). Every import from
@@ -13,6 +16,10 @@ import { provideDebugCapture, provideDebugCaptureSession } from 'debug-capture/a
  * or the shortcut Ctrl+Alt+Shift+A (remembered in this browser; press it again
  * to turn it off for good). Until then only a tiny key listener runs; capture
  * and the panel are loaded when it is turned on.
+ *
+ * 2.5: how the panel ships depends on the build — with the panel (default),
+ * headless (no panel code) or decided by the backend. `./activation` is the
+ * one file that differs; angular.json swaps it (see activation.ts).
  */
 
 /** What main.ts needs from `startDebugPanel()`. */
@@ -23,6 +30,8 @@ export interface DebugPanelStart {
   readonly ready: Promise<void>;
   /** The activation handle (on / off, the session), for the app's own use. */
   readonly activation: DebugActivationHandle;
+  /** Which way this build ships the panel: `'panel'`, `'headless'` or `'flag'` (the backend decides). */
+  readonly mode: DebugPanelMode;
 }
 
 /**
@@ -30,13 +39,14 @@ export interface DebugPanelStart {
  * app's first requests are recorded too when it starts switched on.
  */
 export function startDebugPanel(): DebugPanelStart {
-  const activation = installDebugActivation();
+  const activation = installActivation();
   current = activation;
   return {
     // A getter: the session may start after bootstrap (the shortcut).
     providers: [provideDebugCaptureSession(() => activation.session)],
     ready: activation.ready,
     activation,
+    mode: DEBUG_PANEL_MODE,
   };
 }
 
@@ -56,4 +66,13 @@ export function debugMessage(type: string, data?: unknown, level?: AppMessageLev
 /** In AppModule `providers`: errors Angular catches itself are recorded too. Harmless when it is off. */
 export function provideDebugPanel(): Provider[] {
   return provideDebugCapture();
+}
+
+/**
+ * Saves the capture as a JSON file, as Ctrl+Alt+Shift+D does — for the app's
+ * own menu item or button (useful in the headless build, which has no panel).
+ * Does nothing while the tool is off.
+ */
+export function saveDebugCapture(): void {
+  current?.session?.download();
 }
